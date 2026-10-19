@@ -1,9 +1,0 @@
-configuration:
-  gemini_api_key:
-    name: Gemini API key (optional)
-    description: >-
-      Only needed if Home Assistant has no AI Task set up. Used to read
-      pasted messages and photos of notes.
-  gemini_model:
-    name: Gemini model
-    description: Model used with the key above.

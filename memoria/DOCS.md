@@ -42,11 +42,26 @@ No botão **Nova**:
 
 Você revisa e corrige o texto antes de criar a folha.
 
-### Qual IA é usada
+### Leitura por IA
 
-1. **A IA do seu Home Assistant** (AI Task), se houver uma integração de IA com tarefa de IA, como Google Gemini ou OpenAI. Não precisa de chave nova. As fotos ficam por alguns segundos em `/media/memoria/` para a IA ler e são apagadas em seguida.
-2. Se o HA não tiver isso, uma **chave da API do Gemini** colocada na aba **Configuração** do app.
-3. Sem nenhuma das duas, a mensagem colada vira uma folha do jeito que está e a leitura de fotos fica desativada.
+O MemorIA não tem IA própria e não guarda chave de API. Ele usa a ação `ai_task.generate_data` do Home Assistant, então funciona com a integração de IA que você configurar lá, e dá para trocar quando quiser:
+
+| Integração | Observação |
+|---|---|
+| Anthropic (Claude) | Precisa de chave da API da Anthropic. Lê fotos. |
+| OpenAI | Precisa de chave da API da OpenAI. Lê fotos. |
+| Google Gemini | Costuma ter uma cota gratuita. Lê fotos. |
+| Ollama | Roda um modelo local na sua rede, sem custo e sem mandar nada para fora. Para fotos, use um modelo que entenda imagens (por exemplo `qwen2.5vl` ou `gemma3`). |
+
+Para configurar:
+
+1. Em **Configurações > Dispositivos e serviços > Adicionar integração**, escolha a integração e siga os passos.
+2. Na página da integração, adicione uma **tarefa de IA** (AI Task). Para ler fotos, escolha um modelo que entenda imagens.
+3. No MemorIA, abra **Mais > Leitura por IA** e escolha essa IA. "Padrão do Home Assistant" usa a IA preferida definida em **Configurações > Sistema > Geral**. Toque em **Verificar de novo** para conferir se ela está pronta.
+
+Na hora da leitura, o app copia a foto por alguns segundos para `media/memoria/ia-temp`, chama a IA pelo Home Assistant e apaga a cópia em seguida.
+
+Sem IA configurada, todo o resto funciona normalmente: a mensagem colada vira uma folha do jeito que está e só a leitura de fotos fica desligada.
 
 ## Sensor para painéis e automações
 

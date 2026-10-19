@@ -1,6 +1,6 @@
 # https://developers.home-assistant.io/docs/apps/configuration
 name: MemorIA
-version: "1.0.0"
+version: "1.1.0"
 slug: memoria
 description: Blocos de anotações em forma de caderno, que se abrem sozinhos conforme o período e o horário do dia.
 url: "https://github.com/diegozapella63/memoria-ha/tree/main/memoria"
@@ -17,12 +17,6 @@ panel_title: MemorIA
 panel_admin: false
 homeassistant_api: true
 # Photos are handed to Home Assistant's AI Task through the media folder
-# for a few seconds, then deleted.
+# (media/memoria/ia-temp) while the AI reads them, then deleted.
 map:
   - media:rw
-options:
-  gemini_api_key: ""
-  gemini_model: "gemini-flash-latest"
-schema:
-  gemini_api_key: password?
-  gemini_model: str?

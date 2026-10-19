@@ -2,7 +2,7 @@
 // - Serves the notebook UI through Home Assistant ingress.
 // - Keeps notebooks ("blocos") and pages in /data/memoria.json and pushes every
 //   change live to all open screens.
-// - Reads pasted messages and photos with Home Assistant's AI (or Gemini).
+// - Reads pasted messages and photos with the AI configured in Home Assistant.
 // - Publishes sensor.memoria_agora with what is "on" right now.
 import http from "node:http";
 import fs from "node:fs";
@@ -14,7 +14,7 @@ import { Store } from "./lib/store.js";
 import { AI } from "./lib/ai.js";
 import { Sensor } from "./lib/sensor.js";
 
-const VERSION = "1.0.0";
+const VERSION = "1.1.0";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WWW = path.join(HERE, "www");
 const DEV = process.env.MEMORIA_DEV === "1";
@@ -24,7 +24,6 @@ const HA_REST = process.env.HA_REST_URL || "http://supervisor/core/api";
 const TOKEN = process.env.SUPERVISOR_TOKEN || process.env.HA_TOKEN || "";
 const DATA_DIR = process.env.DATA_DIR || "/data";
 const MEDIA_DIR = process.env.MEDIA_DIR || "/media";
-const OPTIONS_FILE = process.env.OPTIONS_FILE || path.join(DATA_DIR, "options.json");
 const INGRESS_IPS = new Set(["172.30.32.2"]);
 const MAX_UPLOAD = 30 * 1024 * 1024;
 
@@ -38,7 +37,7 @@ if (!TOKEN) log.error("Sem SUPERVISOR_TOKEN. O homeassistant_api está ligado no
 
 const store = new Store(DATA_DIR, log);
 const ha = new HAClient(HA_URL, TOKEN, log);
-const ai = new AI({ ha, log, mediaDir: MEDIA_DIR, optionsFile: OPTIONS_FILE, geminiUrl: DEV ? process.env.GEMINI_URL : undefined });
+const ai = new AI({ ha, log, mediaDir: MEDIA_DIR, selected: () => store.data.app.ai_entity || "" });
 const sensor = new Sensor({ store, log, restUrl: HA_REST, token: TOKEN, enabled: () => store.data.app.sensor !== false });
 const watchers = new Set(); // {session, id}
 
@@ -108,8 +107,12 @@ class Session {
         return this.send({ id, type: "pong" });
 
       case "memoria/bootstrap": {
-        const aiStatus = ha.ready ? await ai.status().catch(() => ({ available: false })) : { available: false };
+        const aiStatus = await ai.status().catch((err) => ({ ready: false, images: false, entities: [], reason: err.message }));
         return this.result(id, { version: VERSION, user: this.user, ai: aiStatus, data: store.data });
+      }
+
+      case "memoria/ai/status": {
+        return this.result(id, await ai.status());
       }
 
       case "memoria/subscribe": {
@@ -209,7 +212,8 @@ function handleExtract(req, res) {
       sendJson(res, 200, out);
     } catch (err) {
       log.warn(`Leitura por IA falhou: ${err.message}`);
-      sendJson(res, err.code === "no_ai" ? 409 : 502, { error: err.message, code: err.code || "failed" });
+      const setup = ["no_ai", "no_vision", "gone", "unavailable", "no_media"].includes(err.code);
+      sendJson(res, setup ? 409 : 502, { error: err.message, code: err.code || "failed" });
     }
   });
 }

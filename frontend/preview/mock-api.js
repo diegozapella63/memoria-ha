@@ -45,7 +45,25 @@ export class MockApi {
 
   async bootstrap() {
     await wait(60);
-    return { version: "1.0.0", user: { name: "Diego Zapella" }, ai: { available: true, provider: "ha", text: true, images: true }, data: clone(this.data) };
+    return { version: "1.1.0", user: { name: "Diego Zapella" }, ai: await this.aiStatus(), data: clone(this.data) };
+  }
+
+  async aiStatus() {
+    await wait(300);
+    const entities = [
+      { id: "ai_task.google_ai_task", name: "Google AI Task", images: true, available: true },
+      { id: "ai_task.ollama_ai_task", name: "Ollama AI Task", images: false, available: true },
+    ];
+    const sel = this.data.app.ai_entity || "";
+    const using = entities.find((e) => e.id === sel) || entities[0];
+    return {
+      ready: true,
+      images: using.images,
+      selected: sel,
+      using: { id: using.id, name: using.name },
+      entities,
+      reason: using.images ? null : `${using.name} não lê fotos. Escolha outra IA em Mais › Leitura por IA.`,
+    };
   }
 
   async subscribe(cb) {
@@ -116,7 +134,10 @@ export class MockApi {
     await wait(30);
     const d = this.data;
     if (periods) for (const k of Object.keys(DEFAULT_PERIODS)) if (k in periods && normTime(periods[k])) d.periods[k] = normTime(periods[k]);
-    if (app) d.app = { ...d.app, ...app };
+    if (app) {
+      d.app = { ...d.app, ...app };
+      if (!d.app.ai_entity) delete d.app.ai_entity;
+    }
     const res = { periods: clone(d.periods), app: clone(d.app) };
     this.emit({ kind: "settings", ...res });
     return res;
@@ -126,7 +147,7 @@ export class MockApi {
     await wait(1100);
     if (images && images.length) {
       return {
-        provider: "ha:ai_task.google_ai_task",
+        provider: "Google AI Task",
         text: "Receita do bolo de cenoura da vó\n\n3 cenouras médias\n4 ovos\n1 xícara de óleo\n2 xícaras de açúcar\n2 xícaras de farinha\n1 colher de fermento\n\nBater tudo no liquidificador, menos a farinha e o fermento. Forno 180° por 40 min.",
       };
     }
@@ -134,6 +155,6 @@ export class MockApi {
       .split(/\n+/)
       .map((l) => l.replace(/^\[[^\]]*\]\s*[^:]+:\s*/, "").trim())
       .filter(Boolean);
-    return { provider: "ha:ai_task.google_ai_task", text: lines.length > 1 ? `${lines[0]}\n\n${lines.slice(1).join("\n")}` : lines.join("\n") };
+    return { provider: "Google AI Task", text: lines.length > 1 ? `${lines[0]}\n\n${lines.slice(1).join("\n")}` : lines.join("\n") };
   }
 }

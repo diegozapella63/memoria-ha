@@ -183,6 +183,8 @@ export class Store {
       if ("accent" in app) next.accent = COLORS.includes(app.accent) ? app.accent : undefined;
       if ("hand" in app) next.hand = Boolean(app.hand);
       if ("sensor" in app) next.sensor = Boolean(app.sensor);
+      // "" = the AI Home Assistant prefers.
+      if ("ai_entity" in app) next.ai_entity = /^ai_task\.[a-z0-9_]+$/.test(app.ai_entity || "") ? app.ai_entity : undefined;
       this.data.app = Object.fromEntries(Object.entries(next).filter(([, v]) => v !== undefined));
     }
     this.save();

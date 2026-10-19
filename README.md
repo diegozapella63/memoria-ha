@@ -31,7 +31,7 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **Abre sozinho**: cada bloco pode ter períodos (manhã, tarde, noite, com horários de início ajustáveis) e horários exatos.
 - **Trechos com horário**: uma folha específica pode aparecer às 10h, por exemplo a pauta de uma reunião.
 - **Tela Agora** com a linha do tempo do dia: toque num horário para espiar o que vem depois.
-- **Nova folha de mensagem ou foto**: cole uma mensagem do WhatsApp, escolha fotos ou digitalize uma anotação em papel; a IA do Home Assistant (ou o Gemini) transcreve e você revisa.
+- **Nova folha de mensagem ou foto**: cole uma mensagem do WhatsApp, escolha fotos ou digitalize uma anotação em papel; a IA configurada no Home Assistant (Claude, OpenAI, Gemini ou Ollama) transcreve e você revisa. Escolha qual em **Mais → Leitura por IA**.
 - **Buscar** em todas as folhas, sem se importar com acentos.
 - **Sensor** `sensor.memoria_agora` com o bloco e a folha do momento, para painéis e automações.
 - **Salvo no Home Assistant**: sincroniza na hora entre aparelhos e entra no backup.
@@ -60,7 +60,7 @@ MEMORIA_DEV=1 HA_WS_URL=ws://127.0.0.1:8123/api/websocket HA_REST_URL=http://127
                                                  # abre em http://127.0.0.1:8099
 ```
 
-O HA falso simula uma IA (`ai_task.google_ai_task`) e recebe o `sensor.memoria_agora`; use `FAKE_MEDIA_DIR` igual a `MEDIA_DIR` para testar a leitura de fotos, ou `FAKE_HA_NO_AI=1` para testar sem IA. A prévia (`preview/memoria-preview.html`) abre direto no navegador, sem servidor.
+O HA falso simula duas IAs (`ai_task.google_ai_task`, que lê fotos, e `ai_task.ollama_ai_task`, só texto) e recebe o `sensor.memoria_agora`; use `FAKE_MEDIA_DIR` igual a `MEDIA_DIR` para testar a leitura de fotos, ou `FAKE_HA_NO_AI=1` para testar sem IA. A prévia (`preview/memoria-preview.html`) abre direto no navegador, sem servidor.
 
 ## Créditos
 

@@ -2775,4 +2775,95 @@ export const notebookStyles = css`
     padding: 1px 5px;
     border-radius: 6px;
   }
+
+  /* ---------- Leitura por IA ---------- */
+  .panel-lead {
+    margin: 0 0 14px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--rv-muted);
+  }
+  .ai-state {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: var(--rv-surface-2);
+  }
+  .ai-state .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-top: 6px;
+    flex: none;
+    background: var(--rv-faint);
+  }
+  .ai-state.ok .dot {
+    background: #2fb67c;
+    box-shadow: 0 0 0 3px rgba(47, 182, 124, 0.2);
+  }
+  .ai-state.warn .dot {
+    background: #e8a317;
+    box-shadow: 0 0 0 3px rgba(232, 163, 23, 0.2);
+  }
+  .ai-state.bad .dot {
+    background: var(--rv-late);
+    box-shadow: 0 0 0 3px var(--rv-late-soft);
+  }
+  .ai-state b {
+    display: block;
+    font-weight: 600;
+  }
+  .ai-state span {
+    display: block;
+    font-size: 14px;
+    color: var(--rv-muted);
+    line-height: 1.45;
+  }
+  .select {
+    width: 100%;
+    font: inherit;
+    font-size: 16px;
+    color: var(--rv-text);
+    background-color: var(--rv-surface-2);
+    border: 1.5px solid var(--rv-line-strong);
+    border-radius: 14px;
+    padding: 12px 40px 12px 14px;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--rv-muted) 50%), linear-gradient(135deg, var(--rv-muted) 50%, transparent 50%);
+    background-position: calc(100% - 20px) 52%, calc(100% - 14px) 52%;
+    background-size: 6px 6px;
+    background-repeat: no-repeat;
+  }
+  .select:focus {
+    outline: 0;
+    border-color: var(--rv-accent);
+  }
+  .ai-actions {
+    display: flex;
+    margin: 14px 0 6px;
+  }
+  .ai-actions .btn {
+    flex: none;
+  }
+  .steps-box {
+    margin: 10px 0 14px;
+    font-size: 14px;
+  }
+  .steps {
+    margin: 6px 0 0;
+    padding-left: 20px;
+    color: var(--rv-text-2);
+    line-height: 1.5;
+  }
+  .steps li + li {
+    margin-top: 4px;
+  }
+  .text-btn.inline {
+    display: inline;
+    padding: 0 0 0 4px;
+    font-size: inherit;
+  }
 `;

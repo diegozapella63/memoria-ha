@@ -219,6 +219,10 @@ export class Api {
     return this.call("memoria/block/delete", { block_id: id });
   }
 
+  aiStatus() {
+    return this.call("memoria/ai/status");
+  }
+
   saveSettings(settings) {
     return this.call("memoria/settings/save", settings);
   }

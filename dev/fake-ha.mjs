@@ -35,6 +35,7 @@ function fakeAI(msg) {
     if (!fs.existsSync(p)) fail("service_validation_error", `attachment not found: ${p}`);
     return { path: p, bytes: fs.statSync(p).size, type: a.media_content_type };
   });
+  if (files.length && d.entity_id === "ai_task.ollama_ai_task") fail("home_assistant_error", "This entity does not support attachments");
   aiCalls.push({ entity_id: d.entity_id, files });
   console.log("fake AI call", JSON.stringify({ entity_id: d.entity_id, files }));
   let text;
@@ -77,7 +78,13 @@ class Conn {
         case "get_states":
           return ok([
             { entity_id: "light.sala", state: "on", attributes: {} },
-            ...(WITH_AI ? [{ entity_id: "ai_task.google_ai_task", state: "unknown", attributes: { supported_features: 3 } }] : []),
+            ...(WITH_AI
+              ? [
+                  { entity_id: "ai_task.google_ai_task", state: "unknown", attributes: { friendly_name: "Google AI Task", supported_features: 3 } },
+                  // A text-only AI (no attachments), like many local models.
+                  { entity_id: "ai_task.ollama_ai_task", state: "unknown", attributes: { friendly_name: "Ollama AI Task", supported_features: 1 } },
+                ]
+              : []),
             ...states.values(),
           ]);
         case "ai_task/preferences/get":

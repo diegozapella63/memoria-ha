@@ -84,7 +84,8 @@ class MemoriaApp extends LitElement {
     this._now = Date.now();
     this._dark = false;
     this._user = { name: "" };
-    this._ai = { available: false };
+    this._ai = { ready: false, images: false, entities: [] };
+    this._aiAt = 0;
     this._version = "";
     this._saving = new Map(); // page id -> {timer, inflight, dirty, sentText}
     this._base = new Map(); // page id -> `updated` the server last confirmed
@@ -187,7 +188,8 @@ class MemoriaApp extends LitElement {
       const res = await this.api.bootstrap();
       this._version = res.version || "";
       this._user = res.user || { name: "" };
-      this._ai = res.ai || { available: false };
+      this._ai = res.ai || { ready: false, images: false, entities: [] };
+      this._aiAt = Date.now();
       const data = res.data;
       // Keep what is still being typed here.
       const pages = data.pages.filter((p) => !this._dropped.has(p.id));
@@ -314,7 +316,9 @@ class MemoriaApp extends LitElement {
         else this._enterView();
       }
     } else if (ev.kind === "settings") {
+      const aiChanged = (ev.app && ev.app.ai_entity) !== this._app("ai_entity", undefined);
       this._data = { ...this._data, periods: ev.periods, app: ev.app };
+      if (aiChanged) this._refreshAi();
     }
     this._tick();
   }
@@ -534,6 +538,7 @@ class MemoriaApp extends LitElement {
     } else if (this._pad) {
       this._leave(this._pad);
     }
+    if (v.name === "more") this._refreshAi(false);
   }
 
   _tick() {
@@ -804,6 +809,38 @@ class MemoriaApp extends LitElement {
     const p = parentHass();
     const name = (this._user && this._user.name) || (p && p.user && p.user.name) || "";
     return name.trim().split(/\s+/)[0];
+  }
+
+  // ------------------------------------------------------------ AI (Mais › Leitura por IA)
+
+  async _refreshAi(force = true) {
+    if (!force && Date.now() - this._aiAt < 60000) return;
+    this._aiChecking = true;
+    this.requestUpdate();
+    try {
+      this._ai = await this.api.aiStatus();
+    } catch (err) {
+      this._ai = { ...this._ai, ready: false, images: false, reason: err.message };
+    }
+    this._aiAt = Date.now();
+    this._aiChecking = false;
+    this.requestUpdate();
+  }
+
+  async _chooseAi(id) {
+    await this._saveSettings({ app: { ai_entity: id } });
+    await this._refreshAi();
+    this._showToast("IA do app atualizada");
+  }
+
+  _openAiSettings() {
+    this._closeSheet();
+    this._go("/mais", this._view().name !== "now").then(() =>
+      this.updateComplete.then(() => {
+        const el = this.renderRoot.querySelector("#leitura-ia");
+        if (el) el.scrollIntoView({ block: "start", behavior: "smooth" });
+      }),
+    );
   }
 
   // ------------------------------------------------------------ blocks & settings
@@ -1091,7 +1128,7 @@ class MemoriaApp extends LitElement {
       this._focusSheetText();
       return;
     }
-    if (useAi && this._ai.available) {
+    if (useAi && this._ai.ready) {
       this._setForm({ step: "loading", error: null, note: null, prevStep: "text", loadingText: "Organizando com IA…" });
       this._runExtract({ text });
       return;
@@ -1620,24 +1657,55 @@ class MemoriaApp extends LitElement {
             <div class="grow"><div class="label">Sensor “MemorIA agora”</div><div class="hint" style="white-space:normal"><code>sensor.memoria_agora</code> com o bloco e a folha do momento, para painéis e automações</div></div>
             ${sw(this._app("sensor", true), "Sensor MemorIA agora", (e) => this._saveSettings({ app: { sensor: e.target.checked } }))}
           </div>
-          <div class="row">
-            <span class="tile" style=${colorVars(this._accent(), this._dark)}>${icon("sparkles")}</span>
-            <div class="grow">
-              <div class="label">Leitura com IA</div>
-              <div class="hint" style="white-space:normal">
-                ${ai.available
-                  ? ai.provider === "gemini"
-                    ? "Usando a chave do Gemini das opções do app."
-                    : `Usando a IA do Home Assistant${ai.images ? ", inclusive para fotos" : " (sem fotos)"}.`
-                  : "Sem IA. Configure uma tarefa de IA no Home Assistant (ex.: Google Gemini) ou coloque uma chave do Gemini nas opções do app."}
-              </div>
-            </div>
-          </div>
         </div>
+
+        ${this._renderAiPanel()}
 
         <p class="foot"><b>MemorIA</b><br />v${this._version} · suas anotações ficam no Home Assistant<br />e entram no backup dele.</p>
       </section>
     `;
+  }
+
+  _renderAiPanel() {
+    const ai = this._ai || {};
+    const ents = ai.entities || [];
+    const sel = this._app("ai_entity", "");
+    const tone = this._aiChecking ? "off" : ai.ready && ai.images ? "ok" : ai.ready ? "warn" : "bad";
+    const title = this._aiChecking ? "Verificando…" : ai.ready && ai.images ? "Pronta para ler fotos" : ai.ready ? "Só lê mensagens" : "Não configurada";
+    let detail = "";
+    if (ai.ready) {
+      detail = `Usando ${ai.using.name}${sel ? "" : " (a IA padrão do Home Assistant)"}.`;
+      if (ai.photos) detail += ` Para fotos, ${ai.photos.name}.`;
+    }
+    if (ai.reason) detail = `${detail} ${ai.reason}`.trim();
+    return html`<div class="panel" id="leitura-ia">
+      <div class="overline">Leitura por IA</div>
+      <p class="panel-lead">Lê mensagens coladas, prints e fotos de anotações em papel para criar folhas. Usa a integração de IA configurada no Home Assistant (Anthropic Claude, OpenAI, Google Gemini ou um modelo local pelo Ollama); o app não guarda nenhuma chave.</p>
+      <div class="ai-state ${tone}"><span class="dot"></span><div><b>${title}</b>${detail ? html`<span>${detail}</span>` : nothing}</div></div>
+      ${ents.length || sel
+        ? html`<label class="field" style="margin:14px 0 0">
+            <span class="flabel">IA usada pelo app</span>
+            <select class="select" aria-label="IA usada pelo app" @change=${(e) => this._chooseAi(e.target.value)}>
+              <option value="" ?selected=${!sel}>Padrão do Home Assistant</option>
+              ${ents.map((e) => html`<option value=${e.id} ?selected=${e.id === sel}>${e.name}${e.images ? "" : " (só texto)"}${e.available ? "" : " (indisponível)"}</option>`)}
+              ${sel && !ents.some((e) => e.id === sel) ? html`<option value=${sel} selected>${sel} (não encontrada)</option>` : nothing}
+            </select>
+            <span class="field-hint">${icon("sparkles")}<span>“Padrão do Home Assistant” usa a IA preferida definida em Configurações › Sistema › Geral.</span></span>
+          </label>`
+        : nothing}
+      <div class="ai-actions"><button class="btn outline" ?disabled=${this._aiChecking} @click=${() => this._refreshAi()}>${icon("rotate-ccw")}Verificar de novo</button></div>
+      ${ai.ready && ai.images
+        ? nothing
+        : html`<div class="steps-box">
+            <b>Como configurar</b>
+            <ol class="steps">
+              <li>No Home Assistant, abra Configurações › Dispositivos e serviços › Adicionar integração.</li>
+              <li>Escolha a IA: Anthropic (Claude), OpenAI, Google Gemini ou Ollama (modelo local, de graça). Cole a chave de API quando pedir.</li>
+              <li>Na integração, adicione uma tarefa de IA (AI Task). Para ler fotos, use um modelo que entenda imagens.</li>
+              <li>Volte aqui e escolha essa IA na lista.</li>
+            </ol>
+          </div>`}
+    </div>`;
   }
 
   // ---------- sheets
@@ -1795,10 +1863,10 @@ class MemoriaApp extends LitElement {
         ${error} ${targets}
         <div class="sheet-actions">
           <button class="btn outline" @click=${() => this._pasteClipboard()}>${icon("clipboard-paste")}Colar</button>
-          ${ai.available ? html`<button class="btn outline" ?disabled=${!(f.text || "").trim()} @click=${() => this._readText(false)}>Como está</button>` : nothing}
-          <button class="btn primary" ?disabled=${!(f.text || "").trim()} @click=${() => this._readText(true)}>${ai.available ? html`${icon("sparkles")}Organizar` : "Criar folha"}</button>
+          ${ai.ready ? html`<button class="btn outline" ?disabled=${!(f.text || "").trim()} @click=${() => this._readText(false)}>Como está</button>` : nothing}
+          <button class="btn primary" ?disabled=${!(f.text || "").trim()} @click=${() => this._readText(true)}>${ai.ready ? html`${icon("sparkles")}Organizar` : "Criar folha"}</button>
         </div>
-        <p class="sheet-note">${ai.available ? "A IA do seu Home Assistant limpa a mensagem e deixa como uma anotação. Você revisa antes de salvar." : "Sem IA configurada: a mensagem vira uma folha do jeito que está."}</p>
+        <p class="sheet-note">${ai.ready ? `${ai.using.name} limpa a mensagem e deixa como uma anotação. Você revisa antes de salvar.` : "Sem IA configurada: a mensagem vira uma folha do jeito que está."}</p>
       `;
     }
 
@@ -1817,7 +1885,7 @@ class MemoriaApp extends LitElement {
     }
 
     if (f.step === "review") {
-      const from = f.provider === "local" ? "texto original" : f.provider === "gemini" ? "lido pelo Gemini" : f.provider ? "lido pela IA do Home Assistant" : "";
+      const from = f.provider === "local" ? "texto original" : f.provider ? `lido por ${f.provider}` : "";
       return html`
         ${this._sheetHead("Revisar folha", toPick)}
         ${thumbs}
@@ -1861,7 +1929,8 @@ class MemoriaApp extends LitElement {
         </button>
       </div>
       ${!ai.images
-        ? html`<div class="imp-error soft">${icon("sparkles")}<span>Para ler fotos, configure uma IA no Home Assistant com <b>tarefa de IA</b> (por exemplo a integração Google Gemini) ou coloque uma chave do Gemini nas opções do app MemorIA.</span></div>`
+        ? html`<div class="imp-error soft">${icon("sparkles")}<span>${ai.reason || "Para ler fotos, o Home Assistant precisa de uma integração de IA com tarefa de IA que entenda imagens."}
+            <button class="text-btn inline" @click=${() => this._openAiSettings()}>Ver Leitura por IA</button></span></div>`
         : nothing}
       ${error}
     `;
