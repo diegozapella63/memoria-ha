@@ -1,0 +1,8 @@
+#!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Start MemorIA
+# ==============================================================================
+bashio::log.info "Iniciando o MemorIA..."
+cd /app || bashio::exit.nok "Pasta /app não encontrada"
+exec node /app/server.js
