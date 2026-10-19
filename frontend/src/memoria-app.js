@@ -86,6 +86,7 @@ class MemoriaApp extends LitElement {
     this._user = { name: "" };
     this._ai = { ready: false, images: false, entities: [] };
     this._aiAt = 0;
+    this._backups = null; // {available, folder, backups}
     this._version = "";
     this._saving = new Map(); // page id -> {timer, inflight, dirty, sentText}
     this._base = new Map(); // page id -> `updated` the server last confirmed
@@ -315,11 +316,31 @@ class MemoriaApp extends LitElement {
         if (this._view().name === "block") this._go("/blocos", true);
         else this._enterView();
       }
+    } else if (ev.kind === "reset") {
+      this._applyReset(ev.data);
+      return;
     } else if (ev.kind === "settings") {
       const aiChanged = (ev.app && ev.app.ai_entity) !== this._app("ai_entity", undefined);
       this._data = { ...this._data, periods: ev.periods, app: ev.app };
       if (aiChanged) this._refreshAi();
     }
+    this._tick();
+  }
+
+  /** Import, restore or erase on any screen: take the new data as it is. */
+  _applyReset(data) {
+    for (const s of this._saving.values()) clearTimeout(s.timer);
+    this._saving.clear();
+    this._dropped.clear();
+    this._base = new Map(data.pages.map((p) => [p.id, p.updated]));
+    this._data = data;
+    this._pad = null;
+    this._peek = null;
+    this._choice = null;
+    this._slotKey = null;
+    const v = this._view();
+    if (v.name === "block" && !this._block(v.id)) this._go("/blocos", true);
+    else this._enterView();
     this._tick();
   }
 
@@ -538,7 +559,10 @@ class MemoriaApp extends LitElement {
     } else if (this._pad) {
       this._leave(this._pad);
     }
-    if (v.name === "more") this._refreshAi(false);
+    if (v.name === "more") {
+      this._refreshAi(false);
+      this._loadBackups();
+    }
   }
 
   _tick() {
@@ -841,6 +865,136 @@ class MemoriaApp extends LitElement {
         if (el) el.scrollIntoView({ block: "start", behavior: "smooth" });
       }),
     );
+  }
+
+  // ------------------------------------------------------------ Dados (export, backup, import, versions)
+
+  async _loadBackups() {
+    try {
+      this._backups = await this.api.backups();
+    } catch (err) {
+      this._backups = { available: false, error: err.message, backups: [] };
+    }
+    this.requestUpdate();
+  }
+
+  async _createBackup() {
+    this._busy = "backup";
+    this.requestUpdate();
+    try {
+      const out = await this.api.createBackup();
+      this._showToast(`Backup salvo em ${out.folder}/${out.name}`);
+      this._haptic("success");
+      await this._loadBackups();
+    } catch (err) {
+      this._showToast(`Não consegui criar o backup. ${err.message}`);
+    }
+    this._busy = null;
+    this.requestUpdate();
+  }
+
+  _export(fmt, ev) {
+    if (!this.api.exportUrl(fmt)) {
+      ev.preventDefault();
+      this._showToast("Na prévia os arquivos não são baixados.");
+    }
+  }
+
+  _pickImport() {
+    const input = this.renderRoot.querySelector("#mm-import");
+    if (!input) return;
+    input.value = "";
+    input.click();
+  }
+
+  _onImportFile(ev) {
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = "";
+    if (!file) return;
+    this._openSheet("confirm", {
+      title: "Importar arquivo?",
+      text: `Os blocos e folhas de agora são trocados pelos de “${clip(file.name, 40)}”. Antes, o app guarda uma cópia do que existe hoje em Versões anteriores.`,
+      label: "Importar",
+      run: async () => {
+        this._closeSheet();
+        try {
+          const n = await this.api.importFile(file);
+          this._haptic("success");
+          this._showToast(`Importado: ${plural(n.blocks, "bloco", "blocos")} e ${plural(n.pages, "folha", "folhas")}`);
+        } catch (err) {
+          this._showToast(`Não consegui importar. ${err.message}`);
+        }
+      },
+    });
+  }
+
+  _confirmRestoreBackup(b) {
+    this._openSheet("confirm", {
+      title: "Restaurar este backup?",
+      text: `Os blocos e folhas de agora são trocados pelos do backup de ${this._dateTime(b.date)}. Antes, o app guarda uma cópia do que existe hoje.`,
+      label: "Restaurar",
+      run: async () => {
+        this._closeSheet();
+        try {
+          const n = await this.api.restoreBackup(b.name);
+          this._showToast(`Backup restaurado: ${plural(n.pages, "folha", "folhas")}`);
+        } catch (err) {
+          this._showToast(err.message);
+        }
+      },
+    });
+  }
+
+  async _openVersions() {
+    this._openSheet("versions", { list: null, error: null });
+    try {
+      const list = await this.api.versions();
+      if (this._sheet === "versions") this._setForm({ list });
+    } catch (err) {
+      if (this._sheet === "versions") this._setForm({ error: err.message });
+    }
+  }
+
+  _confirmRestoreVersion(v) {
+    this._openSheet("confirm", {
+      title: "Restaurar esta versão?",
+      text: `Os blocos e folhas de agora são trocados pelos de ${this._dateTime(v.when)}. Antes, o app guarda uma cópia do que existe hoje.`,
+      label: "Restaurar",
+      run: async () => {
+        this._closeSheet();
+        try {
+          await this.api.restoreVersion(v.name);
+          this._showToast("Versão restaurada");
+        } catch (err) {
+          this._showToast(err.message);
+        }
+      },
+    });
+  }
+
+  _confirmErase() {
+    const d = this._data;
+    this._openSheet("confirm", {
+      title: "Apagar tudo?",
+      text: `Saem ${plural(d.blocks.length, "bloco", "blocos")} e ${plural(d.pages.length, "folha", "folhas")}. Os ajustes continuam e uma cópia fica em Versões anteriores.`,
+      label: "Apagar tudo",
+      danger: true,
+      run: async () => {
+        this._closeSheet();
+        try {
+          await this.api.eraseAll();
+          this._showToast("Tudo apagado. Uma cópia ficou em Versões anteriores.");
+        } catch (err) {
+          this._showToast(err.message);
+        }
+      },
+    });
+  }
+
+  _dateTime(ms) {
+    const d = new Date(ms);
+    const p = (n) => String(n).padStart(2, "0");
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} às ${p(d.getHours())}:${p(d.getMinutes())}`;
   }
 
   // ------------------------------------------------------------ blocks & settings
@@ -1299,6 +1453,7 @@ class MemoriaApp extends LitElement {
         ${this._renderSheet()} ${this._renderToast()} ${this._renderCamera()}
         <input id="mm-photos" class="sr" type="file" accept="image/*" ?multiple=${!this._isHaAndroid()} tabindex="-1" aria-hidden="true" @change=${(e) => this._onFiles(e)} />
         <input id="mm-scan" class="sr" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true" @change=${(e) => this._onFiles(e)} />
+        <input id="mm-import" class="sr" type="file" accept=".zip,.json,application/zip,application/x-zip-compressed,application/json" tabindex="-1" aria-hidden="true" @change=${(e) => this._onImportFile(e)} />
       </div>
     `;
   }
@@ -1340,7 +1495,10 @@ class MemoriaApp extends LitElement {
       return html`<section class="page">
         ${this._renderHead("Agora", { text: "Nenhum bloco ainda" })}
         <div class="panel"><div class="empty"><div class="em-icon">${icon("notebook-pen")}</div><h3>Comece um bloco</h3><p>Crie um bloco de anotações e escolha quando ele abre sozinho: de manhã, à tarde, à noite ou num horário exato.</p></div></div>
-        <button class="btn primary" style="width:100%" @click=${() => this._openBlockSheet(null)}>${icon("plus")}Novo bloco</button>
+        <div class="sheet-actions" style="padding:0">
+          <button class="btn outline" @click=${() => this._pickImport()}>${icon("upload")}Importar backup</button>
+          <button class="btn primary" @click=${() => this._openBlockSheet(null)}>${icon("plus")}Novo bloco</button>
+        </div>
       </section>`;
     }
     const period = periodOf(periodAt(min, periodTimes(this._data)));
@@ -1659,11 +1817,56 @@ class MemoriaApp extends LitElement {
           </div>
         </div>
 
-        ${this._renderAiPanel()}
+        ${this._renderAiPanel()} ${this._renderDataPanel()}
 
         <p class="foot"><b>MemorIA</b><br />v${this._version} · suas anotações ficam no Home Assistant<br />e entram no backup dele.</p>
       </section>
     `;
+  }
+
+  _renderDataPanel() {
+    const b = this._backups;
+    const size = (n) => (n > 1048576 ? `${(n / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+    const exp = (fmt, label, ic) => html`<a class="btn outline sm" href=${this.api.exportUrl(fmt) || "#"} download @click=${(e) => this._export(fmt, e)}>${icon(ic)}${label}</a>`;
+    return html`<div class="panel" id="dados">
+      <div class="overline">Dados</div>
+      <div class="data-row">
+        <b>Exportar</b>
+        <p>Baixe para guardar ou levar para outro programa. Os arquivos são abertos e legíveis: o ZIP tem um arquivo de texto por bloco.</p>
+        <div class="btn-row">${exp("zip", "Tudo (ZIP)", "archive")} ${exp("csv", "Folhas (CSV)", "sheet")} ${exp("json", "JSON", "braces")}</div>
+      </div>
+      <div class="data-row">
+        <b>Backup na pasta share</b>
+        <p>Cria uma cópia completa em <code>share/memoria</code>, que você acessa pela rede do Home Assistant. Os backups do próprio Home Assistant também incluem o MemorIA.</p>
+        <div class="btn-row">
+          <button class="btn primary sm" ?disabled=${this._busy === "backup" || (b && b.available === false)} @click=${() => this._createBackup()}>${icon("archive")}${this._busy === "backup" ? "Criando…" : "Criar backup"}</button>
+        </div>
+        ${b && b.available === false ? html`<p class="data-note">A pasta share não está disponível para o app.</p>` : nothing}
+        ${b && b.backups && b.backups.length
+          ? html`<div class="data-list">
+              ${b.backups.slice(0, 8).map(
+                (x) => html`<div class="data-item"><div><b>${this._dateTime(x.date)}</b><span title=${x.name}>${size(x.size)} · ${x.name}</span></div>
+                  <button class="btn outline sm" @click=${() => this._confirmRestoreBackup(x)}>${icon("archive-restore")}Restaurar</button></div>`,
+              )}
+            </div>`
+          : nothing}
+      </div>
+      <div class="data-row">
+        <b>Importar backup ou JSON</b>
+        <p>Traz os blocos e folhas de um .zip ou .json exportado pelo app. Antes de importar, o app guarda uma cópia do que existe hoje.</p>
+        <div class="btn-row"><button class="btn outline sm" @click=${() => this._pickImport()}>${icon("upload")}Escolher arquivo</button></div>
+      </div>
+      <div class="data-row">
+        <b>Versões anteriores</b>
+        <p>O app guarda sozinho uma cópia a cada 10 minutos de uso. Se algo sair errado, volte para uma versão anterior.</p>
+        <div class="btn-row"><button class="btn outline sm" @click=${() => this._openVersions()}>${icon("archive-restore")}Ver versões</button></div>
+      </div>
+      <div class="data-row">
+        <b>Começar do zero</b>
+        <p>Apaga todos os blocos e folhas. Os ajustes continuam.</p>
+        <div class="btn-row"><button class="btn danger sm wide" @click=${() => this._confirmErase()}>${icon("trash")}Apagar tudo</button></div>
+      </div>
+    </div>`;
   }
 
   _renderAiPanel() {
@@ -1717,6 +1920,7 @@ class MemoriaApp extends LitElement {
     else if (this._sheet === "pagemenu") body = this._renderPageMenu();
     else if (this._sheet === "new") body = this._renderNewSheet();
     else if (this._sheet === "confirm") body = this._renderConfirm();
+    else if (this._sheet === "versions") body = this._renderVersions();
     const f = this._form || {};
     const b = this._sheet === "block" ? { color: f.color } : this._block(f.target || (f.page && this._page(f.page) && this._page(f.page).block));
     const c = b ? colorById(b.color) : null;
@@ -1933,6 +2137,26 @@ class MemoriaApp extends LitElement {
             <button class="text-btn inline" @click=${() => this._openAiSettings()}>Ver Leitura por IA</button></span></div>`
         : nothing}
       ${error}
+    `;
+  }
+
+  _renderVersions() {
+    const f = this._form;
+    const why = { "antes-de-importar": "antes de importar", "antes-de-restaurar": "antes de restaurar", "antes-de-apagar": "antes de apagar tudo" };
+    return html`
+      ${this._sheetHead("Versões anteriores")}
+      ${f.error
+        ? html`<div class="imp-error">${icon("circle-alert")}<span>${f.error}</span></div>`
+        : f.list == null
+          ? html`<div class="imp-loading"><span class="spin">${icon("loader-circle")}</span><span>Carregando…</span></div>`
+          : !f.list.length
+            ? html`<p class="sheet-note top">Ainda não há versões anteriores. Elas aparecem depois das primeiras alterações.</p>`
+            : html`<div class="data-list">
+                ${f.list.map(
+                  (v) => html`<div class="data-item"><div><b>${this._dateTime(v.when)}</b><span>${plural(v.blocks, "bloco", "blocos")} · ${plural(v.pages, "folha", "folhas")} · ${why[v.reason] || "automática"}</span></div>
+                    <button class="btn outline sm" @click=${() => this._confirmRestoreVersion(v)}>Restaurar</button></div>`,
+                )}
+              </div>`}
     `;
   }
 

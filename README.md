@@ -35,6 +35,7 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **Buscar** em todas as folhas, sem se importar com acentos.
 - **Sensor** `sensor.memoria_agora` com o bloco e a folha do momento, para painéis e automações.
 - **Salvo no Home Assistant**: sincroniza na hora entre aparelhos e entra no backup.
+- **Dados**: exportar (ZIP com um arquivo de texto por bloco, CSV e JSON), backup na pasta `share/memoria`, importar, versões anteriores automáticas e começar do zero.
 - **Tema claro e escuro** seguindo o Home Assistant.
 
 Mais detalhes em [memoria/DOCS.md](memoria/DOCS.md).
@@ -56,7 +57,7 @@ dev/fake-ha.mjs          Home Assistant falso para desenvolver sem o HA
 cd frontend && npm install && npm run build      # gera memoria/rootfs/app/www/memoria.js
 node dev/fake-ha.mjs                             # HA falso em :8123 (token "dev")
 MEMORIA_DEV=1 HA_WS_URL=ws://127.0.0.1:8123/api/websocket HA_REST_URL=http://127.0.0.1:8123/api \
-  HA_TOKEN=dev DATA_DIR=./.data MEDIA_DIR=./.data/media node memoria/rootfs/app/server.js
+  HA_TOKEN=dev DATA_DIR=./.data MEDIA_DIR=./.data/media SHARE_DIR=./.data/share node memoria/rootfs/app/server.js
                                                  # abre em http://127.0.0.1:8099
 ```
 

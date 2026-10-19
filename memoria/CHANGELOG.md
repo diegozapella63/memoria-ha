@@ -5,6 +5,8 @@
 - Leitura por IA igual à do InventarIA, do GerencIA e do EconomIA: usa só a IA configurada no Home Assistant (tarefa de IA) e não guarda chave de API. Saiu a opção da chave do Gemini.
 - Novo em **Mais > Leitura por IA**: escolher qual IA usar ("Padrão do Home Assistant" ou uma da lista, com as que só leem texto marcadas), ver se está pronta para ler fotos, **Verificar de novo** e o passo a passo para configurar.
 - As fotos ficam em `media/memoria/ia-temp` só durante a leitura.
+- Novo em **Mais > Dados**, como no GerencIA e no InventarIA: exportar (ZIP com um arquivo de texto por bloco, CSV para Excel e JSON), backup na pasta `share/memoria` com lista para restaurar, importar backup ou JSON, versões anteriores (uma cópia a cada 10 minutos de uso, as 60 mais recentes) e começar do zero. Antes de importar, restaurar ou apagar, o app guarda uma cópia.
+- A tela Agora sem blocos oferece **Importar backup**.
 
 ## 1.0.0
 

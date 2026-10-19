@@ -20,3 +20,6 @@ homeassistant_api: true
 # (media/memoria/ia-temp) while the AI reads them, then deleted.
 map:
   - media:rw
+  # Backups (Mais > Dados > Criar backup) go to share/memoria.
+  - share:rw
+watchdog: "tcp://[HOST]:[PORT:8099]"

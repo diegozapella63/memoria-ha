@@ -143,6 +143,58 @@ export class MockApi {
     return res;
   }
 
+  // Dados: in the preview nothing leaves the page.
+  exportUrl() {
+    return null;
+  }
+
+  async importFile(file) {
+    await wait(200);
+    if (!/\.json$/i.test(file.name)) throw new Error("Na prévia só dá para importar um .json.");
+    const raw = JSON.parse(await file.text());
+    if (!Array.isArray(raw.blocks) || !Array.isArray(raw.pages)) throw new Error("Esse arquivo não parece um backup do MemorIA.");
+    this.data = { ...this.data, blocks: raw.blocks, pages: raw.pages };
+    this.emit({ kind: "reset", data: this.data });
+    return { blocks: raw.blocks.length, pages: raw.pages.length };
+  }
+
+  async versions() {
+    await wait(150);
+    const t = Date.now();
+    return [
+      { name: "memoria-1-auto.json", when: t - 25 * 60000, reason: "auto", blocks: 4, pages: 7 },
+      { name: "memoria-2-auto.json", when: t - 26 * 3600000, reason: "auto", blocks: 4, pages: 6 },
+      { name: "memoria-3-antes-de-importar.json", when: t - 3 * 86400000, reason: "antes-de-importar", blocks: 2, pages: 1 },
+    ];
+  }
+
+  async restoreVersion() {
+    await wait(150);
+    throw new Error("Na prévia as versões são só de exemplo.");
+  }
+
+  async backups() {
+    await wait(150);
+    return { available: true, folder: "share/memoria", backups: [{ name: "memoria-2026-10-12-2210.zip", size: 18400, date: Date.now() - 7 * 86400000 }] };
+  }
+
+  async createBackup() {
+    await wait(300);
+    return { name: "memoria-exemplo.zip", folder: "share/memoria" };
+  }
+
+  async restoreBackup() {
+    await wait(150);
+    throw new Error("Na prévia os backups são só de exemplo.");
+  }
+
+  async eraseAll() {
+    await wait(150);
+    this.data = { ...this.data, blocks: [], pages: [] };
+    this.emit({ kind: "reset", data: this.data });
+    return { blocks: 0, pages: 0 };
+  }
+
   async extract({ text, images }) {
     await wait(1100);
     if (images && images.length) {

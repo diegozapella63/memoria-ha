@@ -227,6 +227,47 @@ export class Api {
     return this.call("memoria/settings/save", settings);
   }
 
+  // ---------- Dados: exports, backups, import, versions
+
+  exportUrl(fmt) {
+    return new URL(`api/export/${fmt}`, location.href).href;
+  }
+
+  async importFile(file) {
+    const res = await fetch(new URL("api/import", location.href), {
+      method: "POST",
+      headers: { "content-type": "application/octet-stream", "x-file-name": encodeURIComponent(file.name || "") },
+      body: file,
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || `Erro ${res.status}`);
+    return body;
+  }
+
+  versions() {
+    return this.call("memoria/versions/list");
+  }
+
+  restoreVersion(name) {
+    return this.call("memoria/versions/restore", { name });
+  }
+
+  backups() {
+    return this.call("memoria/backups/list");
+  }
+
+  createBackup() {
+    return this.call("memoria/backups/create");
+  }
+
+  restoreBackup(name) {
+    return this.call("memoria/backups/restore", { name });
+  }
+
+  eraseAll() {
+    return this.call("memoria/data/erase");
+  }
+
   async extract(payload) {
     const res = await fetch(new URL("api/extract", location.href), {
       method: "POST",

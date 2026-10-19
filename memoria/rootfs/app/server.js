@@ -4,6 +4,7 @@
 //   change live to all open screens.
 // - Reads pasted messages and photos with the AI configured in Home Assistant.
 // - Publishes sensor.memoria_agora with what is "on" right now.
+// - Exports, backups in share/memoria, imports and automatic versions.
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -13,6 +14,7 @@ import { HAClient } from "./lib/ha.js";
 import { Store } from "./lib/store.js";
 import { AI } from "./lib/ai.js";
 import { Sensor } from "./lib/sensor.js";
+import { Backups, backupZip, toCSV, parseImport, listVersions, readVersion, fileStamp } from "./lib/data.js";
 
 const VERSION = "1.1.0";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -24,6 +26,7 @@ const HA_REST = process.env.HA_REST_URL || "http://supervisor/core/api";
 const TOKEN = process.env.SUPERVISOR_TOKEN || process.env.HA_TOKEN || "";
 const DATA_DIR = process.env.DATA_DIR || "/data";
 const MEDIA_DIR = process.env.MEDIA_DIR || "/media";
+const SHARE_DIR = process.env.SHARE_DIR || "/share/memoria";
 const INGRESS_IPS = new Set(["172.30.32.2"]);
 const MAX_UPLOAD = 30 * 1024 * 1024;
 
@@ -39,6 +42,7 @@ const store = new Store(DATA_DIR, log);
 const ha = new HAClient(HA_URL, TOKEN, log);
 const ai = new AI({ ha, log, mediaDir: MEDIA_DIR, selected: () => store.data.app.ai_entity || "" });
 const sensor = new Sensor({ store, log, restUrl: HA_REST, token: TOKEN, enabled: () => store.data.app.sensor !== false });
+const backups = new Backups({ dir: SHARE_DIR });
 const watchers = new Set(); // {session, id}
 
 function broadcast(event) {
@@ -151,6 +155,35 @@ class Session {
         return broadcast({ kind: "block_deleted", id: blockId, pages });
       }
 
+      case "memoria/versions/list":
+        return this.result(id, listVersions(store.versionsDir));
+
+      case "memoria/versions/restore": {
+        const raw = readVersion(store.versionsDir, String(msg.name || ""));
+        replaced(store.replaceAll(raw, "antes-de-restaurar"), `versão ${msg.name}`);
+        return this.result(id, counts());
+      }
+
+      case "memoria/backups/list":
+        return this.result(id, backups.list());
+
+      case "memoria/backups/create": {
+        const out = backups.create(store.data, VERSION);
+        log.info(`Backup criado em ${out.folder}/${out.name}`);
+        return this.result(id, out);
+      }
+
+      case "memoria/backups/restore": {
+        const raw = backups.read(String(msg.name || ""));
+        replaced(store.replaceAll(raw, "antes-de-restaurar"), `backup ${msg.name}`);
+        return this.result(id, counts());
+      }
+
+      case "memoria/data/erase": {
+        replaced(store.erase(), "começar do zero");
+        return this.result(id, counts());
+      }
+
       case "memoria/settings/save": {
         const settings = store.saveSettings({ periods: msg.periods, app: msg.app });
         this.result(id, settings);
@@ -161,6 +194,14 @@ class Session {
         return this.error(id, "unknown_command", `Comando desconhecido: ${type}`);
     }
   }
+}
+
+const counts = () => ({ blocks: store.data.blocks.length, pages: store.data.pages.length });
+
+/** Everything changed at once (import, restore, erase): every screen reloads. */
+function replaced(data, what) {
+  log.info(`Dados trocados (${what}): ${data.blocks.length} blocos, ${data.pages.length} folhas`);
+  broadcast({ kind: "reset", data });
 }
 
 // ------------------------------------------------------------------ HTTP
@@ -218,6 +259,58 @@ function handleExtract(req, res) {
   });
 }
 
+function download(res, body, type, name) {
+  res.writeHead(200, {
+    "Content-Type": type,
+    "Content-Length": body.length,
+    "Content-Disposition": `attachment; filename="${name}"`,
+    "Cache-Control": "no-store",
+  });
+  res.end(body);
+}
+
+function handleExport(fmt, res) {
+  const name = `memoria-${fileStamp()}`;
+  if (fmt === "json") return download(res, Buffer.from(JSON.stringify(store.data, null, 1)), "application/json; charset=utf-8", `${name}.json`);
+  if (fmt === "csv") return download(res, toCSV(store.data), "text/csv; charset=utf-8", `${name}.csv`);
+  if (fmt === "zip") return download(res, backupZip(store.data, VERSION), "application/zip", `${name}.zip`);
+  res.writeHead(404).end("Not found");
+}
+
+/** POST /api/import (body = the .zip or .json file, header x-file-name). */
+function handleImport(req, res) {
+  const chunks = [];
+  let size = 0;
+  let aborted = false;
+  req.on("data", (c) => {
+    size += c.length;
+    if (size > MAX_UPLOAD) {
+      aborted = true;
+      sendJson(res, 413, { error: "Arquivo grande demais" });
+      req.destroy();
+      return;
+    }
+    chunks.push(c);
+  });
+  req.on("end", () => {
+    if (aborted) return;
+    let name = "";
+    try {
+      name = decodeURIComponent(req.headers["x-file-name"] || "");
+    } catch (e) {
+      /* keep empty */
+    }
+    try {
+      const raw = parseImport(Buffer.concat(chunks), name);
+      replaced(store.replaceAll(raw, "antes-de-importar"), `importado de ${name || "arquivo"}`);
+      sendJson(res, 200, counts());
+    } catch (err) {
+      log.warn(`Importação falhou: ${err.message}`);
+      sendJson(res, 400, { error: err.message, code: err.code || "failed" });
+    }
+  });
+}
+
 const server = http.createServer((req, res) => {
   if (!allowed(req)) {
     res.writeHead(403).end("Forbidden");
@@ -225,6 +318,9 @@ const server = http.createServer((req, res) => {
   }
   const url = new URL(req.url, "http://x");
   if (url.pathname === "/api/extract" && req.method === "POST") return handleExtract(req, res);
+  if (url.pathname === "/api/import" && req.method === "POST") return handleImport(req, res);
+  const exp = url.pathname.match(/^\/api\/export\/(json|csv|zip)$/);
+  if (exp && req.method === "GET") return handleExport(exp[1], res);
   const font = url.pathname.match(/^\/fonts\/([a-z0-9-]+\.woff2)$/);
   const file = font ? [`fonts/${font[1]}`, "font/woff2", true] : FILES[url.pathname];
   if (!file || (req.method !== "GET" && req.method !== "HEAD")) {

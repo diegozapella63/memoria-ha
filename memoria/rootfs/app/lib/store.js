@@ -1,5 +1,7 @@
 // MemorIA data in /data/memoria.json: notebooks ("blocos"), pages, the day's
-// periods and app settings. Everything is validated here.
+// periods and app settings. Everything is validated here. Like the other apps,
+// a copy goes to /data/versoes every 10 minutes of use (the 60 most recent)
+// and before importing, restoring or erasing.
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -10,6 +12,11 @@ const PERIOD_IDS = PERIODS.map((p) => p.id);
 const MAX_TEXT = 50000;
 const MAX_PAGES = 20000;
 const MAX_BLOCKS = 200;
+const MAX_VERSIONS = 60;
+const VERSION_EVERY = 10 * 60 * 1000;
+const ID_RE = /^[a-z0-9]{6,32}$/i;
+const pad = (n) => String(n).padStart(2, "0");
+export const stamp = (d = new Date()) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 
 const newId = () => crypto.randomBytes(6).toString("hex");
 const fail = (message) => {
@@ -33,6 +40,68 @@ const times = (list) => {
   return out.sort().slice(0, 24);
 };
 
+const looseTimes = (list) => (Array.isArray(list) ? [...new Set(list.map(normTime).filter(Boolean))].sort().slice(0, 24) : []);
+const when = (v, fallback) => (Number.isFinite(v) && v > 0 ? v : fallback);
+
+/** Validates a whole data file (an import, a backup or an old version). */
+export function normalize(raw, current = {}) {
+  if (!raw || typeof raw !== "object" || !Array.isArray(raw.blocks) || !Array.isArray(raw.pages)) {
+    const err = new Error("Esse arquivo não parece um backup do MemorIA.");
+    err.code = "invalid_format";
+    throw err;
+  }
+  const now = Date.now();
+  const blockIds = new Set();
+  const blocks = [];
+  for (const b of raw.blocks) {
+    if (blocks.length >= MAX_BLOCKS) break;
+    if (!b || typeof b !== "object") continue;
+    const id = typeof b.id === "string" && ID_RE.test(b.id) && !blockIds.has(b.id) ? b.id : newId();
+    blockIds.add(id);
+    blocks.push({
+      id,
+      name: (typeof b.name === "string" ? b.name.slice(0, 60).trim() : "") || "Sem nome",
+      color: COLORS.includes(b.color) ? b.color : "lilas",
+      paper: PAPERS.includes(b.paper) ? b.paper : "pautado",
+      periods: [...new Set((Array.isArray(b.periods) ? b.periods : []).filter((p) => PERIOD_IDS.includes(p)))],
+      times: looseTimes(b.times),
+      order: Number.isInteger(b.order) ? b.order : blocks.length,
+      created: when(b.created, now),
+      updated: when(b.updated, now),
+    });
+  }
+  const pageIds = new Set();
+  const pages = [];
+  for (const p of raw.pages) {
+    if (pages.length >= MAX_PAGES) break;
+    if (!p || typeof p !== "object" || !blockIds.has(p.block)) continue;
+    const id = typeof p.id === "string" && ID_RE.test(p.id) && !pageIds.has(p.id) ? p.id : newId();
+    pageIds.add(id);
+    const created = when(p.created, now);
+    pages.push({
+      id,
+      block: p.block,
+      text: typeof p.text === "string" ? p.text.slice(0, MAX_TEXT) : "",
+      times: looseTimes(p.times),
+      created,
+      updated: when(p.updated, created),
+    });
+  }
+  const periods = { ...DEFAULT_PERIODS };
+  for (const id of PERIOD_IDS) {
+    const t = raw.periods && normTime(raw.periods[id]);
+    if (t) periods[id] = t;
+  }
+  const a = raw.app && typeof raw.app === "object" ? raw.app : {};
+  const app = {};
+  if (COLORS.includes(a.accent)) app.accent = a.accent;
+  if (typeof a.hand === "boolean") app.hand = a.hand;
+  if (typeof a.sensor === "boolean") app.sensor = a.sensor;
+  // The AI belongs to this Home Assistant, not to the file.
+  if (current.ai_entity) app.ai_entity = current.ai_entity;
+  return { version: 1, periods, app, blocks, pages };
+}
+
 function sample(now) {
   const b1 = { id: newId(), name: "Diário", color: "lilas", paper: "pautado", periods: ["noite"], times: [], order: 0, created: now, updated: now };
   const b2 = { id: newId(), name: "Rascunhos", color: "azul", paper: "quadriculado", periods: ["manha", "tarde"], times: [], order: 1, created: now, updated: now };
@@ -50,8 +119,10 @@ function sample(now) {
 export class Store {
   constructor(dir, log) {
     this.file = path.join(dir, "memoria.json");
+    this.versionsDir = path.join(dir, "versoes");
     this.log = log;
     this.timer = null;
+    this.lastVersion = 0;
     fs.mkdirSync(dir, { recursive: true });
     let raw = null;
     try {
@@ -77,9 +148,10 @@ export class Store {
     this.timer = setTimeout(() => this.flush(), 500);
   }
 
-  flush() {
+  flush({ version = true } = {}) {
     clearTimeout(this.timer);
     this.timer = null;
+    if (version) this.version("auto");
     const tmp = `${this.file}.tmp`;
     try {
       fs.writeFileSync(tmp, JSON.stringify(this.data));
@@ -87,6 +159,38 @@ export class Store {
     } catch (err) {
       this.log.error(`Não consegui salvar ${this.file}: ${err.message}`);
     }
+  }
+
+  /** Copies the file as it is now to /data/versoes (at most every 10 min unless forced). */
+  version(reason = "auto", force = false) {
+    if (!force && Date.now() - this.lastVersion < VERSION_EVERY) return null;
+    if (!fs.existsSync(this.file)) return null;
+    try {
+      fs.mkdirSync(this.versionsDir, { recursive: true });
+      const name = `memoria-${stamp()}-${reason}.json`;
+      fs.copyFileSync(this.file, path.join(this.versionsDir, name));
+      this.lastVersion = Date.now();
+      const all = fs.readdirSync(this.versionsDir).filter((f) => /^memoria-.*\.json$/.test(f)).sort();
+      for (const old of all.slice(0, Math.max(0, all.length - MAX_VERSIONS))) fs.rmSync(path.join(this.versionsDir, old), { force: true });
+      return name;
+    } catch (err) {
+      this.log.warn(`Não consegui guardar uma versão: ${err.message}`);
+      return null;
+    }
+  }
+
+  /** Swaps everything for `raw` (import, restore), keeping a copy of what was there. */
+  replaceAll(raw, reason) {
+    const next = normalize(raw, this.data.app);
+    if (this.timer) this.flush({ version: false });
+    this.version(reason, true);
+    this.data = next;
+    this.flush({ version: false });
+    return this.data;
+  }
+
+  erase() {
+    return this.replaceAll({ ...this.data, blocks: [], pages: [] }, "antes-de-apagar");
   }
 
   block(id) {

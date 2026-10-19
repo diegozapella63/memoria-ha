@@ -8,7 +8,7 @@ Blocos de anotações que funcionam como um caderno de verdade: folhas com espir
 2. Ative **Mostrar na barra lateral** (e, se quiser, **Watchdog**).
 3. Abra o **MemorIA** pela barra lateral.
 
-Na primeira vez já existem dois blocos de exemplo, **Diário** (abre à noite) e **Rascunhos** (manhã e tarde). Dá para renomear, mudar ou excluir.
+Na primeira vez já existem dois blocos de exemplo, **Diário** (abre à noite) e **Rascunhos** (manhã e tarde). Dá para renomear, mudar ou excluir. Já tem um backup? Em **Mais > Dados > Importar backup**, escolha o `.zip` e tudo volta.
 
 ## Escrever e virar a página
 
@@ -81,8 +81,18 @@ content: >
 
 Dá para desligar em **Mais → Home Assistant**.
 
-## Onde ficam os dados
+## Dados e backup
 
-- Blocos, folhas e ajustes ficam em `/data/memoria.json` dentro do app e entram no backup do Home Assistant.
+- Blocos, folhas e ajustes ficam em `/data/memoria.json` dentro do app e entram nos backups do Home Assistant.
 - Tudo sincroniza na hora entre os aparelhos abertos. Se a mesma folha for editada em dois aparelhos ao mesmo tempo, nada se perde: a sua versão vira uma folha nova.
 - O tema (automático, claro ou escuro) é escolhido por aparelho.
+
+Em **Mais > Dados**:
+
+- **Exportar**: **Tudo (ZIP)** com o `memoria.json`, uma planilha e um arquivo de texto (Markdown) por bloco; **Folhas (CSV)**, que abre no Excel (separado por ponto e vírgula); e **JSON**.
+- **Backup na pasta share**: **Criar backup** salva um `.zip` em `share/memoria`, que você acessa pela rede (por exemplo `\\homeassistant.local\share\memoria` com o app Samba). Os backups da pasta aparecem logo abaixo, com **Restaurar**.
+- **Importar backup ou JSON**: traz os blocos e folhas de um `.zip` ou `.json` exportado pelo app (também funciona pelo celular).
+- **Versões anteriores**: o app guarda sozinho uma cópia a cada 10 minutos de uso (as 60 mais recentes) em `/data/versoes`. Toque em **Restaurar** para voltar a uma delas.
+- **Começar do zero**: apaga todos os blocos e folhas; os ajustes continuam.
+
+Antes de importar, restaurar ou apagar, o app sempre guarda uma cópia do que existe naquele momento em **Versões anteriores**. Importar e restaurar trocam os blocos, as folhas e os períodos do dia; a IA escolhida continua a deste Home Assistant.
