@@ -7,6 +7,7 @@ Blocos de anotações em forma de caderno, que se abrem sozinhos conforme o per�
 - Cada bloco abre sozinho de manhã, à tarde, à noite ou em horários exatos (07h, 10h, 22h…)
 - Trechos com horário próprio: uma folha que aparece às 10h
 - Crie folhas a partir de mensagens, fotos e anotações em papel, com a IA do Home Assistant (escolha qual em Mais)
+- Busca em todas as folhas, sem se importar com acentos
 - Sensor `sensor.memoria_agora` para painéis e automações
 - Exportar, backup na pasta share, importar e versões anteriores automáticas
-- Tema claro e escuro seguindo o Home Assistant
+- Tema claro e escuro seguindo o Home Assistant, 10 cores e letra de mão

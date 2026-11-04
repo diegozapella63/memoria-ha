@@ -31,12 +31,14 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **Abre sozinho**: cada bloco pode ter períodos (manhã, tarde, noite, com horários de início ajustáveis) e horários exatos.
 - **Trechos com horário**: uma folha específica pode aparecer às 10h, por exemplo a pauta de uma reunião.
 - **Tela Agora** com a linha do tempo do dia: toque num horário para espiar o que vem depois.
+- **Estante de blocos** com o **Seu dia**: os horários de hoje, com o de agora marcado.
+- **No ⋯ da folha**: horário próprio, mover para outro bloco, copiar o texto ou arrancar a folha, com Desfazer.
 - **Nova folha de mensagem ou foto**: cole uma mensagem do WhatsApp, escolha fotos ou digitalize uma anotação em papel; a IA configurada no Home Assistant (Claude, OpenAI, Gemini ou Ollama) transcreve e você revisa. Escolha qual em **Mais → Leitura por IA**.
 - **Buscar** em todas as folhas, sem se importar com acentos.
 - **Sensor** `sensor.memoria_agora` com o bloco e a folha do momento, para painéis e automações.
 - **Salvo no Home Assistant**: sincroniza na hora entre aparelhos e entra no backup.
 - **Dados**: exportar (ZIP com um arquivo de texto por bloco, CSV e JSON), backup na pasta `share/memoria`, importar, versões anteriores automáticas e começar do zero.
-- **Tema claro e escuro** seguindo o Home Assistant.
+- **Aparência**: tema claro ou escuro (segue o Home Assistant ou escolha em Mais), 10 cores e letra de mão, que dá para desligar.
 
 Mais detalhes em [memoria/DOCS.md](memoria/DOCS.md).
 
