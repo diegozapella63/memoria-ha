@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0
+
+- **Mais › Sobre**, a última linha do Mais: quem faz o app (**CorrerIA Code**, desenvolvimento de softwares, e por que esse nome), os apps da família (CronologIA, ResolvIA, GerencIA, InventarIA, EconomIA e MemorIA), cada um com uma linha e o link para o GitHub, e o botão **Meu GitHub**. O Voltar do celular e o **‹ Mais** voltam para o Mais.
+
 ## 1.1.0
 
 - Leitura por IA igual à do InventarIA, do GerencIA e do EconomIA: usa só a IA configurada no Home Assistant (tarefa de IA) e não guarda chave de API. Saiu a opção da chave do Gemini.

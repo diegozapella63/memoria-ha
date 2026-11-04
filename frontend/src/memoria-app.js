@@ -2,6 +2,7 @@ import { LitElement, html, nothing, repeat, live, unsafeSVG } from "../vendor/li
 import { ICONS } from "./icons.js";
 import { ensureFonts } from "./fonts.js";
 import { styles, notebookStyles } from "./styles.js";
+import { aboutPage, aboutStyles } from "./about.js";
 import { PALETTE, colorById, colorVars, hexToRgba, fold, foldKeepLength, plural, clip, writtenAt, newId, firstLine, prepareImage } from "./util.js";
 import { parentHass, detectDark } from "./api.js";
 import { PERIODS, PAPERS, buildSchedule, currentAt, nextAfter, timeline, minutesOf, fmtMin, periodAt, periodTimes, normTime } from "../../memoria/rootfs/app/lib/schedule.js";
@@ -60,7 +61,7 @@ class MemoriaApp extends LitElement {
     _dark: { state: true },
   };
 
-  static styles = [styles, notebookStyles];
+  static styles = [styles, notebookStyles, aboutStyles];
 
   constructor() {
     super();
@@ -712,16 +713,19 @@ class MemoriaApp extends LitElement {
     if (p === "/blocos") return { name: "shelf" };
     if (p === "/buscar") return { name: "search" };
     if (p === "/mais") return { name: "more" };
+    // Mais › Sobre (the last row of Mais): Back and "‹ Mais" return to Mais
+    if (p === "/sobre") return { name: "sobre" };
     return { name: "now" };
   }
 
-  async _go(path, replace = false) {
+  async _go(path, replace = false, extra = null) {
     if (this._sheet) this._closeSheet();
     // Let the sheet's history entry go first, so Back never lands on a stale screen.
     if (this._popping) await this._popping;
     const depth = ((history.state && history.state.rvDepth) || 0) + (replace ? 0 : 1);
-    if (replace) history.replaceState({ rvDepth: depth, rvPath: path }, "");
-    else history.pushState({ rvDepth: depth, rvPath: path }, "");
+    const state = { ...(extra || {}), rvDepth: depth, rvPath: path };
+    if (replace) history.replaceState(state, "");
+    else history.pushState(state, "");
     this._path = path;
     this._enterView();
     const main = this.renderRoot && this.renderRoot.querySelector("main");
@@ -731,6 +735,18 @@ class MemoriaApp extends LitElement {
   _back() {
     if (history.state && history.state.rvDepth > 0) history.back();
     else this._go("", true);
+  }
+
+  /** A screen opened from Mais (Sobre): its entry goes over Mais, so Back returns to it. */
+  _openFromMore(path) {
+    this._haptic("light");
+    this._go(path, false, { rvUp: true });
+  }
+
+  /** "‹ Mais" and Mais in the bar, on a screen of Mais: back to Mais. */
+  _toMore() {
+    if (this._view().name === "sobre" && history.state && history.state.rvUp) history.back();
+    else this._go("/mais", true);
   }
 
   /** Leave a history entry we pushed (sheet, camera); resolves once it is gone. */
@@ -768,6 +784,10 @@ class MemoriaApp extends LitElement {
     }
     if (path === "/blocos" && view === "block") {
       this._go(path, true);
+      return;
+    }
+    if (path === "/mais" && view === "sobre") {
+      this._toMore();
       return;
     }
     // Switching between tabs replaces the entry so Back always returns to Agora.
@@ -1439,6 +1459,7 @@ class MemoriaApp extends LitElement {
     else if (view.name === "shelf") page = this._renderShelf();
     else if (view.name === "search") page = this._renderSearch();
     else if (view.name === "more") page = this._renderMore();
+    else if (view.name === "sobre") page = this._renderAbout();
     else page = this._renderNow();
     return html`
       <div class="root" style=${style}>
@@ -1469,17 +1490,19 @@ class MemoriaApp extends LitElement {
           <button class="tab fab" @click=${() => this._openNew()} aria-label="Nova folha">
             <span class="pill">${icon("plus")}</span><span>Nova</span>
           </button>
-          ${tab(["search"], "/buscar", "Buscar", "search")} ${tab(["more"], "/mais", "Mais", "sliders-horizontal")}
+          ${tab(["search"], "/buscar", "Buscar", "search")} ${tab(["more", "sobre"], "/mais", "Mais", "sliders-horizontal")}
         </div>
       </nav>
     `;
   }
 
-  _renderHead(title, status) {
+  /** The top of a screen; up: a screen of Mais, with "‹ Mais" above the title. */
+  _renderHead(title, status, up = false) {
     const name = this._userName();
     const st = !this._online ? { text: "Reconectando ao MemorIA…", tone: "off" } : status;
     return html`<header class="brand-head">
       <p class="eyebrow"><span class="brand">Memor<span>IA</span></span>${name ? ` · Olá, ${name}` : ""}</p>
+      ${up ? html`<button class="uplink" @click=${() => this._toMore()}>${icon("chevron-left")}Mais</button>` : nothing}
       <h1 class="page-title">${title}</h1>
       ${st ? html`<p class="status"><span class="dot ${st.tone || ""}" aria-hidden="true"></span><span>${st.text}</span>${st.extra || nothing}</p>` : nothing}
     </header>`;
@@ -1819,9 +1842,24 @@ class MemoriaApp extends LitElement {
 
         ${this._renderAiPanel()} ${this._renderDataPanel()}
 
+        <div class="panel" role="navigation" aria-label="Sobre">
+          <button class="row go-row" @click=${() => this._openFromMore("/sobre")}>
+            <span class="tile" style=${colorVars(this._accent(), this._dark)}>${icon("info")}</span>
+            <div class="grow"><div class="label">Sobre</div><div class="hint" style="white-space:normal">CorrerIA Code, os apps e o GitHub.</div></div>
+            ${icon("chevron-right", "chev")}
+          </button>
+        </div>
+
         <p class="foot"><b>MemorIA</b><br />v${this._version} · suas anotações ficam no Home Assistant<br />e entram no backup dele.</p>
       </section>
     `;
+  }
+
+  /** Mais › Sobre: CorrerIA Code, the apps of the family and the GitHub (the same page as the other apps). */
+  _renderAbout() {
+    return html`<section class="page">
+      ${this._renderHead("Sobre", null, true)} ${aboutPage({ app: "MemorIA", version: this._version })}
+    </section>`;
   }
 
   _renderDataPanel() {

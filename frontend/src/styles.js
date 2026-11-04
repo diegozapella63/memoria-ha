@@ -1701,6 +1701,71 @@ export const styles = css`
     background: var(--rv-faint);
     box-shadow: 0 0 0 3px rgba(127, 127, 127, 0.18);
   }
+  /* a screen of Mais (Sobre): "‹ Mais" above the title, back to Mais */
+  .uplink {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 36px;
+    margin: 12px 0 0 -6px;
+    padding: 6px 10px 6px 4px;
+    border-radius: 10px;
+    color: var(--rv-text-2);
+    font-weight: 500;
+  }
+  .uplink .i {
+    width: 18px;
+    height: 18px;
+  }
+  .uplink:active {
+    background: var(--rv-surface-2);
+  }
+  @media (hover: hover) {
+    .uplink:hover {
+      background: var(--rv-surface-2);
+      color: var(--rv-text);
+    }
+  }
+  /* the last row of Mais (Sobre): opens its screen */
+  .go-row .chev {
+    width: 20px;
+    height: 20px;
+    color: var(--rv-muted);
+  }
+  .go-row:active {
+    opacity: 0.7;
+  }
+  /* section headings of Sobre (the same as the other apps): icon in a soft square + big title */
+  .mais-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 0 10px;
+  }
+  .mais-head h2 {
+    margin: 0;
+    font-family: var(--rv-display);
+    font-size: 23px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: 0.005em;
+    color: var(--rv-text);
+  }
+  .mais-ic {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    background: var(--rv-accent-soft);
+    color: var(--rv-accent-ink);
+  }
+  .mais-ic .i {
+    width: 21px;
+    height: 21px;
+    stroke-width: 1.9;
+  }
 
   /* ---------- camera ("Digitalizar com IA") ---------- */
   .cam {

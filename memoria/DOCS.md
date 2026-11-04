@@ -111,3 +111,7 @@ Em **Mais › Aparência**:
 - **Tema**: automático (segue o claro ou escuro do Home Assistant), claro ou escuro. Vale só para o aparelho.
 - **Cor do app**: 10 cores. Dentro de um bloco, vale a cor da capa dele.
 - **Letra de mão**: ligada, as folhas são escritas como num caderno de verdade; desligada, com a letra comum.
+
+## Sobre
+
+Em **Mais › Sobre**, a última linha do Mais: quem faz o app (**CorrerIA Code**), os outros apps da família, cada um com uma linha e o link para o GitHub, e **Meu GitHub**. O Voltar do celular e o **‹ Mais** voltam para o Mais.
