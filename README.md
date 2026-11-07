@@ -64,6 +64,7 @@ MEMORIA_DEV=1 HA_WS_URL=ws://127.0.0.1:8123/api/websocket HA_REST_URL=http://127
 ```
 
 Conferência da tela **Mais › Sobre** na prévia (Playwright): `python3 tests/about_check.py [pasta das capturas]`.
+Conferência das caixas de seleção (`frontend/src/selectsheet.js`, o mesmo arquivo dos outros apps): `python3 tests/selects_check.py [pasta das capturas]`.
 
 O HA falso simula duas IAs (`ai_task.google_ai_task`, que lê fotos, e `ai_task.ollama_ai_task`, só texto) e recebe o `sensor.memoria_agora`; use `FAKE_MEDIA_DIR` igual a `MEDIA_DIR` para testar a leitura de fotos, ou `FAKE_HA_NO_AI=1` para testar sem IA. A prévia (`preview/memoria-preview.html`) abre direto no navegador, sem servidor.
 

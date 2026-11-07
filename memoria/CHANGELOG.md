@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.0
+
+- **IA usada pelo app** (Mais › Leitura por IA) abre uma janela no visual do app, de baixo para cima, com as opções em linhas e a atual marcada na cor do app, no tema claro ou escuro, e não mais a janela padrão do celular, como nos outros apps da família. O Voltar do celular, o X ou tocar fora fecham só ela.
+
 ## 1.2.0
 
 - **Mais › Sobre**, a última linha do Mais: quem faz o app (**CorrerIA Code**, desenvolvimento de softwares, e por que esse nome), os apps da família (CronologIA, ResolvIA, GerencIA, InventarIA, EconomIA e MemorIA), cada um com uma linha e o link para o GitHub, e o botão **Meu GitHub**. O Voltar do celular e o **‹ Mais** voltam para o Mais.

@@ -1,4 +1,5 @@
 // Entry point of the UI served by the MemorIA app.
+import "./selectsheet.js"; // first: its Back comes before the app's
 import "./memoria-app.js";
 import { Api, appEnv } from "./api.js";
 
