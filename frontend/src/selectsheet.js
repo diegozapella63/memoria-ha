@@ -258,10 +258,23 @@ select:not([multiple]){pointer-events:none}
       for (const s of n.querySelectorAll("select")) {
         if (s.disabled || s.multiple) continue;
         const r = s.getBoundingClientRect();
-        if (r.width && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return s;
+        if (r.width && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom && onTop(s, e.clientX, e.clientY)) return s;
       }
     }
     return null;
+  }
+  // the box is what the finger touched only when nothing covers it there (a bar stuck over a scrolled list, say)
+  function onTop(s, x, y) {
+    const before = s.style.getPropertyValue("pointer-events");
+    s.style.setProperty("pointer-events", "auto", "important");
+    let hit = null;
+    try {
+      const root = s.getRootNode();
+      hit = (root.elementFromPoint ? root : document).elementFromPoint(x, y);
+    } catch {}
+    if (before) s.style.setProperty("pointer-events", before);
+    else s.style.removeProperty("pointer-events");
+    return hit === s;
   }
   const isBox = (e) => {
     const t = e.composedPath ? e.composedPath()[0] : e.target;

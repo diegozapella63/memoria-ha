@@ -16,7 +16,7 @@ import { AI } from "./lib/ai.js";
 import { Sensor } from "./lib/sensor.js";
 import { Backups, backupZip, toCSV, parseImport, listVersions, readVersion, fileStamp } from "./lib/data.js";
 
-const VERSION = "1.3.0";
+const VERSION = "1.3.1";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WWW = path.join(HERE, "www");
 const DEV = process.env.MEMORIA_DEV === "1";

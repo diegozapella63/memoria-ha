@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1
+
+- **Caixas de seleção**: tocar num botão que fica por cima de uma caixa aciona o botão, e não abre a caixa escondida (o mesmo ajuste dos outros apps).
+
 ## 1.3.0
 
 - **IA usada pelo app** (Mais › Leitura por IA) abre uma janela no visual do app, de baixo para cima, com as opções em linhas e a atual marcada na cor do app, no tema claro ou escuro, e não mais a janela padrão do celular, como nos outros apps da família. O Voltar do celular, o X ou tocar fora fecham só ela.
