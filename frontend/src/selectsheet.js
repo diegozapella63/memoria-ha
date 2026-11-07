@@ -12,7 +12,7 @@
  * barrado aqui mesmo (mousedown e touchend).
  *
  * Um app pode dizer as cores: window.__selectSheet.theme = () => ({ dark, accent, bg, fg, muted }). Sem isso, elas vêm
- * das variáveis do app (--rv-accent/--a/--accent, --rv-surface/--surface/--card, --rv-text/--text/--fg,
+ * das variáveis do app (--rv-accent/--a/--accent, --rv-surface/--surface/--card, --rv-text/--text/--fg/--ink,
  * --rv-muted/--muted/--mut) e o tema, do fundo atrás da caixa.
  */
 (() => {
@@ -99,7 +99,7 @@ select:not([multiple]){pointer-events:none}
     const accent = t.accent || v(["--rv-accent", "--a", "--accent", "--cor"]) || "#64b5f6";
     // the colors of the app's own windows, when it names them so
     const bg = t.bg || v(["--rv-surface", "--surface", "--card"]);
-    const fg = t.fg || v(["--rv-text", "--text", "--fg"]);
+    const fg = t.fg || v(["--rv-text", "--text", "--fg", "--ink"]);
     const mut = t.muted || v(["--rv-muted", "--muted", "--mut"]);
     return {
       "--ss-bg": bg || (dark ? "#1b2229" : "#ffffff"),
@@ -114,11 +114,16 @@ select:not([multiple]){pointer-events:none}
     };
   }
 
-  /** The name of the box: its aria-label, its label, or the label of its field. */
+  /** The name of the box: its aria-label (or aria-labelledby), its label, or the label of its field. */
   function titleOf(sel) {
     const a = sel.getAttribute("aria-label");
     if (a) return a;
     const root = sel.getRootNode();
+    const by = sel.getAttribute("aria-labelledby");
+    if (by && root.getElementById) {
+      const t = by.split(/\s+/).map((id) => (root.getElementById(id) || {}).textContent || "").join(" ").trim();
+      if (t) return t;
+    }
     if (sel.id && root.querySelector) {
       const l = root.querySelector(`label[for="${CSS.escape(sel.id)}"]`);
       if (l) return l.textContent.trim();
