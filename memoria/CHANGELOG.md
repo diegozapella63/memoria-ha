@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10.1
+
+- **Agora**: quando nada seu tem horário, o Agora não abre mais um bloco qualquer como se fosse "o da tarde". Ele diz **Nada com horário**, como escolher um horário e, se for o caso, de quem são os blocos com horário (por exemplo "Treino é de Beto: só abre no Agora de Beto").
+- Uma **folha com horário** abre o bloco no Agora de quem é dono dele, mesmo que o bloco não tenha horário. Com um horário só, o Agora mostra "desde ontem às 18:00" antes da hora, sem repetir o mesmo bloco em "depois".
+- Na tela do bloco, a linha **Abre sozinho** agora conta as folhas com horário ("folha 3 às 18:00") e diz quando o bloco só abre no Agora de outra pessoa.
+- **Botões do mesmo tamanho**, como nos outros apps: nos ajustes do bloco, **Categoria**, **De quem é** e **Manhã, Tarde e Noite** (lado a lado, com o horário embaixo) viram uma grade de botões iguais; na **Nova** e no ⋯ da folha, os blocos também. Nome comprido passa para a segunda linha dentro do botão.
+- **Nome do bloco** na tela dele: fica numa linha só dele, embaixo dos botões, com a largura toda, e nunca quebra no meio de uma palavra; uma palavra que não cabe fica com a letra menor. O mesmo para o nome do bloco no Agora.
+
 ## 1.10.0
 
 - **Blocos em lista**: no alto da tela **Blocos**, à direita da contagem, a escolha rápida entre as capas e uma lista (uma linha por bloco, com a cor, o nome, as folhas, de quem é e quando abre). A escolha fica guardada no aparelho.

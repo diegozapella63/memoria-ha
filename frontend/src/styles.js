@@ -556,22 +556,36 @@ export const styles = css`
   }
 
   /* ---------- list detail ---------- */
+  /* a block's screen: Voltar and the buttons on the first row; the line about it and the name below, with all the
+     width (a name never breaks inside a word: it shrinks to fit, see _fitTitles) */
   .detail-head {
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
     margin: -6px -8px 6px -12px;
   }
-  .detail-head .dh-text {
+  .detail-head .dh-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .detail-head .dh-row .grow {
     flex: 1;
+  }
+  .detail-head .dh-text {
     min-width: 0;
-    padding-top: 6px;
+    padding: 2px 8px 0 14px;
   }
   .detail-head h1 {
     font-size: clamp(34px, 9vw, 46px);
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
+    word-break: normal;
     font-weight: 700;
-    line-height: 1;
+    line-height: 1.02;
+    text-wrap: balance;
+  }
+  .fit-title {
+    min-width: 0;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: manual;
   }
   .detail-head .overline {
     margin-bottom: 6px;
@@ -2066,7 +2080,8 @@ export const styles = css`
     border-bottom: 1px solid var(--rv-line);
     margin: -4px 0 14px;
   }
-  /* De quem é: Todos and each person, in a grid of the same width */
+  /* the choices of a sheet (Categoria, De quem é, the periods, the blocks): a grid of buttons of the same size, like the
+     other apps; a long name goes to a second line inside its button */
   .chip-row.grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 6.5em), 1fr));
@@ -2077,6 +2092,30 @@ export const styles = css`
     min-height: 44px;
     padding: 8px 10px;
     min-width: 0;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
+  }
+  .chip-row.grid .pick > span {
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: break-word;
+    min-width: 0;
+  }
+  /* Manhã, Tarde and Noite always side by side, the hour under the name */
+  .chip-row.grid.periods-pick {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .chip-row.grid.periods-pick .pick {
+    flex-wrap: wrap;
+    column-gap: 6px;
+    row-gap: 2px;
+  }
+  .chip-row.grid.periods-pick .pick-sub {
+    flex-basis: 100%;
+  }
+  .chip-row.grid.two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   /* Blocos: whose the block is, on its sticker */
   .cover .sticker .owner {
@@ -2087,6 +2126,11 @@ export const styles = css`
     padding: 0 10px;
     gap: 6px;
     white-space: nowrap;
+  }
+  /* Agora with nothing with a time: whose the blocks with a time are */
+  .now-empty .now-whose {
+    margin-top: 10px;
+    font-size: 14px;
   }
   /* Buscar: Incluir arquivados */
   .search-opts {
@@ -2156,7 +2200,7 @@ export const styles = css`
   }
   /* in a block: on the line of Voltar and the settings, at the top */
   .detail-head .mic-top {
-    margin: 2px 0 0;
+    margin: 0;
   }
   .panel .ai-switch {
     border-top: 0;

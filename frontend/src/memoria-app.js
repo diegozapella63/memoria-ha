@@ -122,6 +122,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     this._cache = { data: null, pages: new Map(), schedule: [] };
     this._onPopState = this._onPopState.bind(this);
     this._onVisible = this._onVisible.bind(this);
+    this._onResize = () => this._fitTitles();
     this._mql = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
     this._onScheme = () => this._syncDark();
   }
@@ -133,6 +134,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     ensureFonts();
     window.addEventListener("popstate", this._onPopState);
     document.addEventListener("visibilitychange", this._onVisible);
+    window.addEventListener("resize", this._onResize);
     if (this._mql && this._mql.addEventListener) this._mql.addEventListener("change", this._onScheme);
     this._tickTimer = setInterval(() => this._tick(), 20000);
     // Automático follows Home Assistant's light/dark mode while the app is open (and the system, and in the
@@ -150,6 +152,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     super.disconnectedCallback();
     window.removeEventListener("popstate", this._onPopState);
     document.removeEventListener("visibilitychange", this._onVisible);
+    window.removeEventListener("resize", this._onResize);
     if (this._mql && this._mql.removeEventListener) this._mql.removeEventListener("change", this._onScheme);
     clearInterval(this._tickTimer);
     clearInterval(this._themeTimer);
@@ -184,10 +187,29 @@ class MemoriaApp extends ChatMixin(LitElement) {
       const input = this.renderRoot.querySelector(".search-box input");
       if (input) input.focus({ preventScroll: true });
     }
+    this._fitTitles();
     if (this._scrollChip) {
       this._scrollChip = false;
       const chip = this.renderRoot.querySelector(".tchip.on, .tchip.peek");
       if (chip && chip.scrollIntoView) chip.scrollIntoView({ inline: "center", block: "nearest", behavior: "instant" });
+    }
+  }
+
+  /**
+   * A name as a title (a block on its screen or in Agora) never breaks inside a word: when a word doesn't fit the
+   * width, the letters get smaller until it does (down to 20 px).
+   */
+  _fitTitles() {
+    for (const el of this.renderRoot.querySelectorAll(".fit-title")) {
+      const key = `${el.textContent}|${el.clientWidth}`;
+      if (el.dataset.fit === key) continue;
+      el.style.fontSize = "";
+      let size = parseFloat(getComputedStyle(el).fontSize) || 34;
+      while (el.scrollWidth > el.clientWidth + 1 && size > 20) {
+        size -= 2;
+        el.style.fontSize = `${size}px`;
+      }
+      el.dataset.fit = key;
     }
   }
 
@@ -639,12 +661,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
       if (p) return p;
     }
     if (cur) return this._padEntryPad(this._pickIn(cur));
-    // Nothing scheduled: the notebook written in most recently (of this person or everyone's, not archived).
-    const mine = this._blocks().filter((b) => this._mine(b));
-    const ids = new Set(mine.map((b) => b.id));
-    const recent = this._data.pages.filter((p) => ids.has(p.block)).sort((a, b) => b.updated - a.updated)[0];
-    const block = (recent && this._block(recent.block)) || mine[0];
-    return block ? this._lastPad(block.id) : null;
+    // Nothing with a time for this person (block or sheet): no block is "the one of the moment", and Agora says so
+    return null;
   }
 
   _enterView() {
@@ -2048,44 +2066,66 @@ class MemoriaApp extends ChatMixin(LitElement) {
     `;
   }
 
-  /** The top of a screen; up: a screen of Mais, with "‹ Mais" above the title. */
-  _renderHead(title, status, up = false) {
+  /** The top of a screen; up: a screen of Mais, with "‹ Mais" above the title; fit: a name (it shrinks to fit, never broken). */
+  _renderHead(title, status, up = false, fit = false) {
     const name = this._userName();
     const st = !this._online ? { text: "Reconectando ao MemorIA…", tone: "off" } : status;
     return html`<header class="brand-head">
       <div class="head-row"><p class="eyebrow"><span class="brand">Memor<span>IA</span></span>${name ? ` · Olá, ${name}` : ""}</p>${this._renderChatBtn()}${this._renderMicBtn()}</div>
       ${up ? html`<button class="uplink" @click=${() => this._toMenu()}>${icon("chevron-left")}Mais</button>` : nothing}
-      <h1 class="page-title">${title}</h1>
+      <h1 class="page-title ${fit ? "fit-title" : ""}">${title}</h1>
       ${st ? html`<p class="status"><span class="dot ${st.tone || ""}" aria-hidden="true"></span><span>${st.text}</span>${st.extra || nothing}</p>` : nothing}
     </header>`;
   }
 
   // ---------- Agora
 
+  /** Agora with no notebook to show: the reason, Ver blocos and Novo bloco (or Importar backup, the first time). */
+  _renderNowEmpty(status, h3, text, first = false) {
+    return html`<section class="page">
+      ${this._renderHead("Agora", status)}
+      <div class="panel now-empty"><div class="empty"><div class="em-icon">${icon(first ? "notebook-pen" : "calendar-clock")}</div><h3>${h3}</h3>${text}</div></div>
+      <div class="sheet-actions" style="padding:0">
+        ${first
+          ? html`<button class="btn outline" @click=${() => this._pickImport()}>${icon("upload")}Importar backup</button>`
+          : html`<button class="btn outline" @click=${() => this._goTab("/blocos")}>${icon("library")}Ver blocos</button>`}
+        <button class="btn primary" @click=${() => this._openBlockSheet(null)}>${icon("plus")}Novo bloco</button>
+      </div>
+    </section>`;
+  }
+
+  /** Blocks with a time (of the block or of a sheet) that are someone else's: they open only in that person's Agora. */
+  _othersTimed() {
+    const timed = (b) => (b.periods || []).length || (b.times || []).length || this._pagesOf(b.id).some((p) => (p.times || []).length);
+    return this._blocks().filter((b) => b.owner && !this._mine(b) && timed(b));
+  }
+
   _renderNow() {
     const { entries, min, cur, next } = this._slot();
     const pad = this._pad;
     const b = pad ? this._block(pad.block) : null;
-    if (!b && this._data.blocks.length) {
-      // there are blocks, but none for this Agora: archived, or someone else's (De quem é)
-      return html`<section class="page">
-        ${this._renderHead("Agora", { text: "Nenhum bloco aqui", tone: "off" })}
-        <div class="panel"><div class="empty"><div class="em-icon">${icon("notebook-pen")}</div><h3>Nada para agora</h3><p>Os blocos arquivados e os de outras pessoas ficam em Blocos.</p></div></div>
-        <div class="sheet-actions" style="padding:0">
-          <button class="btn outline" @click=${() => this._goTab("/blocos")}>${icon("library")}Ver blocos</button>
-          <button class="btn primary" @click=${() => this._openBlockSheet(null)}>${icon("plus")}Novo bloco</button>
-        </div>
-      </section>`;
-    }
     if (!b) {
-      return html`<section class="page">
-        ${this._renderHead("Agora", { text: "Nenhum bloco ainda" })}
-        <div class="panel"><div class="empty"><div class="em-icon">${icon("notebook-pen")}</div><h3>Comece um bloco</h3><p>Crie um bloco de anotações e escolha quando ele abre sozinho: de manhã, à tarde, à noite ou num horário exato.</p></div></div>
-        <div class="sheet-actions" style="padding:0">
-          <button class="btn outline" @click=${() => this._pickImport()}>${icon("upload")}Importar backup</button>
-          <button class="btn primary" @click=${() => this._openBlockSheet(null)}>${icon("plus")}Novo bloco</button>
-        </div>
-      </section>`;
+      if (!this._data.blocks.length) {
+        return this._renderNowEmpty({ text: "Nenhum bloco ainda" }, "Comece um bloco", html`<p>Crie um bloco de anotações e escolha quando ele abre sozinho: de manhã, à tarde, à noite ou num horário exato.</p>`, true);
+      }
+      // there are blocks, but none for this Agora: archived, or someone else's (De quem é)
+      if (!this._blocks().some((x) => this._mine(x))) {
+        return this._renderNowEmpty({ text: "Nenhum bloco aqui", tone: "off" }, "Nada para agora", html`<p>Os blocos arquivados e os de outras pessoas ficam em Blocos.</p>`);
+      }
+      // blocks of this person (or everyone's), none with a time: no block pretends to be the one of the moment
+      const period = periodOf(periodAt(min, periodTimes(this._data)));
+      const others = this._othersTimed();
+      const whose =
+        others.length === 1
+          ? `${clip(others[0].name, 30)} é de ${others[0].owner}: só abre no Agora de ${others[0].owner}.`
+          : others.length
+            ? `Os blocos de outras pessoas (${others.slice(0, 3).map((x) => clip(x.name, 24)).join(", ")}${others.length > 3 ? "…" : ""}) só abrem no Agora delas.`
+            : "";
+      return this._renderNowEmpty(
+        { text: `${period.label} · nada com horário`, tone: "off" },
+        "Nada com horário",
+        html`<p>Um bloco ou uma folha com horário abre aqui sozinho. Escolha nos ajustes do bloco ou no ⋯ da folha.</p>${whose ? html`<p class="now-whose">${whose}</p>` : nothing}`,
+      );
     }
     const period = periodOf(periodAt(min, periodTimes(this._data)));
     const groups = timeline(entries);
@@ -2099,13 +2139,14 @@ class MemoriaApp extends ChatMixin(LitElement) {
       };
     } else if (cur) {
       const nb = next ? this._block(next.main.block) : null;
-      status = { text: `${period.label} · desde ${fmtMin(cur.min)}${nb ? ` · depois ${clip(nb.name, 18)} às ${fmtMin(next.min)}` : ""}` };
+      // what started before midnight still holds: "desde ontem às 18:00"
+      status = { text: `${period.label} · desde ${cur.min > min ? "ontem às " : ""}${fmtMin(cur.min)}${nb ? ` · depois ${clip(nb.name, 18)} às ${fmtMin(next.min)}` : ""}` };
     } else {
-      status = { text: `${period.label} · nenhum bloco com horário`, tone: "off" };
+      status = { text: period.label, tone: "off" };
     }
     return html`
       <section class="page">
-        ${this._renderHead(b.name, status)}
+        ${this._renderHead(b.name, status, false, true)}
         ${groups.length
           ? html`<div class="tline" role="list" aria-label="Seu dia">
               ${groups.map((g) => {
@@ -2119,11 +2160,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
                 </button>`;
               })}
             </div>`
-          : html`<div class="hint-card">
-              ${icon("calendar-clock")}
-              <span>Nenhum bloco abre sozinho ainda. Escolha quando cada bloco aparece aqui: de manhã, à tarde, à noite ou às 07h, 10h, 22h…</span>
-              <button class="text-btn" @click=${() => this._openBlockSheet(b)}>Escolher</button>
-            </div>`}
+          : nothing}
         ${active && active.entries.length > 1
           ? html`<div class="switcher">
               ${active.entries.map((e) => {
@@ -2499,22 +2536,31 @@ class MemoriaApp extends ChatMixin(LitElement) {
     }
     const parts = this._whenParts(b, false);
     const n = this._pagesOf(b.id).length;
+    // the sheets with their own time open it too (folha 3 às 18:00)
+    const pinned = this._pagesOf(b.id)
+      .map((p, i) => ({ n: i + 1, times: p.times || [] }))
+      .filter((x) => x.times.length);
+    const pins = pinned.length > 2 ? [plural(pinned.length, "folha com horário", "folhas com horário")] : pinned.map((x) => `folha ${x.n} às ${x.times.join(", ")}`);
+    const when = [...parts.map((p) => (p.icon === "clock" ? p.label : `${p.label} ${p.time}`)), ...pins];
     return html`
       <section class="page">
         <div class="detail-head">
-          <button class="icon-btn" @click=${() => this._back()} aria-label="Voltar">${icon("chevron-left")}</button>
+          <div class="dh-row">
+            <button class="icon-btn" @click=${() => this._back()} aria-label="Voltar">${icon("chevron-left")}</button>
+            <span class="grow"></span>
+            ${this._renderChatBtn()}${this._renderMicBtn()}
+            <button class="icon-btn" @click=${() => this._openBlockSheet(b)} aria-label="Ajustes do bloco">${icon("sliders-horizontal")}</button>
+          </div>
           <div class="dh-text">
             <div class="overline">${[this._cat(b.category) && this._cat(b.category).name, plural(n, "folha", "folhas"), b.owner ? `de ${b.owner}` : "", PAPER_LABEL[b.paper] || ""].filter(Boolean).join(" · ")}</div>
-            <h1 class="display">${b.name}</h1>
+            <h1 class="display fit-title">${b.name}</h1>
           </div>
-          ${this._renderChatBtn()}${this._renderMicBtn()}
-          <button class="icon-btn" @click=${() => this._openBlockSheet(b)} aria-label="Ajustes do bloco">${icon("sliders-horizontal")}</button>
         </div>
         ${b.archived
           ? html`<div class="hint-card arch-card">${icon("archive")}<span>Arquivado ${this._day(b.archived)}. Não abre sozinho.</span><button class="text-btn" @click=${() => this._setArchived(b, false)}>Desarquivar</button></div>`
           : html`<button class="when-line" @click=${() => this._openBlockSheet(b)}>
-          ${parts.length
-            ? html`${icon("calendar-clock")}<span>Abre sozinho: ${parts.map((p, i) => html`${i ? " · " : ""}<b>${p.icon === "clock" ? p.label : `${p.label} ${p.time}`}</b>`)}</span>`
+          ${when.length
+            ? html`${icon("calendar-clock")}<span>Abre sozinho${b.owner && !this._mine(b) ? ` no Agora de ${b.owner}` : ""}: ${when.map((w, i) => html`${i ? " · " : ""}<b>${w}</b>`)}</span>`
             : html`${icon("calendar-clock")}<span>Não abre sozinho. <b>Escolher horário</b></span>`}
         </button>`}
         ${this._renderPad({ tall: true })}
@@ -2991,7 +3037,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       </label>
       <div class="field">
         <span class="flabel">Categoria</span>
-        <div class="chip-row cat-pick">
+        <div class="chip-row grid cat-pick">
           <button class="pick ${!f.category && f.newCat == null ? "on" : ""}" @click=${() => this._setForm({ category: "", newCat: null })}><span>Sem categoria</span></button>
           ${this._cats().map(
             (c) => html`<button class="pick list ${f.category === c.id && f.newCat == null ? "on" : ""}" style=${colorVars(colorById(c.color) || PALETTE[9], this._dark)} @click=${() => this._setForm({ category: c.id, newCat: null })}><span class="dot"></span><span>${clip(c.name, 22)}</span></button>`,
@@ -3023,9 +3069,9 @@ class MemoriaApp extends ChatMixin(LitElement) {
       </div>
       <div class="field">
         <span class="flabel">Quando abrir sozinho</span>
-        <div class="chip-row">
+        <div class="chip-row grid periods-pick">
           ${PERIODS.map(
-            (p) => html`<button class="pick ${f.periods.includes(p.id) ? "on" : ""}" @click=${() => toggle(p.id)}>${icon(p.icon)}<span>${p.label}</span><small class="pick-sub">${periods[p.id]}</small></button>`,
+            (p) => html`<button class="pick ${f.periods.includes(p.id) ? "on" : ""}" aria-pressed=${f.periods.includes(p.id) ? "true" : "false"} @click=${() => toggle(p.id)}>${icon(p.icon)}<span>${p.label}</span><small class="pick-sub">${periods[p.id]}</small></button>`,
           )}
         </div>
         <div class="time-list" style="margin-top:10px">
@@ -3121,7 +3167,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       ${blocks.length > 1
         ? html`<div class="field">
             <span class="flabel">Bloco</span>
-            <div class="chip-row">
+            <div class="chip-row grid block-pick">
               ${blocks.map((b) => html`<button class="pick list ${page.block === b.id ? "on" : ""}" style=${this._cv(b)} @click=${() => this._movePage(page.id, b.id)}><span class="dot"></span><span>${clip(b.name, 22)}</span></button>`)}
             </div>
           </div>`
@@ -3148,7 +3194,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       blocks.length > 1
         ? html`<div class="field">
             <span class="flabel">No bloco</span>
-            <div class="chip-row">
+            <div class="chip-row grid block-pick">
               ${blocks.map((b) => html`<button class="pick list ${f.target === b.id ? "on" : ""}" style=${this._cv(b)} @click=${() => this._setForm({ target: b.id })}><span class="dot"></span><span>${clip(b.name, 22)}</span></button>`)}
             </div>
           </div>`
@@ -3197,7 +3243,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         ${f.note ? html`<div class="imp-error soft">${icon("sparkles")}<span>${f.note}</span></div>` : nothing}
         <textarea class="review-text" .value=${f.result} aria-label="Texto da folha" @input=${(e) => this._setForm({ result: e.target.value })}></textarea>
         ${ai.images
-          ? html`<div class="extra-row">
+          ? html`<div class="extra-row chip-row grid two">
               <button class="pick" @click=${() => this._pickFiles("photos")}>${icon("images")}<span>Mais fotos</span></button>
               <button class="pick" @click=${() => this._openCamera()}>${icon("scan-text")}<span>Digitalizar mais</span></button>
             </div>`

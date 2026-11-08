@@ -65,7 +65,9 @@ No fim de **Blocos**, o quadro **Seu dia** lista os horários de hoje, com o de 
 
 E uma folha pode ter horário próprio (um "trecho"): no **⋯** da folha, **Mostrar esta folha às…**. Às 10:00, por exemplo, a tela **Agora** abre direto na pauta da reunião.
 
-A tela **Agora** mostra o que vale no momento: o último horário que já começou, contando o dia anterior depois da meia-noite. Quando dois coincidem, a folha com horário vem antes do horário do bloco, que vem antes do período. A linha do tempo no topo mostra o dia todo: toque num horário para espiar e em **Voltar para agora** para voltar.
+A tela **Agora** mostra o que vale no momento: o último horário que já começou, contando o dia anterior ("desde ontem às 18:00") até chegar o próximo. Valem os horários dos blocos e os das folhas: uma folha com horário abre o bloco dela mesmo que o bloco não tenha horário. Quando dois coincidem, a folha com horário vem antes do horário do bloco, que vem antes do período. A linha do tempo no topo mostra o dia todo: toque num horário para espiar e em **Voltar para agora** para voltar.
+
+Quando nada seu (nem de **Todos**) tem horário, o Agora não abre um bloco qualquer: ele diz **Nada com horário** e, se houver blocos com horário de outras pessoas, de quem são ("Treino é de Beto: só abre no Agora de Beto"). Na tela de um bloco, a linha **Abre sozinho** mostra os horários dele e as folhas com horário ("folha 3 às 18:00").
 
 Se você estiver escrevendo quando chega a hora de outro bloco, a troca espera o teclado fechar.
 

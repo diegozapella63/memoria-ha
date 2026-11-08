@@ -116,7 +116,7 @@ export function nextAfter(entries, min) {
   const starts = [...new Set(entries.map((e) => e.min))];
   const next = starts.find((s) => s > min);
   const at = next != null ? next : starts[0];
-  if (starts.length === 1 && at <= min) return null; // only one slot, it is the current one
+  if (starts.length === 1) return null; // only one slot: it is the current one all day (from yesterday, until it comes again)
   const group = entries.filter((e) => e.min === at);
   return { min: at, entries: group, main: group[0], tomorrow: next == null };
 }

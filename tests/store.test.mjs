@@ -5,7 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { Store, normalize } from "../memoria/rootfs/app/lib/store.js";
-import { buildSchedule, opensFor, ownerName } from "../memoria/rootfs/app/lib/schedule.js";
+import { buildSchedule, currentAt, opensFor, ownerName } from "../memoria/rootfs/app/lib/schedule.js";
 import { Sensor } from "../memoria/rootfs/app/lib/sensor.js";
 
 const log = { info() {}, warn() {}, error() {} };
@@ -250,4 +250,29 @@ test("sensor.memoria_agora: an archived block never is the block of the moment",
   store.saveBlock({ id: diario.id, archived: false, owner: "Ana" });
   assert.equal(sensor.state(at).state, "Diário");
   store.flush();
+});
+
+// ------------------------------------------------------------------ Agora (1.10.1)
+
+test("Agora: a sheet with its own time opens its block, even a block without times, for its owner", () => {
+  const data = {
+    periods: { manha: "05:00", tarde: "12:00", noite: "18:00" },
+    blocks: [
+      { id: "geral00001", name: "Anotações da casa", periods: [], times: [], order: 0 },
+      { id: "comida0001", name: "Cardápio", periods: [], times: [], order: 1, owner: "Beto" },
+    ],
+    pages: [
+      { id: "pgjanta001", block: "comida0001", text: "Janta", times: ["18:00"], created: 1, updated: 1 },
+      { id: "pggeral001", block: "geral00001", text: "Lembretes", times: [], created: 2, updated: 2 },
+    ],
+  };
+  // Beto: the sheet at 18:00 is the one of the moment (and since yesterday at 18:00 in the afternoon)
+  const beto = buildSchedule(data, { person: "Beto" });
+  assert.deepEqual(beto.map((e) => [e.min, e.block, e.page, e.kind]), [[18 * 60, "comida0001", "pgjanta001", "page"]]);
+  const cur = currentAt(beto, 14 * 60);
+  assert.equal(cur.main.page, "pgjanta001");
+  assert.ok(cur.min > 14 * 60, "it started yesterday");
+  // Ana: nothing with a time is hers or everyone's, so nothing is the block of the moment (no block without a time)
+  assert.deepEqual(buildSchedule(data, { person: "Ana" }), []);
+  assert.equal(currentAt(buildSchedule(data, { person: "Ana" }), 14 * 60), null);
 });

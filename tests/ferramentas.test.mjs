@@ -297,3 +297,16 @@ test("De quem é: de in novo_bloco and editar_bloco (a person of the house); res
   assert.equal(s.block("mercado0001").owner, "Carla");
   s.flush();
 });
+
+test("resumo (1.10.1): a sheet with its own time counts for its owner; nothing with a time, no block of the moment", () => {
+  const s = house();
+  // no block opens by itself; only a sheet of the Reforma (Beto's) at 18:00
+  for (const b of s.data.blocks) s.saveBlock({ id: b.id, periods: [], times: [] });
+  s.savePage({ id: "pg000000002", times: [] });
+  s.saveBlock({ id: "reforma0001", owner: "Beto" });
+  s.savePage({ id: "pg000000003", times: ["18:00"] });
+  const resumo = (pessoa) => JSON.parse(callTool("resumo", {}, { store: s, now: NOW, pessoa }).texto).agora;
+  assert.deepEqual(resumo("Beto"), { periodo: "manhã", pessoa: "Beto", bloco: "Reforma da cozinha", bloco_id: "reforma0001", desde: "18:00", folha_id: "pg000000003" });
+  assert.deepEqual(resumo("Ana"), { periodo: "manhã", pessoa: "Ana" });
+  s.flush();
+});
