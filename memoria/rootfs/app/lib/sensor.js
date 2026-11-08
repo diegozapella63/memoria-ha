@@ -1,6 +1,7 @@
 // Publishes sensor.memoria_agora in Home Assistant: the notebook (and page)
 // that is "on" right now, so dashboards and automations can use it.
 import { buildSchedule, currentAt, nextAfter, minutesOf, fmtMin, periodAt, periodTimes, PERIODS } from "./schedule.js";
+import { linksToText } from "./links.js";
 
 const ENTITY = "sensor.memoria_agora";
 
@@ -40,7 +41,7 @@ export class Sensor {
         desde: cur ? fmtMin(cur.min) : null,
         bloco_id: block ? block.id : null,
         pagina_id: page ? page.id : null,
-        titulo: text.split("\n")[0].slice(0, 120),
+        titulo: linksToText(text.split("\n")[0]).slice(0, 120),
         texto: text.slice(0, 4000),
         proximo: nextBlock ? `${fmtMin(nxt.min)} ${nextBlock.name}` : null,
       },

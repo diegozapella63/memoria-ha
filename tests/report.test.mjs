@@ -126,3 +126,20 @@ test("the PDF: a file with the header, the sheets and the page at the foot", () 
   assert.match(empty, /\(Nenhum bloco ainda\.\)/);
   assert.doesNotMatch(empty, /p\\341gina 1 de/);
 });
+
+test("links in the report: the name and the site, never the long address in the text", () => {
+  const data = casa();
+  data.pages[0].text = "Lista da semana\n\nOfertas: https://www.google.com/search?q=ofertas+mercado&sca_esv=a1b2c3&ei=XyZ\n[Receita](https://www.receitas.com.br/bolo-de-cenoura)";
+  const rep = anotacoes(data, { bloco: "mercado0001", now: NOW });
+  const h = reportHtml(rep);
+  assert.match(h, /<a href="https:\/\/www\.google\.com\/search\?q=ofertas\+mercado&amp;sca_esv=a1b2c3&amp;ei=XyZ" target="_blank" rel="noopener noreferrer">google\.com · ofertas mercado<\/a>/);
+  assert.match(h, /<a href="https:\/\/www\.receitas\.com\.br\/bolo-de-cenoura" target="_blank" rel="noopener noreferrer">Receita \(receitas\.com\.br\)<\/a>/);
+  assert.doesNotMatch(h.replace(/href="[^"]*"/g, ""), /sca_esv/);
+  const pdf = reportPdf(rep).toString("latin1");
+  assert.match(pdf, /\(Receita \\\(receitas\.com\.br\\\)\)/);
+  assert.match(pdf, /\(Ofertas: google\.com \\267 ofertas mercado\)/);
+  assert.doesNotMatch(pdf, /sca_esv/);
+  // javascript: stays text, escaped
+  data.pages[0].text = "Lista\n\n[x](javascript:alert(1))";
+  assert.doesNotMatch(reportHtml(anotacoes(data, { now: NOW })), /href="javascript/);
+});

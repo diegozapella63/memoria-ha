@@ -16,7 +16,17 @@ Na primeira vez já existem dois blocos de exemplo, **Diário** (abre à noite) 
 - **Borda direita** da folha: vira para a próxima. Na última folha, vira para uma folha nova, já pronta para escrever.
 - **Borda esquerda**: volta uma folha. Arrastar o dedo para os lados na folha também vira.
 - Folhas deixadas em branco somem sozinhas.
-- No **⋯** da folha: horário próprio, mover para outro bloco, copiar o texto ou arrancar a folha (com **Desfazer**).
+- No **⋯** da folha: horário próprio, mover para outro bloco, **Adicionar link**, copiar o texto ou arrancar a folha (com **Desfazer**).
+
+### Links
+
+Um endereço escrito ou colado na folha (`https://…` ou `www.…`) aparece como uma etiqueta curta com o ícone de link: o nome que você deu ou, sem nome, o site e o que foi buscado ("google.com · receita de bolo") ou o fim do endereço. Tocar na etiqueta abre o link fora do app (no app do Home Assistant, no navegador do celular). Só abrem endereços `http` e `https`.
+
+Para escrever, toque no texto da folha: a escrita abre bem ali, com os endereços inteiros. Ao sair, as etiquetas voltam.
+
+Em **⋯ › Adicionar link**, cole o **Link** e, se quiser, um **Nome** (por exemplo "Receita da vó"). O link entra no fim da folha, guardado como `[Receita da vó](https://…)`, e aparece com o nome. O Voltar do celular, **Cancelar** e tocar fora voltam para o ⋯.
+
+**Buscar** acha tanto o nome quanto o endereço. No **Relatório** e no PDF, o link aparece como o nome e o site; na exportação, o texto continua legível.
 
 ## Abrir sozinho: períodos e horários
 

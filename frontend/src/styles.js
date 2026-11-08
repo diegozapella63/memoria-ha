@@ -1305,6 +1305,7 @@ export const styles = css`
   }
   .field textarea,
   .field input[type="text"],
+  .field input[type="url"],
   .field input[type="time"] {
     width: 100%;
     border: 1.5px solid var(--rv-line-strong);
@@ -1348,6 +1349,8 @@ export const styles = css`
     justify-content: center;
     gap: 8px;
     min-height: 48px;
+    /* the same border on every button, so two side by side come out the same width */
+    border: 1.5px solid transparent;
     border-radius: 15px;
     font-weight: 500;
     font-size: 15px;
@@ -2410,6 +2413,67 @@ export const notebookStyles = css`
     overflow-wrap: anywhere;
     overflow-y: auto;
     border-radius: 0 0 11px 4px;
+  }
+  /* a sheet with links, outside the editor: the same paper and letters, the links as chips */
+  .ink-view {
+    cursor: text;
+    overflow-x: hidden;
+  }
+  .ink-view:focus-visible {
+    outline: 2px solid var(--rv-accent-ink);
+    outline-offset: -4px;
+  }
+  .lnk {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: min(100%, 17em);
+    height: 26px;
+    padding: 0 10px 0 8px;
+    margin: 0 1px;
+    border-radius: 9px;
+    vertical-align: 2px;
+    background: var(--cs);
+    color: var(--ci);
+    border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+    font-family: var(--rv-body);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+  }
+  :host([dark]) .lnk {
+    color: var(--c);
+  }
+  .lnk .i {
+    width: 15px;
+    height: 15px;
+    flex: none;
+  }
+  .lnk span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lnk:active {
+    filter: brightness(0.95);
+  }
+  /* the editor waits behind the view (it gets the focus at the tap, so the keyboard opens) */
+  textarea.ink.behind {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1px;
+    height: 1px;
+    flex: none;
+    padding: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .field-error {
+    font-size: 13.5px;
+    color: var(--rv-late);
   }
   .ink::placeholder {
     color: var(--ink-soft);

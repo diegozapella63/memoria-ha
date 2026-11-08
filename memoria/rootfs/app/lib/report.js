@@ -5,6 +5,7 @@
 // mark of CorrerIA Code as in Mais › Sobre. The PDF is made here (the app Home Assistant on the phone doesn't print
 // a page): the same parts, and the mark and the page at the foot of each page.
 import { Pdf, wrap, textWidth } from "./pdf.js";
+import { parseLinks, linksToText, domainOf } from "./links.js";
 
 // The colors of the app (frontend/src/util.js PALETTE)
 export const PALETTE = {
@@ -28,12 +29,19 @@ const whenGenerated = (ms) => {
 };
 const byCreated = (a, b) => a.created - b.created || (a.id < b.id ? -1 : 1);
 
-/** How the text of a sheet reads outside the app (the report, the PDF): as it is. */
-export const readable = (text) => String(text || "");
+/** How a line of a sheet reads in the PDF: each link as its name and site ("Receita (site.com.br)"). */
+export const readable = (text) => linksToText(text, { domain: true });
 
-/** The lines of a sheet: the first one with text is its title; the rest keeps its line breaks. */
+/** A line of a sheet in the page: each link as its name and site, a link that opens outside. */
+export function lineHtml(text) {
+  return parseLinks(text)
+    .map((p) => (p.type === "text" ? esc(p.text) : `<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.name ? `${p.name} (${domainOf(p.url)})` : p.label)}</a>`))
+    .join("");
+}
+
+/** The lines of a sheet (as written): the first one with text is its title; the rest keeps its line breaks. */
 export function sheetParts(text) {
-  const lines = readable(text).replace(/\r\n?/g, "\n").split("\n");
+  const lines = String(text || "").replace(/\r\n?/g, "\n").split("\n");
   const i = lines.findIndex((l) => l.trim());
   if (i < 0) return { title: "", body: [] };
   const body = lines.slice(i + 1);
@@ -211,7 +219,7 @@ export function reportHtml(rep, { tema = null, cor = DEFAULT_COLOR } = {}) {
     `</select>`;
   const page = (p) => {
     const meta = [`Folha ${p.n}`, day(p.created), ...(p.times.length ? [`às ${p.times.join(", ")}`] : [])].join(" · ");
-    return `<article class="folha"><p class="fm">${esc(meta)}</p><h3>${esc(p.title)}</h3>${p.body.length ? `<div class="tx">${esc(p.body.join("\n"))}</div>` : ""}</article>`;
+    return `<article class="folha"><p class="fm">${esc(meta)}</p><h3>${lineHtml(p.title)}</h3>${p.body.length ? `<div class="tx">${p.body.map(lineHtml).join("\n")}</div>` : ""}</article>`;
   };
   const section = (s) => {
     const sub = [s.category, plural(s.pages.length, "folha", "folhas"), s.opens].filter(Boolean).join(" · ");
@@ -255,6 +263,7 @@ h2 small{color:var(--mut);font-size:13px;font-weight:400}
 .fm{margin:0;color:var(--mut);font-size:12.5px}
 .folha h3{margin:2px 0 0;font-size:16px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
 .tx{margin-top:4px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14.5px}
+.folha a{color:inherit;text-decoration-color:var(--a);text-decoration-thickness:2px;text-underline-offset:2px}
 .vazio{color:var(--mut);margin:10px 0}
 .graficos{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;margin-top:14px;align-items:start}
 .graficos section{margin:0;padding:12px 16px}
@@ -421,7 +430,7 @@ export function reportPdf(rep, { cor = DEFAULT_COLOR } = {}) {
     }
     s.pages.forEach((p, i) => {
       const meta = [`Folha ${p.n}`, day(p.created), ...(p.times.length ? [`às ${p.times.join(", ")}`] : [])].join(" · ");
-      const title = wrap(p.title, W, 11.5, true);
+      const title = wrap(readable(p.title), W, 11.5, true);
       if (y + 16 + title.length * 15 + 14 > BOTTOM) {
         newPage();
         sectionHead(s, true);
@@ -433,7 +442,7 @@ export function reportPdf(rep, { cor = DEFAULT_COLOR } = {}) {
         y += 15;
       }
       for (const raw of p.body) {
-        const lines = raw.trim() ? wrap(raw, W, 10.5) : [""];
+        const lines = raw.trim() ? wrap(readable(raw), W, 10.5) : [""];
         for (const t of lines) {
           if (y + 14 > BOTTOM) {
             newPage();

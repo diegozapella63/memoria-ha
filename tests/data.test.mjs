@@ -26,3 +26,12 @@ test("the backup (ZIP) brings the categories back", () => {
   assert.deepEqual(back.categories.map((c) => c.name), ["Casa", "Estudos"]);
   assert.equal(back.blocks.find((b) => b.name === "Mercado").category, "catcasa0001");
 });
+
+test("links stay readable in the export: the CSV title has the name, the text keeps the address", () => {
+  const data = casa();
+  data.pages[0].text = "[Receita da vó](https://receitas.com.br/23)\n\nfarinha";
+  const lines = toCSV(data).toString("utf8").split("\r\n");
+  assert.ok(lines[1].startsWith("Mercado;Casa;1;Receita da vó;"));
+  assert.ok(lines[1].includes("[Receita da vó](https://receitas.com.br/23)"));
+  assert.match(toMarkdown(data, data.blocks[0], data.periods), /\[Receita da vó\]\(https:\/\/receitas\.com\.br\/23\)/);
+});

@@ -29,6 +29,7 @@ function sample() {
     pg("trabalho001", "Reunião das 10h\n\nPauta:\n1. Cronograma do projeto\n2. Orçamento de outubro\n3. Próximos passos\n\nLevar o notebook e o carregador.", 1 * day, { times: ["10:00"] }),
     pg("diario00001", "Domingo\n\nAlmoço com a família e à tarde arrumei a garagem. Achei a caixa de fotos antigas, vale separar umas para emoldurar.", 2 * day),
     pg("diario00001", "Hoje\n\nGratidão:\n• café da manhã com calma\n• terminei o painel da sala no Home Assistant\n• caminhada no fim da tarde\n\nAmanhã: acordar 6h30 e não pular o treino.", 6 * 3600000),
+    pg("ideias00001", "Bolo de cenoura\n\nReceita para domingo:\n[Receita da vó](https://www.receitas-exemplo.com.br/receita/23-bolo-de-cenoura.html)\n\nCobertura de chocolate: https://www.google.com/search?q=cobertura+de+chocolate+para+bolo&sca_esv=a1b2c3&ei=XyZ123abc&oq=cobertura&gs_lp=EgZwc3ktYWIiCWNvYmVydHVyYQ.\n\nComprar: cenoura, ovos, farinha.", 3 * day),
     pg("ideias00001", "Ideias para a casa\n\n- Sensor de presença no corredor\n- Luz da varanda acender no pôr do sol\n- Tablet na geladeira mostrando o MemorIA agora\n- Lembrete de regar as plantas às 18h", 4 * day),
   ];
   return { version: 1, periods: { ...DEFAULT_PERIODS }, app: {}, categories, blocks, pages };
@@ -49,7 +50,7 @@ export class MockApi {
 
   async bootstrap() {
     await wait(60);
-    return { version: "1.5.0", user: { name: "Ana Souza" }, ai: await this.aiStatus(), data: clone(this.data) };
+    return { version: "1.6.0", user: { name: "Ana Souza" }, ai: await this.aiStatus(), data: clone(this.data) };
   }
 
   async aiStatus() {

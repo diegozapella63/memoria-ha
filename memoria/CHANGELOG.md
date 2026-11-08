@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.0
+
+- **Links nas folhas**: um endereço escrito ou colado numa folha (https://… ou www.…) aparece como uma etiqueta curta com o ícone de link (o nome que você deu, ou o site e o que foi buscado ou o fim do endereço, como "google.com · receita de bolo"), e não mais aquele texto comprido. Tocar na etiqueta abre o link fora do app (no app do Home Assistant, no navegador do celular).
+- Tocar no texto da folha abre a escrita bem ali, com o texto de verdade (os endereços inteiros); ao sair, as etiquetas voltam.
+- **Adicionar link**, no **⋯** da folha: **Link** e **Nome** (opcional). O link entra no fim da folha; um endereço que não abre (como `javascript:`) é recusado. O Voltar do celular, Cancelar e tocar fora voltam para o ⋯.
+- **Buscar** acha o nome e o endereço do link e mostra o nome no resultado. No **Relatório** e no PDF, o link aparece como o nome e o site (na página, dá para tocar); na exportação, o texto continua legível.
+- Botões lado a lado nas janelas (como Cancelar e Adicionar) com a mesma largura.
+
 ## 1.5.0
 
 - **Categorias dos blocos**: em **Mais › Categorias**, crie categorias (Trabalho, Casa, Estudos…), mude o nome ou a cor e apague (os blocos dela ficam sem categoria; o app pergunta antes). Cada bloco escolhe a sua nos ajustes do bloco, e dá para criar uma **Nova** ali mesmo.

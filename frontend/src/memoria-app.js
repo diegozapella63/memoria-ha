@@ -7,6 +7,7 @@ import { themePicker, colorPicker, lookStyles, colorOfDay } from "./look.js";
 import { swipeStart, swipeEnd, slideIn } from "./swipe.js";
 import { PALETTE, colorById, colorVars, hexToRgba, fold, foldKeepLength, plural, clip, writtenAt, newId, firstLine, prepareImage } from "./util.js";
 import { parentHass, detectDark } from "./api.js";
+import { parseLinks, hasLinks, linksToText, normalizeUrl, linkMarkdown } from "../../memoria/rootfs/app/lib/links.js";
 import { PERIODS, PAPERS, buildSchedule, currentAt, nextAfter, timeline, minutesOf, fmtMin, periodAt, periodTimes, normTime } from "../../memoria/rootfs/app/lib/schedule.js";
 
 const THEME_KEY = "memoria.theme";
@@ -65,6 +66,7 @@ class MemoriaApp extends LitElement {
     _choice: { state: true },
     _now: { state: true },
     _dark: { state: true },
+    _editing: { state: true },
   };
 
   static styles = [styles, notebookStyles, aboutStyles, unsafeCSS(lookStyles)];
@@ -90,6 +92,7 @@ class MemoriaApp extends LitElement {
     this._choice = null;
     this._now = Date.now();
     this._dark = false;
+    this._editing = null; // the sheet being written (the editor shows the real text, links included)
     this._user = { name: "" };
     this._ai = { ready: false, images: false, entities: [] };
     this._aiAt = 0;
@@ -1377,7 +1380,7 @@ class MemoriaApp extends LitElement {
     if (!page) return;
     this._openConfirm({
       title: "Arrancar esta folha?",
-      text: page.text.trim() ? `“${clip(firstLine(page.text), 60)}” será apagada.` : "A folha em branco será removida.",
+      text: page.text.trim() ? `“${clip(firstLine(linksToText(page.text)), 60)}” será apagada.` : "A folha em branco será removida.",
       label: "Apagar folha",
       danger: true,
       run: () => {
@@ -1397,6 +1400,55 @@ class MemoriaApp extends LitElement {
         });
       },
     });
+  }
+
+  // ---------- Adicionar link (the ⋯ of the sheet): Link and, optionally, Nome; it goes at the end of the sheet
+
+  _openLinkSheet(pageId) {
+    this._openSubSheet("link", { page: pageId, url: "", name: "", error: "" });
+    this.updateComplete.then(() => {
+      const input = this.renderRoot.querySelector(".sheet input[type=url]");
+      if (input) input.focus();
+    });
+  }
+
+  _renderLinkSheet() {
+    const f = this._form;
+    return html`
+      ${this._sheetHead("Adicionar link")}
+      <label class="field">
+        <span class="flabel">Link</span>
+        <input type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" .value=${f.url} placeholder="https://…" @input=${(e) => this._setForm({ url: e.target.value, error: "" })} @keydown=${(e) => e.key === "Enter" && this._addLink()} />
+        ${f.error ? html`<span class="field-error">${f.error}</span>` : nothing}
+      </label>
+      <label class="field">
+        <span class="flabel">Nome (opcional)</span>
+        <input type="text" maxlength="120" .value=${f.name} placeholder="Ex.: Receita do bolo" @input=${(e) => this._setForm({ name: e.target.value })} @keydown=${(e) => e.key === "Enter" && this._addLink()} />
+      </label>
+      <div class="sheet-actions">
+        <button class="btn outline" @click=${() => this._sheetBack()}>Cancelar</button>
+        <button class="btn primary" ?disabled=${!(f.url || "").trim()} @click=${() => this._addLink()}>Adicionar</button>
+      </div>
+    `;
+  }
+
+  async _addLink() {
+    const f = this._form;
+    const page = this._page(f.page);
+    if (!page) return this._closeSheet();
+    const url = normalizeUrl(f.url);
+    if (!url) {
+      this._setForm({ error: "Esse link não abre. Use um endereço como https://site.com.br" });
+      return;
+    }
+    const md = linkMarkdown(url, f.name);
+    const base = page.text.replace(/\s+$/, "");
+    const text = base ? `${base}\n${md}` : md;
+    this._putPage({ ...page, text });
+    this._queueSave(page.id, 0);
+    this._closeSheet();
+    this._haptic("success");
+    this._showToast("Link adicionado");
   }
 
   async _copyPage(id) {
@@ -1815,20 +1867,25 @@ class MemoriaApp extends LitElement {
     const hand = this._app("hand", true);
     const last = page && idx === list.length - 1;
     const canNext = page && !(last && !page.text.trim());
+    // a sheet with links, not being written: the links as short chips (tap the text to write)
+    const viewing = !!page && this._editing !== page.id && hasLinks(page.text);
     return html`
       <div class="pad ${opts.tall ? "tall" : ""}" style=${this._cv(b)} @touchstart=${(e) => this._touchStart(e)} @touchend=${(e) => this._touchEnd(e)}>
         <div class="pad-cover"></div>
         <div class="pad-stack"></div>
         <div class="leaf ${b.paper}">
           ${this._renderLeafTop({ created: page ? page.created : null, times: page ? page.times : [], num: idx + 1, total }, !!page)}
+          ${viewing ? this._renderInkView(page, hand, `Folha ${idx + 1} de ${total} do bloco ${b.name}`) : nothing}
           <textarea
-            class="ink ${hand ? "" : "normal"}"
+            class="ink ${hand ? "" : "normal"} ${viewing ? "behind" : ""}"
             .value=${live(page ? page.text : "")}
             placeholder=${page ? "" : idx === 0 ? "Escreva a primeira folha deste bloco…" : "Folha nova. Escreva aqui…"}
             spellcheck="true"
             aria-label="Folha ${idx + 1} de ${total} do bloco ${b.name}"
             @input=${(e) => this._onInk(e)}
+            @focus=${() => (this._editing = pad.page)}
             @blur=${() => {
+              this._editing = null;
               if (page && this._saving.has(page.id)) this._flushSave(page.id);
               setTimeout(() => this._tick(), 400);
             }}
@@ -1843,7 +1900,7 @@ class MemoriaApp extends LitElement {
           ? html`<div class="turn ${this._turn.dir}" aria-hidden="true">
               <div class="face front leaf ${this._turn.snap.paper}">
                 ${this._renderLeafTop(this._turn.snap, false)}
-                <div class="ink ${hand ? "" : "normal"}">${this._turn.snap.text}</div>
+                <div class="ink ${hand ? "" : "normal"}">${this._inkParts(this._turn.snap.text)}</div>
               </div>
               <div class="face back"></div>
               <div class="shade"></div>
@@ -1851,6 +1908,88 @@ class MemoriaApp extends LitElement {
           : nothing}
       </div>
     `;
+  }
+
+  /** The text of a sheet with each link as a chip (the name, or the site and a bit of the address). */
+  _inkParts(text, live = false) {
+    if (!hasLinks(text)) return text;
+    // no spaces between the parts: the text keeps its line breaks (pre-wrap)
+    return parseLinks(text).map((p) =>
+      p.type === "link"
+        ? html`<a class="lnk" href=${p.url} target="_blank" rel="noopener noreferrer" title=${p.url} tabindex=${live ? "0" : "-1"} @click=${(e) => this._openLink(e, p.url)}>${icon("link")}<span>${p.label}</span></a>`
+        : html`<span data-o=${p.start}>${p.text}</span>`,
+    );
+  }
+
+  /** The sheet with its links as chips; a tap on the text opens the editor there (with the real text). */
+  _renderInkView(page, hand, label) {
+    return html`<div class="ink ink-view ${hand ? "" : "normal"}" role="textbox" aria-readonly="true" aria-label=${label} tabindex="0" @click=${(e) => this._editFromView(e, page)} @keydown=${(e) => e.key === "Enter" && !e.target.closest("a") && this._editFromView(e, page)}>${this._inkParts(page.text, true)}</div>`;
+  }
+
+  _openLink(e, url) {
+    e.stopPropagation();
+    this._haptic("light");
+    // the link opens outside the app (in the app of Home Assistant, the browser of the phone)
+    if (!e.currentTarget.href) {
+      e.preventDefault();
+      window.open(url, "_blank", "noopener");
+    }
+  }
+
+  /** Where the finger fell on the view, as a place in the text of the sheet. */
+  _offsetAt(e, page) {
+    const root = this.renderRoot;
+    let node = null;
+    let offset = 0;
+    try {
+      if (e.clientX || e.clientY) {
+        if (document.caretPositionFromPoint) {
+          const pos = document.caretPositionFromPoint(e.clientX, e.clientY, { shadowRoots: [root] });
+          if (pos) ({ offsetNode: node, offset } = pos);
+        } else if (document.caretRangeFromPoint) {
+          const r = document.caretRangeFromPoint(e.clientX, e.clientY);
+          if (r) ({ startContainer: node, startOffset: offset } = r);
+        }
+      }
+    } catch (err) {
+      node = null;
+    }
+    const span = node && (node.nodeType === 3 ? node.parentElement : node);
+    if (span && span.dataset && span.dataset.o != null && node.nodeType === 3) return Math.min(page.text.length, Number(span.dataset.o) + offset);
+    const tapped = e.target && e.target.closest && e.target.closest("[data-o]");
+    if (tapped) return Math.min(page.text.length, Number(tapped.dataset.o) + tapped.textContent.length);
+    return page.text.length;
+  }
+
+  _editFromView(e, page) {
+    if (e.target.closest && e.target.closest("a")) return;
+    const at = this._offsetAt(e, page);
+    const ta = this.renderRoot.querySelector("textarea.ink");
+    if (!ta) return;
+    // inside the tap, so the phone opens the keyboard
+    ta.focus({ preventScroll: true });
+    ta.setSelectionRange(at, at);
+    this.updateComplete.then(() => {
+      if (this.renderRoot.activeElement !== ta) return;
+      ta.setSelectionRange(at, at);
+      this._scrollToCaret(ta, at);
+    });
+  }
+
+  /** The editor scrolled so the cursor is in sight (a copy of its text up to the cursor says how far down it is). */
+  _scrollToCaret(ta, at) {
+    const cs = getComputedStyle(ta);
+    const m = document.createElement("div");
+    for (const k of ["fontFamily", "fontSize", "fontWeight", "lineHeight", "letterSpacing", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft"]) m.style[k] = cs[k];
+    Object.assign(m.style, { position: "absolute", visibility: "hidden", left: "-9999px", top: "0", width: `${ta.clientWidth}px`, whiteSpace: "pre-wrap", overflowWrap: "anywhere", boxSizing: "border-box" });
+    m.textContent = ta.value.slice(0, at);
+    const mark = document.createElement("span");
+    mark.textContent = "\u200b";
+    m.appendChild(mark);
+    this.renderRoot.appendChild(m);
+    const y = mark.offsetTop;
+    m.remove();
+    if (y < ta.scrollTop || y > ta.scrollTop + ta.clientHeight - 40) ta.scrollTop = Math.max(0, y - ta.clientHeight / 3);
   }
 
   _renderLeafTop(s, menu) {
@@ -1918,7 +2057,7 @@ class MemoriaApp extends LitElement {
                   const eb = this._block(e.block);
                   if (!eb) return nothing;
                   const pg = e.page ? this._page(e.page) : null;
-                  const why = e.kind === "period" ? `${periodOf(e.period).label}` : e.kind === "page" ? `Trecho: ${clip(firstLine(pg && pg.text) || "folha", 34)}` : "Horário fixo";
+                  const why = e.kind === "period" ? `${periodOf(e.period).label}` : e.kind === "page" ? `Trecho: ${clip(firstLine(linksToText(pg && pg.text)) || "folha", 34)}` : "Horário fixo";
                   return html`<button class="day-row ${cur && cur.min === g.min ? "on" : ""}" style=${this._cv(eb)} @click=${() => this._openPage(eb.id, e.page || null)}>
                     <b>${fmtMin(e.min)}</b><span class="dot"></span>
                     <span class="grow"><span class="label">${eb.name}</span><span class="hint">${why}</span></span>
@@ -1989,12 +2128,14 @@ class MemoriaApp extends LitElement {
                 <div class="panel">
                   ${results.map((p) => {
                     const b = this._block(p.block);
-                    const title = firstLine(p.text) || "Folha sem título";
+                    // links as their names (the search also finds the address)
+                    const text = linksToText(p.text);
+                    const title = firstLine(text) || "Folha sem título";
                     return html`<button class="result" style=${this._cv(b)} @click=${() => this._openPage(b.id, p.id)}>
                       <span class="dot"></span>
                       <span class="r-main">
                         <span class="r-title">${this._highlight(clip(title, 70), q)}</span>
-                        <span class="r-snip">${this._highlight(this._snippet(p.text, title, needle), q)}</span>
+                        <span class="r-snip">${this._highlight(this._snippet(text, title, needle), q)}</span>
                         <span class="r-meta">${b.name} · ${writtenAt(p.updated, new Date(this._now))}</span>
                       </span>
                     </button>`;
@@ -2319,6 +2460,7 @@ class MemoriaApp extends LitElement {
     let body = nothing;
     if (this._sheet === "block") body = this._renderBlockSheet();
     else if (this._sheet === "category") body = this._renderCategorySheet();
+    else if (this._sheet === "link") body = this._renderLinkSheet();
     else if (this._sheet === "pagemenu") body = this._renderPageMenu();
     else if (this._sheet === "new") body = this._renderNewSheet();
     else if (this._sheet === "confirm") body = this._renderConfirm();
@@ -2473,6 +2615,7 @@ class MemoriaApp extends LitElement {
             </div>
           </div>`
         : nothing}
+      <button class="menu-row" @click=${() => this._openLinkSheet(page.id)}>${icon("link")}Adicionar link</button>
       <button class="menu-row" @click=${() => this._copyPage(page.id)}>${icon("copy")}Copiar texto</button>
       <button class="menu-row danger" @click=${() => this._confirmDeletePage(page.id)}>${icon("trash")}Apagar folha</button>
       <p class="sheet-note">Escrita ${writtenAt(page.created)} · editada ${writtenAt(page.updated)}</p>

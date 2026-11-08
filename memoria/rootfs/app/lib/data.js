@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { makeZip, readZip } from "./zip.js";
+import { linksToText } from "./links.js";
 
 const pad = (n) => String(n).padStart(2, "0");
 const BACKUP_RE = /^memoria-[\w-]+\.zip$/;
@@ -35,7 +36,7 @@ export function toCSV(data) {
   const rows = [["Bloco", "Categoria", "Folha", "Título", "Escrita em", "Editada em", "Horários", "Texto"]];
   for (const b of orderedBlocks(data)) {
     pagesOf(data, b.id).forEach((p, i) => {
-      rows.push([b.name, cats.get(b.category) || "", i + 1, firstLine(p.text), dateTime(p.created), dateTime(p.updated), (p.times || []).join(" "), p.text]);
+      rows.push([b.name, cats.get(b.category) || "", i + 1, firstLine(linksToText(p.text)), dateTime(p.created), dateTime(p.updated), (p.times || []).join(" "), p.text]);
     });
   }
   return Buffer.from("﻿" + rows.map((r) => r.map(q).join(";")).join("\r\n") + "\r\n", "utf8");

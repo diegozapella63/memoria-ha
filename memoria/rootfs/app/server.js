@@ -18,7 +18,7 @@ import { Sensor } from "./lib/sensor.js";
 import { Backups, backupZip, toCSV, parseImport, listVersions, readVersion, fileStamp } from "./lib/data.js";
 import { anotacoes, reportHtml, reportPdf, pdfName } from "./lib/report.js";
 
-const VERSION = "1.5.0";
+const VERSION = "1.6.0";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WWW = path.join(HERE, "www");
 const DEV = process.env.MEMORIA_DEV === "1";
