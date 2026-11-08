@@ -85,6 +85,20 @@ Na hora da leitura, o app copia a foto por alguns segundos para `media/memoria/i
 
 Sem IA configurada, todo o resto funciona normalmente: a mensagem colada vira uma folha do jeito que está e só a leitura de fotos fica desligada.
 
+## Falar e Conversar com a IA
+
+No alto das telas (e de um bloco) ficam dois botões, como nos outros apps da família:
+
+- **Falar** (o microfone): diga a anotação, por exemplo "Reunião de sexta: levar o orçamento e confirmar o horário com a Ana". Toque de novo (ou em **Pronto**) quando terminar. A **fala para texto do Home Assistant** transcreve (Configurações › Assistentes de voz; com o Home Assistant Cloud ela já vem pronta, em português), a IA organiza como uma anotação e você revisa antes de criar a folha, com o que foi ouvido logo acima. Também em **Nova › Falar**. Até 2 minutos de cada vez.
+- **Conversar com a IA** (o balão): pergunte sobre os blocos, as folhas, o que abre agora ou sobre qualquer assunto. Se pedir para escrever ("crie uma folha no Diário com…" ou "acrescente … na folha 2 do Trabalho"), a IA mostra um cartão com o que vai fazer e só faz quando você toca em **Fazer** (ou **Fazer todas**). A conversa fica guardada enquanto o app está aberto; **Nova** começa outra. O microfone da conversa manda o que você falar.
+
+O microfone só funciona quando o Home Assistant é aberto por um endereço seguro (https), como o do Home Assistant Cloud ou o seu endereço externo; num endereço http, o app explica em vez de abrir.
+
+Em **Mais › Configurações › Integrações**:
+
+- **Usar IA**: desligada, somem a leitura por IA (Organizar, fotos e Digitalizar), **Falar** e **Conversar**, em todos os aparelhos. Colar mensagem continua, criando a folha do jeito que está.
+- **Falar**: mostra se a fala para texto está pronta e deixa escolher qual o app usa (**Automático** usa a do assistente de voz preferido). Não muda o assistente de voz do Home Assistant.
+
 ## Buscar
 
 Em **Buscar**, procure qualquer palavra em todas as folhas de todos os blocos, sem se importar com acentos. Cada resultado mostra o trecho com a palavra marcada, o bloco e quando foi escrito; toque para abrir a folha.

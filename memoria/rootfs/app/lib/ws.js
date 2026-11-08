@@ -50,6 +50,8 @@ export class WsConnection extends EventEmitter {
   }
 
   _onData(chunk) {
+    // closed: what still arrives is discarded (RFC 6455)
+    if (this.closed) return;
     if (chunk.length) this.buffer = this.buffer.length ? Buffer.concat([this.buffer, chunk]) : chunk;
     for (;;) {
       const buf = this.buffer;

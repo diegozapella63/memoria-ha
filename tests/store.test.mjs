@@ -134,3 +134,22 @@ test("categories: at most 50", () => {
   assert.throws(() => store.saveCategory({ name: "Mais uma" }), /categorias demais/);
   store.flush();
 });
+
+// ------------------------------------------------------------------ Usar IA and Falar (1.7.0)
+
+test("Usar IA: on unless turned off; Falar: a stt.* engine or the automatic one", () => {
+  const { store } = fresh();
+  let s = store.saveSettings({ app: { ai_off: true, voice_engine: "stt.home_assistant_cloud" } });
+  assert.equal(s.app.ai_off, true);
+  assert.equal(s.app.voice_engine, "stt.home_assistant_cloud");
+  s = store.saveSettings({ app: { ai_off: null, voice_engine: "javascript:alert(1)" } });
+  assert.equal("ai_off" in s.app, false);
+  assert.equal("voice_engine" in s.app, false);
+  store.saveSettings({ app: { voice_engine: "stt.faster_whisper", ai_entity: "ai_task.google_ai_task" } });
+  // the AI and the speech-to-text belong to this Home Assistant, not to the file imported
+  const back = store.replaceAll({ blocks: [], pages: [], app: { ai_off: true, voice_engine: "stt.outro", ai_entity: "ai_task.outra" } }, "teste");
+  assert.equal(back.app.voice_engine, "stt.faster_whisper");
+  assert.equal(back.app.ai_entity, "ai_task.google_ai_task");
+  assert.equal(back.app.ai_off, true);
+  store.flush();
+});

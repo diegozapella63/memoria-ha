@@ -1,6 +1,7 @@
 // A tiny fake of Home Assistant, enough to develop and test MemorIA without a
-// real Home Assistant: the websocket API (AI tasks) and the REST call that sets
-// sensor.memoria_agora.
+// real Home Assistant: the websocket API (AI tasks, the Conversa, the voice assistants), the REST call that
+// sets sensor.memoria_agora and the speech-to-text of Falar (the transcript is FAKE_STT_TEXT; FAKE_NO_STT=1:
+// no speech-to-text).
 //   node dev/fake-ha.mjs
 //   (ws://127.0.0.1:8123/api/websocket and http://127.0.0.1:8123/api, token "dev")
 import http from "node:http";
@@ -27,6 +28,28 @@ function fakeAI(msg) {
   if (!WITH_AI) fail("not_found", "Service not found");
   if (!msg.return_response) fail("service_validation_error", "return_response required");
   const d = msg.service_data || {};
+  // Conversa: answers the last thing the person said; "crie uma folha no BLOCO com TEXTO" and
+  // "acrescente TEXTO na folha N do BLOCO" become actions
+  if (/: conversa$/.test(d.task_name || "") && d.structure && d.structure.resposta) {
+    aiCalls.push({ entity_id: d.entity_id, files: [], chat: d.instructions });
+    if (process.env.FAKE_AI_CHAT_FAIL) fail("home_assistant_error", "IA fora do ar");
+    const last = ((d.instructions || "").match(/Pessoa: (.*)$/) || [])[1] || "";
+    console.log("fake AI chat", JSON.stringify({ entity_id: d.entity_id, last }));
+    let m;
+    const acoes = [];
+    let resposta;
+    if ((m = /crie uma folha no (.+?) com (.+)$/i.exec(last))) {
+      acoes.push(`criar | ${m[1]} | ${m[2].replace(/;\s*/g, "\\n")}`);
+      resposta = `Posso criar uma folha em ${m[1]}.`;
+    } else if ((m = /acrescente (.+?) na folha (\d+) do (.+?)$/i.exec(last))) {
+      acoes.push(`acrescentar | ${m[3]} | ${m[2]} | ${m[1]}`);
+      resposta = `Posso acrescentar na folha ${m[2]} de ${m[3]}.`;
+    } else {
+      const tela = ((d.instructions || "").match(/A pessoa está na tela: (.*)\./) || [])[1] || "?";
+      resposta = `Resposta de teste para "${last}" (tela: ${tela}).`;
+    }
+    return { context: { id: "ctx" }, response: { conversation_id: "c1", data: { resposta, acoes } } };
+  }
   if (!d.structure || !d.structure.text) fail("service_validation_error", "structure missing");
   const files = (d.attachments || []).map((a) => {
     const prefix = "media-source://media_source/local/";
@@ -85,8 +108,16 @@ class Conn {
                   { entity_id: "ai_task.ollama_ai_task", state: "unknown", attributes: { friendly_name: "Ollama AI Task", supported_features: 1 } },
                 ]
               : []),
+            ...(process.env.FAKE_NO_STT
+              ? []
+              : [
+                  { entity_id: "stt.home_assistant_cloud", state: "unknown", attributes: { friendly_name: "Home Assistant Cloud" } },
+                  { entity_id: "stt.faster_whisper", state: "unknown", attributes: { friendly_name: "faster-whisper" } },
+                ]),
             ...states.values(),
           ]);
+        case "assist_pipeline/pipeline/list":
+          return ok(process.env.FAKE_NO_STT ? { pipelines: [], preferred_pipeline: null } : { pipelines: [{ id: "p1", name: "Home Assistant", language: "pt", stt_engine: "stt.home_assistant_cloud", stt_language: "pt-BR" }], preferred_pipeline: "p1" });
         case "ai_task/preferences/get":
           return ok({ gen_data_entity_id: WITH_AI ? "ai_task.google_ai_task" : null });
         case "get_config":
@@ -105,6 +136,30 @@ class Conn {
 }
 
 const server = http.createServer((req, res) => {
+  // Falar: speech-to-text like Home Assistant's REST API
+  const stt = req.url.match(/^\/api\/stt\/(stt\.[a-z0-9_]+)$/);
+  if (stt && req.headers.authorization !== `Bearer ${TOKEN}`) return res.writeHead(401).end("401: Unauthorized");
+  if (stt && req.method === "GET") {
+    res.writeHead(200, { "content-type": "application/json" });
+    return res.end(JSON.stringify({ languages: stt[1] === "stt.faster_whisper" ? ["en", "es", "pt"] : ["en-US", "pt-BR", "pt-PT"], formats: ["wav"], codecs: ["pcm"], sample_rates: [16000], bit_rates: [16], channels: [1] }));
+  }
+  if (stt && req.method === "POST") {
+    let bytes = 0;
+    req.on("data", (c) => (bytes += c.length));
+    req.on("end", () => {
+      // like the Supervisor's proxy: only "X-Speech-Content", spelled exactly like that, reaches Home Assistant
+      const raw = req.rawHeaders;
+      const at = raw.findIndex((h, i) => i % 2 === 0 && h === "X-Speech-Content");
+      const head = at >= 0 ? String(raw[at + 1]) : "";
+      console.log("stt", stt[1], bytes, head);
+      if (!head) return res.writeHead(400).end("Missing X-Speech-Content header");
+      const lang = stt[1] === "stt.faster_whisper" ? /language=pt(;|$)/ : /language=pt-BR/;
+      if (!/format=wav/.test(head) || !/sample_rate=16000/.test(head) || !lang.test(head)) return res.writeHead(415).end("Unsupported");
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ text: process.env.FAKE_STT_TEXT || "Lembrar de comprar pão, regar as plantas e ligar para a Ana às seis", result: "success" }));
+    });
+    return;
+  }
   const m = req.url.match(/^\/api\/states\/([a-z_]+\.[a-z0-9_]+)$/);
   if (!m) return res.writeHead(404).end();
   if (req.headers.authorization !== `Bearer ${TOKEN}`) return res.writeHead(401).end("401: Unauthorized");

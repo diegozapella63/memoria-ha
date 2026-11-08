@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.0
+
+- **Falar e Conversar com a IA**, como no ResolvIA e na CronologIA: os dois botões ficam no alto das telas (e de um bloco).
+- **Falar**: toque no microfone e diga a anotação; a fala para texto do Home Assistant transcreve, a IA organiza e você revisa antes de criar a folha (o que foi ouvido aparece em cima). Também em **Nova › Falar**. Sem https, o app explica por que o microfone não abre.
+- **Conversar com a IA**: pergunte sobre os blocos, as folhas e a tela em que está, ou sobre qualquer assunto. Se pedir para escrever ("crie uma folha no Diário com…", "acrescente … na folha 2 do Trabalho"), a IA mostra um cartão e só faz quando você toca em **Fazer**. A conversa fica guardada enquanto o app está aberto; **Nova** começa outra. Com o microfone, dá para falar em vez de escrever.
+- Em **Mais › Configurações › Integrações**: a chave **Usar IA** (desligada, somem a leitura por IA, as fotos, Falar e Conversar) e **Falar**, para escolher a fala para texto usada pelo app.
+
 ## 1.6.0
 
 - **Links nas folhas**: um endereço escrito ou colado numa folha (https://… ou www.…) aparece como uma etiqueta curta com o ícone de link (o nome que você deu, ou o site e o que foi buscado ou o fim do endereço, como "google.com · receita de bolo"), e não mais aquele texto comprido. Tocar na etiqueta abre o link fora do app (no app do Home Assistant, no navegador do celular).

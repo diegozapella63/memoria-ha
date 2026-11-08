@@ -47,7 +47,7 @@ before(async () => {
   fs.writeFileSync(path.join(dir, "memoria.json"), JSON.stringify(casa(Date.now())));
   const haPort = await freePort();
   const port = await freePort();
-  await start("dev/fake-ha.mjs", { FAKE_HA_PORT: String(haPort), FAKE_MEDIA_DIR: path.join(dir, "media") }, /fake Home Assistant/);
+  await start("dev/fake-ha.mjs", { FAKE_HA_PORT: String(haPort), FAKE_MEDIA_DIR: path.join(dir, "media"), FAKE_STT_TEXT: "Comprar pão e regar as plantas" }, /fake Home Assistant/);
   await start(
     "memoria/rootfs/app/server.js",
     {
@@ -147,4 +147,62 @@ test("Mais › Relatório: the page and the PDF", async () => {
   assert.match(await res.text(), /Caixas de seleção no visual do app/);
   res = await fetch(`${base}/relatorio`, { method: "POST" });
   assert.equal(res.status, 404);
+});
+
+test("Falar: the speech-to-text of Home Assistant", async () => {
+  const a = await screen();
+  const st = await a.call("memoria/voice/status");
+  assert.equal(st.ready, true);
+  assert.equal(st.engine, "stt.home_assistant_cloud");
+  assert.equal(st.language, "pt-BR");
+  assert.deepEqual(st.options.map((o) => o.id).sort(), ["stt.faster_whisper", "stt.home_assistant_cloud"]);
+  // the engine chosen in the app, with its language
+  await a.call("memoria/settings/save", { app: { voice_engine: "stt.faster_whisper" } });
+  const st2 = await a.call("memoria/voice/status", { fresh: true });
+  assert.equal(st2.engine, "stt.faster_whisper");
+  assert.equal(st2.language, "pt");
+  const pcm = Buffer.alloc(16000 * 2); // one second
+  let res = await fetch(`${base}/api/voice`, { method: "POST", headers: { "content-type": "application/octet-stream" }, body: pcm });
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).text, "Comprar pão e regar as plantas");
+  res = await fetch(`${base}/api/voice`, { method: "POST", body: Buffer.alloc(100) });
+  assert.equal(res.status, 409);
+  assert.match((await res.json()).error, /Não ouvi nada/);
+  await a.call("memoria/settings/save", { app: { voice_engine: null } });
+  a.ws.close();
+});
+
+test("Conversa: the answer and the actions, checked against the blocks", async () => {
+  const a = await screen();
+  const context = {
+    tela: "Agora",
+    blocos: [{ id: "mercado0001", nome: "Mercado", aberto: true, total: 2, folhas: [{ n: 1, titulo: "Lista da semana", texto: "Lista da semana" }, { n: 2, titulo: "Churrasco do Beto", texto: "Churrasco do Beto" }] }],
+  };
+  let out = await a.call("memoria/ai/chat", { messages: [{ role: "user", text: "crie uma folha no Mercado com Feira; banana; maçã" }], context });
+  assert.equal(out.reply, "Posso criar uma folha em Mercado.");
+  assert.deepEqual(out.actions, [{ tipo: "criar", bloco: "mercado0001", nome: "Mercado", texto: "Feira\nbanana\nmaçã" }]);
+  assert.equal(out.provider, "Google AI Task");
+  out = await a.call("memoria/ai/chat", { messages: [{ role: "user", text: "acrescente pão de alho na folha 2 do Mercado" }], context });
+  assert.deepEqual(out.actions, [{ tipo: "acrescentar", bloco: "mercado0001", nome: "Mercado", folha: 2, titulo: "Churrasco do Beto", texto: "pão de alho" }]);
+  out = await a.call("memoria/ai/chat", { messages: [{ role: "user", text: "o que tem aqui?" }], context });
+  assert.match(out.reply, /tela: Agora/);
+  assert.deepEqual(out.actions, []);
+  await assert.rejects(a.call("memoria/ai/chat", { messages: [], context }), /Escreva alguma coisa/);
+  a.ws.close();
+});
+
+test("Usar IA off: no reading, no Falar, no Conversa", async () => {
+  const a = await screen();
+  await a.call("memoria/settings/save", { app: { ai_off: true } });
+  await assert.rejects(a.call("memoria/ai/chat", { messages: [{ role: "user", text: "oi" }], context: {} }), /A IA está desligada/);
+  let res = await fetch(`${base}/api/voice`, { method: "POST", body: Buffer.alloc(32000) });
+  assert.equal(res.status, 409);
+  assert.match((await res.json()).error, /A IA está desligada/);
+  res = await fetch(`${base}/api/extract`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: "oi" }) });
+  assert.equal(res.status, 409);
+  assert.equal((await res.json()).code, "ai_off");
+  await a.call("memoria/settings/save", { app: { ai_off: null } });
+  const out = await a.call("memoria/ai/chat", { messages: [{ role: "user", text: "oi" }], context: {} });
+  assert.match(out.reply, /Resposta de teste/);
+  a.ws.close();
 });

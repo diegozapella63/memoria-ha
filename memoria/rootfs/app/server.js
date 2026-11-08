@@ -3,6 +3,7 @@
 // - Keeps notebooks ("blocos") and pages in /data/memoria.json and pushes every
 //   change live to all open screens.
 // - Reads pasted messages and photos with the AI configured in Home Assistant.
+// - Falar (speech-to-text of Home Assistant) and the Conversa with the AI.
 // - Publishes sensor.memoria_agora with what is "on" right now.
 // - Exports, backups in share/memoria, imports and automatic versions.
 // - Mais › Relatório: the blocks and their sheets as a page and as a PDF.
@@ -14,11 +15,12 @@ import { acceptUpgrade } from "./lib/ws.js";
 import { HAClient } from "./lib/ha.js";
 import { Store } from "./lib/store.js";
 import { AI } from "./lib/ai.js";
+import { Voice, readRaw, MAX_VOICE_BYTES } from "./lib/voice.js";
 import { Sensor } from "./lib/sensor.js";
 import { Backups, backupZip, toCSV, parseImport, listVersions, readVersion, fileStamp } from "./lib/data.js";
 import { anotacoes, reportHtml, reportPdf, pdfName } from "./lib/report.js";
 
-const VERSION = "1.6.0";
+const VERSION = "1.7.0";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WWW = path.join(HERE, "www");
 const DEV = process.env.MEMORIA_DEV === "1";
@@ -43,6 +45,10 @@ if (!TOKEN) log.error("Sem SUPERVISOR_TOKEN. O homeassistant_api está ligado no
 const store = new Store(DATA_DIR, log);
 const ha = new HAClient(HA_URL, TOKEN, log);
 const ai = new AI({ ha, log, mediaDir: MEDIA_DIR, selected: () => store.data.app.ai_entity || "" });
+const voice = new Voice({ ha, rest: HA_REST, token: TOKEN, log, pick: () => store.data.app.voice_engine || "" });
+// Mais › Configurações › Integrações › Usar IA: off, nothing goes to the AI
+const aiOff = () => store.data.app.ai_off === true;
+const offError = () => Object.assign(new Error("A IA está desligada em Mais › Configurações › Integrações."), { code: "ai_off" });
 const sensor = new Sensor({ store, log, restUrl: HA_REST, token: TOKEN, enabled: () => store.data.app.sensor !== false });
 const backups = new Backups({ dir: SHARE_DIR });
 const watchers = new Set(); // {session, id}
@@ -119,6 +125,18 @@ class Session {
 
       case "memoria/ai/status": {
         return this.result(id, await ai.status());
+      }
+
+      case "memoria/voice/status":
+        return this.result(id, await voice.status({ fresh: !!msg.fresh }));
+
+      // Conversa (the chat beside the microphone): one turn -> {reply, actions, provider}
+      case "memoria/ai/chat": {
+        if (aiOff()) throw offError();
+        const started = Date.now();
+        const out = await ai.chat({ messages: msg.messages, context: msg.context });
+        log.info(`Conversa via ${out.provider}: ${out.actions.length} ações em ${((Date.now() - started) / 1000).toFixed(1)}s`);
+        return this.result(id, out);
       }
 
       case "memoria/subscribe": {
@@ -200,6 +218,7 @@ class Session {
       }
 
       case "memoria/settings/save": {
+        if (msg.app && "voice_engine" in msg.app) voice.forget();
         const settings = store.saveSettings({ periods: msg.periods, app: msg.app });
         this.result(id, settings);
         return broadcast({ kind: "settings", ...settings });
@@ -264,15 +283,32 @@ function handleExtract(req, res) {
     }
     const started = Date.now();
     try {
+      if (aiOff()) throw offError();
       const out = await ai.extract({ text: body.text, images: body.images });
       log.info(`Leitura por IA via ${out.provider}: ${out.text.length} caracteres em ${((Date.now() - started) / 1000).toFixed(1)}s`);
       sendJson(res, 200, out);
     } catch (err) {
       log.warn(`Leitura por IA falhou: ${err.message}`);
-      const setup = ["no_ai", "no_vision", "gone", "unavailable", "no_media"].includes(err.code);
+      const setup = ["no_ai", "no_vision", "gone", "unavailable", "no_media", "ai_off"].includes(err.code);
       sendJson(res, setup ? 409 : 502, { error: err.message, code: err.code || "failed" });
     }
   });
+}
+
+/** POST /api/voice (raw PCM, 16 kHz, 16-bit, mono) -> {text, engine}: Falar, through the speech-to-text of Home Assistant */
+async function handleVoice(req, res) {
+  try {
+    if (aiOff()) throw offError();
+    const pcm = await readRaw(req, MAX_VOICE_BYTES);
+    const started = Date.now();
+    const out = await voice.text(pcm);
+    log.info(`Falar via ${out.engine}: ${out.text.length} caracteres em ${((Date.now() - started) / 1000).toFixed(1)}s`);
+    sendJson(res, 200, out);
+  } catch (err) {
+    log.warn(`Falar: ${err.message}`);
+    const status = err.code === "too_big" ? 413 : ["invalid_format", "not_understood", "no_stt", "ai_off"].includes(err.code) ? 409 : 502;
+    sendJson(res, status, { error: err.message, code: err.code || "failed" });
+  }
 }
 
 function download(res, body, type, name) {
@@ -353,6 +389,7 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://x");
   if (url.pathname === "/api/extract" && req.method === "POST") return handleExtract(req, res);
   if (url.pathname === "/api/import" && req.method === "POST") return handleImport(req, res);
+  if (url.pathname === "/api/voice" && req.method === "POST") return handleVoice(req, res);
   const exp = url.pathname.match(/^\/api\/export\/(json|csv|zip)$/);
   if (exp && req.method === "GET") return handleExport(exp[1], res);
   if ((url.pathname === "/relatorio" || url.pathname === "/relatorio.pdf") && req.method === "GET") {

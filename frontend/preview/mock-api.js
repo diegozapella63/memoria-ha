@@ -50,7 +50,7 @@ export class MockApi {
 
   async bootstrap() {
     await wait(60);
-    return { version: "1.6.0", user: { name: "Ana Souza" }, ai: await this.aiStatus(), data: clone(this.data) };
+    return { version: "1.7.0", user: { name: "Ana Souza" }, ai: await this.aiStatus(), data: clone(this.data) };
   }
 
   async aiStatus() {
@@ -188,6 +188,43 @@ export class MockApi {
     const res = { periods: clone(d.periods), app: clone(d.app) };
     this.emit({ kind: "settings", ...res });
     return res;
+  }
+
+  // Falar: the speech-to-text of Home Assistant, simulated (the microphone is the browser's)
+  async voiceStatus() {
+    await wait(120);
+    const options = [
+      { id: "stt.home_assistant_cloud", name: "Home Assistant Cloud" },
+      { id: "stt.faster_whisper", name: "faster-whisper" },
+    ];
+    const sel = this.data.app.voice_engine || "";
+    const chosen = options.find((o) => o.id === sel);
+    return { ready: true, engine: (chosen || options[0]).id, name: (chosen || options[0]).name, chosen: !!chosen, selected: sel, missing: false, options, auto: { engine: options[0].id, name: options[0].name } };
+  }
+
+  async voiceText(pcm) {
+    await wait(700);
+    if (!pcm || pcm.length < 16000 * 0.4) throw Object.assign(new Error("Não ouvi nada. Toque no microfone e fale."), { code: "invalid_format" });
+    return { text: "Lembrar de comprar pão, regar as plantas e ligar para a Ana às seis", engine: "stt.home_assistant_cloud", name: "Home Assistant Cloud" };
+  }
+
+  // Conversa, simulated: "crie uma folha no BLOCO com TEXTO" and "acrescente TEXTO na folha N do BLOCO" propose actions
+  async chat(messages, context) {
+    await wait(700);
+    const last = (messages[messages.length - 1] || {}).text || "";
+    const block = (name) => (context.blocos || []).find((b) => b.nome.toLowerCase() === String(name).trim().toLowerCase());
+    let m;
+    if ((m = /crie uma folha no (.+?) com (.+)$/i.exec(last)) && block(m[1])) {
+      const b = block(m[1]);
+      return { reply: `Posso criar uma folha em ${b.nome}.`, actions: [{ tipo: "criar", bloco: b.id, nome: b.nome, texto: m[2].replace(/;\s*/g, "\n") }], provider: "Google AI Task" };
+    }
+    if ((m = /acrescente (.+?) na folha (\d+) do (.+?)$/i.exec(last)) && block(m[3])) {
+      const b = block(m[3]);
+      const f = b.folhas.find((x) => x.n === Number(m[2]));
+      if (f) return { reply: `Posso acrescentar na folha ${f.n} de ${b.nome}.`, actions: [{ tipo: "acrescentar", bloco: b.id, nome: b.nome, folha: f.n, titulo: f.titulo, texto: m[1] }], provider: "Google AI Task" };
+    }
+    const open = (context.blocos || []).find((b) => b.aberto);
+    return { reply: open ? `Na prévia eu só simulo. Você está em ${open.nome}, com ${open.total} ${open.total === 1 ? "folha" : "folhas"}.` : "Na prévia eu só simulo a conversa. No app, quem responde é a IA do Home Assistant.", actions: [], provider: "Google AI Task" };
   }
 
   // Dados: in the preview nothing leaves the page.

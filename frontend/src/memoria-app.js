@@ -5,6 +5,9 @@ import { styles, notebookStyles } from "./styles.js";
 import { aboutPage, aboutStyles } from "./about.js";
 import { themePicker, colorPicker, lookStyles, colorOfDay } from "./look.js";
 import { swipeStart, swipeEnd, slideIn } from "./swipe.js";
+import { chatStyles } from "./chat.js";
+import { ChatMixin } from "./chat-panel.js";
+import { Recorder, micError, VOICE_RATE, VOICE_MAX_S } from "./voice.js";
 import { PALETTE, colorById, colorVars, hexToRgba, fold, foldKeepLength, plural, clip, writtenAt, newId, firstLine, prepareImage } from "./util.js";
 import { parentHass, detectDark } from "./api.js";
 import { parseLinks, hasLinks, linksToText, normalizeUrl, linkMarkdown } from "../../memoria/rootfs/app/lib/links.js";
@@ -45,7 +48,7 @@ const byCreated = (a, b) => a.created - b.created || (a.id < b.id ? -1 : 1);
 const periodOf = (id) => PERIODS.find((p) => p.id === id);
 const reduceMotion = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
-class MemoriaApp extends LitElement {
+class MemoriaApp extends ChatMixin(LitElement) {
   static properties = {
     api: { attribute: false },
     env: { attribute: false },
@@ -69,7 +72,7 @@ class MemoriaApp extends LitElement {
     _editing: { state: true },
   };
 
-  static styles = [styles, notebookStyles, aboutStyles, unsafeCSS(lookStyles)];
+  static styles = [styles, notebookStyles, aboutStyles, unsafeCSS(lookStyles), unsafeCSS(chatStyles)];
 
   constructor() {
     super();
@@ -96,6 +99,7 @@ class MemoriaApp extends LitElement {
     this._user = { name: "" };
     this._ai = { ready: false, images: false, entities: [] };
     this._aiAt = 0;
+    this._voice = null; // Falar: the speech-to-text of Home Assistant
     this._backups = null; // {available, folder, backups}
     this._version = "";
     this._saving = new Map(); // page id -> {timer, inflight, dirty, sentText}
@@ -141,6 +145,8 @@ class MemoriaApp extends LitElement {
     clearTimeout(this._toastTimer);
     clearTimeout(this._turnTimer);
     this._stopStream();
+    this._stopVoice();
+    this._chatStop();
     for (const id of [...this._saving.keys()]) this._flushSave(id);
   }
 
@@ -151,6 +157,7 @@ class MemoriaApp extends LitElement {
 
   updated(changed) {
     this.toggleAttribute("dark", this._dark);
+    this._chatAfterRender();
     if (changed.has("_dark")) {
       // the page around the app too (behind the keyboard and the edges of the phone)
       document.documentElement.style.colorScheme = this._dark ? "dark" : "light";
@@ -227,6 +234,10 @@ class MemoriaApp extends LitElement {
       this._data = { ...data, pages };
       this._ready = true;
       this._bootError = null;
+      if (this._aiOn() && !this._voiceAsked) {
+        this._voiceAsked = true;
+        this._loadVoice();
+      }
       if (!this._pad || !this._block(this._pad.block)) this._enterView();
       if (again) for (const [id, s] of this._saving) if (s.dirty) this._flushSave(id);
       this._tick();
@@ -367,8 +378,10 @@ class MemoriaApp extends LitElement {
       return;
     } else if (ev.kind === "settings") {
       const aiChanged = (ev.app && ev.app.ai_entity) !== this._app("ai_entity", undefined);
+      const wasOn = this._aiOn();
       this._data = { ...this._data, periods: ev.periods, app: ev.app };
       if (aiChanged) this._refreshAi();
+      if (!wasOn && this._aiOn()) this._loadVoice();
     }
     this._tick();
   }
@@ -607,7 +620,10 @@ class MemoriaApp extends LitElement {
     }
     if (v.name === "config") {
       const tab = this._configTab();
-      if (tab === "integracoes") this._refreshAi(false);
+      if (tab === "integracoes") {
+        this._refreshAi(false);
+        if (this._aiOn() && !this._voice) this._loadVoice();
+      }
       if (tab === "dados") this._loadBackups();
     }
   }
@@ -920,6 +936,8 @@ class MemoriaApp extends LitElement {
       }
     }
     if (this._sheet && !(history.state && history.state.rvSheet)) {
+      this._stopVoice();
+      this._chatStop();
       this._sheet = null;
       this._form = null;
     }
@@ -955,6 +973,8 @@ class MemoriaApp extends LitElement {
   _closeSheet() {
     if (!this._sheet) return Promise.resolve();
     this._releaseImages();
+    this._stopVoice();
+    if (this._sheet === "chat") this._chatStop();
     const sub = !!this._parentSheet;
     this._parentSheet = null;
     this._sheet = null;
@@ -1007,7 +1027,172 @@ class MemoriaApp extends LitElement {
     return name.trim().split(/\s+/)[0];
   }
 
-  // ------------------------------------------------------------ AI (Mais › Leitura por IA)
+  // ------------------------------------------------------------ AI (Mais › Configurações › Integrações)
+
+  /** Usar IA: on unless turned off (off, no reading by AI, no Falar, no Conversa). */
+  _aiOn() {
+    return this._app("ai_off", false) !== true;
+  }
+
+  /** The AI as the screens see it: with Usar IA off, none. */
+  _aiEff() {
+    return this._aiOn() ? this._ai || {} : { ready: false, images: false, entities: [], off: true };
+  }
+
+  async _setAiOn(on) {
+    await this._saveSettings({ app: { ai_off: on ? null : true } });
+    if (on) {
+      this._refreshAi();
+      this._loadVoice(true);
+    }
+  }
+
+  // ------------------------------------------------------------ Falar
+
+  /** Whether Falar works here (the speech-to-text of Home Assistant). */
+  async _loadVoice(fresh = false) {
+    if (!this.api || !this.api.voiceStatus) return;
+    try {
+      this._voice = await this.api.voiceStatus(fresh);
+    } catch (err) {
+      this._voice = { ready: false, reason: err.message };
+    }
+    this.requestUpdate();
+  }
+
+  /** Mais › Configurações › Integrações › Falar: the speech-to-text the app uses ("" = the voice assistant's). */
+  async _chooseVoice(id) {
+    await this._saveSettings({ app: { voice_engine: id || null } });
+    await this._loadVoice(true);
+    this._showToast("Fala para texto atualizada");
+  }
+
+  /** Falar, at the top right of the screens: say a sheet; the AI organizes it and you review. */
+  _renderMicBtn() {
+    if (!this._aiOn() || !this._voice || !this._voice.ready) return nothing;
+    return html`<button class="mic-top" aria-label="Falar: criar uma folha falando" title="Falar" @click=${() => this._openNew("voice")}>${icon("mic")}</button>`;
+  }
+
+  async _startVoice() {
+    if (this._rec || !this._form) return;
+    this._setForm({ step: "voice", rec: "starting", secs: 0, level: 0, error: null });
+    const rec = new Recorder((lvl) => (this._voiceLevel = lvl));
+    this._rec = rec;
+    try {
+      await rec.start();
+    } catch (err) {
+      rec.cancel();
+      if (this._rec === rec) this._rec = null;
+      if (this._form && this._form.step === "voice") this._setForm({ rec: "off", error: micError(err) });
+      return;
+    }
+    if (this._rec !== rec || !this._form || this._form.step !== "voice") return rec.cancel();
+    this._setForm({ rec: "on" });
+    clearInterval(this._recTimer);
+    this._recTimer = setInterval(() => {
+      if (this._rec !== rec) return clearInterval(this._recTimer);
+      const secs = rec.seconds();
+      this._setForm({ secs, level: this._voiceLevel || 0 });
+      if (secs >= VOICE_MAX_S) this._finishVoice();
+    }, 120);
+  }
+
+  _stopVoice() {
+    clearInterval(this._recTimer);
+    if (this._rec) this._rec.cancel();
+    this._rec = null;
+  }
+
+  async _finishVoice() {
+    const rec = this._rec;
+    if (!rec) return;
+    clearInterval(this._recTimer);
+    this._rec = null;
+    const pcm = rec.stop();
+    if (pcm.length < VOICE_RATE * 0.4) {
+      this._setForm({ rec: "off", error: "Não ouvi nada. Toque no microfone e fale." });
+      return;
+    }
+    const token = (this._importToken = Date.now());
+    this._setForm({ step: "loading", error: null, prevStep: "voice", loadingText: "Transcrevendo o que você disse…" });
+    try {
+      const r = await this.api.voiceText(pcm);
+      if (this._importToken !== token || this._sheet !== "new") return;
+      // what was said is read like a pasted message: the AI organizes it, you review
+      this._setForm({ text: r.text, heard: r.text });
+      this._readText(true);
+    } catch (err) {
+      if (this._importToken !== token || this._sheet !== "new") return;
+      this._setForm({ step: "voice", rec: "off", error: err.message || "Não consegui transcrever." });
+    }
+  }
+
+  _renderVoiceStep(head) {
+    const f = this._form;
+    const on = f.rec === "on";
+    const mm = Math.floor((f.secs || 0) / 60);
+    const ss = String(Math.floor((f.secs || 0) % 60)).padStart(2, "0");
+    const target = this._block(f.target);
+    return html`
+      ${head}
+      <div class="voice ${on ? "on" : ""}">
+        <button class="voice-mic" style="--lvl:${on ? (f.level || 0).toFixed(2) : 0}" aria-label=${on ? "Pronto: usar o que falei" : "Começar a falar"} @click=${() => (on ? this._finishVoice() : this._startVoice())}>
+          <span class="voice-ring"></span>${icon(on ? "check" : "mic")}
+        </button>
+        <div class="voice-state">${on ? html`<b>Ouvindo…</b> <span class="voice-time">${mm}:${ss}</span>` : f.rec === "starting" ? "Abrindo o microfone…" : "Toque no microfone e fale"}</div>
+        <p class="voice-hint">${on ? "Toque de novo quando terminar." : html`Por exemplo: <i>“Reunião de sexta: levar o orçamento e confirmar o horário com a Ana”</i>.`}</p>
+        ${target ? html`<p class="voice-hint">Vai para <b>${target.name}</b> (dá para trocar na revisão).</p>` : nothing}
+      </div>
+      ${f.error ? html`<div class="imp-error">${icon("circle-alert")}<span>${f.error}</span></div>` : nothing}
+      <div class="sheet-actions">
+        <button class="btn outline" @click=${() => (this._stopVoice(), this._closeSheet())}>Cancelar</button>
+        <button class="btn primary" ?disabled=${!on} @click=${() => this._finishVoice()}>${icon("sparkles")}Pronto</button>
+      </div>
+    `;
+  }
+
+  /** Mais › Configurações › Integrações › Falar. */
+  _renderVoicePanel() {
+    const v = this._voice;
+    const sel = this._app("voice_engine", "") || "";
+    const opts = (v && v.options) || [];
+    const checking = !v || this._voiceChecking;
+    const tone = checking ? "off" : v.ready && !v.missing ? "ok" : v.ready ? "warn" : "bad";
+    const title = checking ? "Verificando…" : v.ready ? "Pronto para ouvir" : "Sem fala para texto";
+    const detail = checking ? "" : v.ready ? `Transcreve com ${v.name}.${v.missing ? " O escolhido não foi encontrado: usando o automático." : ""}` : v.reason || "";
+    const again = async () => {
+      this._voiceChecking = true;
+      this.requestUpdate();
+      await this._loadVoice(true);
+      this._voiceChecking = false;
+      this.requestUpdate();
+    };
+    return html`<div class="panel" id="falar">
+      ${this._secHead("mic", "Falar", "Quem transforma a fala em texto. Não muda o assistente de voz do Home Assistant.")}
+      <div class="ai-state ${tone}"><span class="dot"></span><div><b>${title}</b>${detail ? html`<span>${detail}</span>` : nothing}</div></div>
+      ${opts.length || sel
+        ? html`<label class="field" style="margin:14px 0 0">
+            <span class="flabel">Fala para texto</span>
+            <select class="select" aria-label="Fala para texto" @change=${(e) => this._chooseVoice(e.target.value)}>
+              <option value="" ?selected=${!sel}>Automático${v && v.auto ? `: ${v.auto.name}` : ""}</option>
+              ${opts.map((o) => html`<option value=${o.id} ?selected=${o.id === sel}>${o.name}</option>`)}
+              ${sel && !opts.some((o) => o.id === sel) ? html`<option value=${sel} selected>${sel} (não encontrado)</option>` : nothing}
+            </select>
+          </label>`
+        : nothing}
+      <div class="ai-actions"><button class="btn outline" ?disabled=${checking} @click=${again}>${icon("rotate-ccw")}Verificar de novo</button></div>
+      ${v && !v.ready
+        ? html`<div class="steps-box">
+            <b>Como configurar</b>
+            <ol class="steps">
+              <li>Com o Home Assistant Cloud, a fala para texto já vem pronta.</li>
+              <li>Sem ele, instale um motor de fala: o app Whisper (local, de graça) com a integração Wyoming, ou a fala para texto de uma IA como Google Gemini ou OpenAI.</li>
+              <li>Volte aqui, toque em Verificar de novo e escolha o motor na lista.</li>
+            </ol>
+          </div>`
+        : nothing}
+    </div>`;
+  }
 
   async _refreshAi(force = true) {
     if (!force && Date.now() - this._aiAt < 60000) return;
@@ -1480,7 +1665,8 @@ class MemoriaApp extends LitElement {
     }
     this._releaseImages();
     this._importToken = 0;
-    const opening = this._openSheet("new", { target, step: start === "text" ? "text" : "pick", text: "", images: [], result: "", provider: null, error: null, note: null });
+    const opening = this._openSheet("new", { target, step: start === "text" ? "text" : start === "voice" ? "voice" : "pick", text: "", images: [], result: "", provider: null, error: null, note: null });
+    if (start === "voice") this.updateComplete.then(() => this._startVoice());
     if (start === "photos") this._pickFiles("photos");
     if (start === "scan") this._openCamera();
     if (start === "text") this._focusSheetText();
@@ -1578,8 +1764,8 @@ class MemoriaApp extends LitElement {
       this._focusSheetText();
       return;
     }
-    if (useAi && this._ai.ready) {
-      this._setForm({ step: "loading", error: null, note: null, prevStep: "text", loadingText: "Organizando com IA…" });
+    if (useAi && this._aiEff().ready) {
+      this._setForm({ step: "loading", error: null, note: null, prevStep: this._form.heard ? "voice" : "text", loadingText: "Organizando com IA…" });
       this._runExtract({ text });
       return;
     }
@@ -1779,7 +1965,7 @@ class MemoriaApp extends LitElement {
     const name = this._userName();
     const st = !this._online ? { text: "Reconectando ao MemorIA…", tone: "off" } : status;
     return html`<header class="brand-head">
-      <p class="eyebrow"><span class="brand">Memor<span>IA</span></span>${name ? ` · Olá, ${name}` : ""}</p>
+      <div class="head-row"><p class="eyebrow"><span class="brand">Memor<span>IA</span></span>${name ? ` · Olá, ${name}` : ""}</p>${this._renderChatBtn()}${this._renderMicBtn()}</div>
       ${up ? html`<button class="uplink" @click=${() => this._toMenu()}>${icon("chevron-left")}Mais</button>` : nothing}
       <h1 class="page-title">${title}</h1>
       ${st ? html`<p class="status"><span class="dot ${st.tone || ""}" aria-hidden="true"></span><span>${st.text}</span>${st.extra || nothing}</p>` : nothing}
@@ -2089,6 +2275,7 @@ class MemoriaApp extends LitElement {
             <div class="overline">${[this._cat(b.category) && this._cat(b.category).name, plural(n, "folha", "folhas"), PAPER_LABEL[b.paper] || ""].filter(Boolean).join(" · ")}</div>
             <h1 class="display">${b.name}</h1>
           </div>
+          ${this._renderChatBtn()}${this._renderMicBtn()}
           <button class="icon-btn" @click=${() => this._openBlockSheet(b)} aria-label="Ajustes do bloco">${icon("sliders-horizontal")}</button>
         </div>
         <button class="when-line" @click=${() => this._openBlockSheet(b)}>
@@ -2254,7 +2441,7 @@ class MemoriaApp extends LitElement {
       this._go(this._configPath(k), true, history.state && history.state.rvUp ? { rvUp: true } : null);
     };
     let body;
-    if (tab === "integracoes") body = html`${this._renderAiPanel()} ${this._renderSensorPanel()}`;
+    if (tab === "integracoes") body = html`${this._renderAiPanel()} ${this._aiOn() && this.api.voiceStatus ? this._renderVoicePanel() : nothing} ${this._renderSensorPanel()}`;
     else if (tab === "dados") body = this._renderDataPanel();
     else if (tab === "aparencia") body = this._renderAppearanceTab();
     else body = this._renderOptionsTab();
@@ -2424,8 +2611,15 @@ class MemoriaApp extends LitElement {
       if (ai.photos) detail += ` Para fotos, ${ai.photos.name}.`;
     }
     if (ai.reason) detail = `${detail} ${ai.reason}`.trim();
+    const on = this._aiOn();
+    const head = html`${this._secHead("sparkles", "Leitura por IA", "Lê mensagens coladas, prints e fotos de anotações em papel para criar folhas, com a IA configurada no Home Assistant. O app não guarda nenhuma chave.")}
+      <div class="row switch-row ai-switch">
+        <div class="grow"><div class="label">Usar IA</div><div class="hint" style="white-space:normal">${on ? "Ligado." : "Desligado: sem leitura por IA, sem Falar e sem Conversar."}</div></div>
+        ${this._switch(on, "Usar IA", (e) => this._setAiOn(e.target.checked))}
+      </div>`;
+    if (!on) return html`<div class="panel" id="leitura-ia">${head}</div>`;
     return html`<div class="panel" id="leitura-ia">
-      ${this._secHead("sparkles", "Leitura por IA", "Lê mensagens coladas, prints e fotos de anotações em papel para criar folhas, com a IA configurada no Home Assistant. O app não guarda nenhuma chave.")}
+      ${head}
       <div class="ai-state ${tone}"><span class="dot"></span><div><b>${title}</b>${detail ? html`<span>${detail}</span>` : nothing}</div></div>
       ${ents.length || sel
         ? html`<label class="field" style="margin:14px 0 0">
@@ -2461,6 +2655,7 @@ class MemoriaApp extends LitElement {
     if (this._sheet === "block") body = this._renderBlockSheet();
     else if (this._sheet === "category") body = this._renderCategorySheet();
     else if (this._sheet === "link") body = this._renderLinkSheet();
+    else if (this._sheet === "chat") body = this._renderChatSheet();
     else if (this._sheet === "pagemenu") body = this._renderPageMenu();
     else if (this._sheet === "new") body = this._renderNewSheet();
     else if (this._sheet === "confirm") body = this._renderConfirm();
@@ -2624,7 +2819,7 @@ class MemoriaApp extends LitElement {
 
   _renderNewSheet() {
     const f = this._form;
-    const ai = this._ai || {};
+    const ai = this._aiEff();
     const blocks = this._blocks();
     const target = this._block(f.target);
     const toPick = () => {
@@ -2656,9 +2851,11 @@ class MemoriaApp extends LitElement {
           ${ai.ready ? html`<button class="btn outline" ?disabled=${!(f.text || "").trim()} @click=${() => this._readText(false)}>Como está</button>` : nothing}
           <button class="btn primary" ?disabled=${!(f.text || "").trim()} @click=${() => this._readText(true)}>${ai.ready ? html`${icon("sparkles")}Organizar` : "Criar folha"}</button>
         </div>
-        <p class="sheet-note">${ai.ready ? `${ai.using.name} limpa a mensagem e deixa como uma anotação. Você revisa antes de salvar.` : "Sem IA configurada: a mensagem vira uma folha do jeito que está."}</p>
+        <p class="sheet-note">${ai.ready ? `${ai.using.name} limpa a mensagem e deixa como uma anotação. Você revisa antes de salvar.` : ai.off ? "A mensagem vira uma folha do jeito que está." : "Sem IA configurada: a mensagem vira uma folha do jeito que está."}</p>
       `;
     }
+
+    if (f.step === "voice") return this._renderVoiceStep(this._sheetHead("Falar", () => (this._stopVoice(), toPick())));
 
     if (f.step === "loading") {
       return html`
@@ -2680,6 +2877,7 @@ class MemoriaApp extends LitElement {
         ${this._sheetHead("Revisar folha", toPick)}
         ${thumbs}
         <p class="sheet-note top">${from ? `${from[0].toUpperCase()}${from.slice(1)}. ` : ""}Corrija o que precisar antes de salvar.</p>
+        ${f.heard ? html`<div class="heard">${icon("mic")}<span>${f.heard}</span></div>` : nothing}
         ${f.note ? html`<div class="imp-error soft">${icon("sparkles")}<span>${f.note}</span></div>` : nothing}
         <textarea class="review-text" .value=${f.result} aria-label="Texto da folha" @input=${(e) => this._setForm({ result: e.target.value })}></textarea>
         ${ai.images
@@ -2702,23 +2900,32 @@ class MemoriaApp extends LitElement {
         <button class="main" @click=${() => this._write()}>${icon("pen-line")}<span>Escrever${target && blocks.length <= 1 ? ` em ${clip(target.name, 20)}` : ""}</span></button>
       </div>
       <div class="imp-options">
+        ${ai.ready && this._voice && this._voice.ready
+          ? html`<button class="imp-opt" @click=${() => (this._setForm({ step: "voice", error: null, heard: "" }), this.updateComplete.then(() => this._startVoice()))}>
+              <span class="imp-ic">${icon("mic")}</span>
+              <span class="imp-tx"><b>Falar</b><small>Diga a anotação; a IA organiza</small></span>
+              ${icon("chevron-right")}
+            </button>`
+          : nothing}
         <button class="imp-opt" @click=${() => (this._setForm({ step: "text", error: null }), this._focusSheetText())}>
           <span class="imp-ic">${icon("message-square-text")}</span>
           <span class="imp-tx"><b>Colar mensagem</b><small>WhatsApp, e-mail, anotação</small></span>
           ${icon("chevron-right")}
         </button>
-        <button class="imp-opt" ?disabled=${!ai.images} @click=${() => this._pickFiles("photos")}>
-          <span class="imp-ic">${icon("images")}</span>
-          <span class="imp-tx"><b>Escolher fotos</b><small>${this._isHaAndroid() ? "Prints e fotos da galeria, uma por vez" : "Prints e fotos da galeria (até 6)"}</small></span>
-          ${icon("chevron-right")}
-        </button>
-        <button class="imp-opt" ?disabled=${!ai.images} @click=${() => this._openCamera()}>
-          <span class="imp-ic">${icon("scan-text")}</span>
-          <span class="imp-tx"><b>Digitalizar com IA</b><small>Fotografe uma anotação em papel</small></span>
-          ${icon("chevron-right")}
-        </button>
+        ${ai.off
+          ? nothing
+          : html`<button class="imp-opt" ?disabled=${!ai.images} @click=${() => this._pickFiles("photos")}>
+                <span class="imp-ic">${icon("images")}</span>
+                <span class="imp-tx"><b>Escolher fotos</b><small>${this._isHaAndroid() ? "Prints e fotos da galeria, uma por vez" : "Prints e fotos da galeria (até 6)"}</small></span>
+                ${icon("chevron-right")}
+              </button>
+              <button class="imp-opt" ?disabled=${!ai.images} @click=${() => this._openCamera()}>
+                <span class="imp-ic">${icon("scan-text")}</span>
+                <span class="imp-tx"><b>Digitalizar com IA</b><small>Fotografe uma anotação em papel</small></span>
+                ${icon("chevron-right")}
+              </button>`}
       </div>
-      ${!ai.images
+      ${!ai.images && !ai.off
         ? html`<div class="imp-error soft">${icon("sparkles")}<span>${ai.reason || "Para ler fotos, o Home Assistant precisa de uma integração de IA com tarefa de IA que entenda imagens."}
             <button class="text-btn inline" @click=${() => this._openAiSettings()}>Ver Leitura por IA</button></span></div>`
         : nothing}

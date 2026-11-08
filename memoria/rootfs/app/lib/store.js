@@ -135,8 +135,10 @@ export function normalize(raw, current = {}) {
   if (a.accent_daily === false) app.accent_daily = false;
   if (typeof a.hand === "boolean") app.hand = a.hand;
   if (typeof a.sensor === "boolean") app.sensor = a.sensor;
-  // The AI belongs to this Home Assistant, not to the file.
+  if (a.ai_off === true) app.ai_off = true;
+  // The AI and the speech-to-text belong to this Home Assistant, not to the file.
   if (current.ai_entity) app.ai_entity = current.ai_entity;
+  if (current.voice_engine) app.voice_engine = current.voice_engine;
   return { version: 1, periods, app, categories, blocks, pages };
 }
 
@@ -382,6 +384,10 @@ export class Store {
       if ("sensor" in app) next.sensor = Boolean(app.sensor);
       // "" = the AI Home Assistant prefers.
       if ("ai_entity" in app) next.ai_entity = /^ai_task\.[a-z0-9_]+$/.test(app.ai_entity || "") ? app.ai_entity : undefined;
+      // Usar IA (on unless turned off): off, no reading by AI, no Falar, no Conversa
+      if ("ai_off" in app) next.ai_off = app.ai_off === true ? true : undefined;
+      // Falar: the speech-to-text ("" = the one of the voice assistant)
+      if ("voice_engine" in app) next.voice_engine = /^stt\.[a-z0-9_]+$/.test(app.voice_engine || "") ? app.voice_engine : undefined;
       this.data.app = Object.fromEntries(Object.entries(next).filter(([, v]) => v !== undefined));
     }
     this.save();

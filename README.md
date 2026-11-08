@@ -37,6 +37,7 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **No ⋯ da folha**: horário próprio, mover para outro bloco, adicionar link, copiar o texto ou arrancar a folha, com Desfazer.
 - **Links que abrem com um toque**: endereços na folha viram etiquetas curtas (o nome, ou o site), sem aquele texto comprido.
 - **Nova folha de mensagem ou foto**: cole uma mensagem do WhatsApp, escolha fotos ou digitalize uma anotação em papel; a IA configurada no Home Assistant (Claude, OpenAI, Gemini ou Ollama) transcreve e você revisa. Escolha qual em **Mais → Configurações → Integrações**.
+- **Falar e Conversar com a IA**, no alto das telas: diga uma anotação (a fala para texto do Home Assistant transcreve e a IA organiza) ou converse sobre os blocos; o que a IA propõe escrever só acontece depois do seu toque.
 - **Buscar** em todas as folhas, sem se importar com acentos.
 - **Sensor** `sensor.memoria_agora` com o bloco e a folha do momento, para painéis e automações.
 - **Salvo no Home Assistant**: sincroniza na hora entre aparelhos e entra no backup.
@@ -68,6 +69,8 @@ MEMORIA_DEV=1 HA_WS_URL=ws://127.0.0.1:8123/api/websocket HA_REST_URL=http://127
 ```
 
 Testes: `npm test` (servidor, com `node:test`) e as conferências visuais na prévia (Playwright), descritas em [tests/README.md](tests/README.md). O GitHub roda todos a cada push.
+
+Arquivos iguais aos dos outros apps da família (ao mudar um, mude nos outros): `frontend/src/selectsheet.js`, `about.js`, `look.js`, `swipe.js`, `voice.js` e `chat.js` (os do ResolvIA e da CronologIA) e `memoria/rootfs/app/lib/ws.js`, `ha.js` e `voice.js` (os de `lib/` do ResolvIA). O `lib/pdf.js` é o do ResolvIA, com o nome do app como opção.
 
 O HA falso simula duas IAs (`ai_task.google_ai_task`, que lê fotos, e `ai_task.ollama_ai_task`, só texto) e recebe o `sensor.memoria_agora`; use `FAKE_MEDIA_DIR` igual a `MEDIA_DIR` para testar a leitura de fotos, ou `FAKE_HA_NO_AI=1` para testar sem IA. A prévia (`preview/memoria-preview.html`) abre direto no navegador, sem servidor.
 

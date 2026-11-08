@@ -234,6 +234,32 @@ export class Api {
     return this.call("memoria/ai/status");
   }
 
+  /** Falar: whether the speech-to-text of Home Assistant works, and the engines to choose from. */
+  voiceStatus(fresh = false) {
+    return this.call("memoria/voice/status", fresh ? { fresh: true } : {});
+  }
+
+  /** Falar: raw PCM (16 kHz, 16-bit, mono) -> {text, engine}. */
+  async voiceText(pcm) {
+    const res = await fetch(new URL("api/voice", location.href), {
+      method: "POST",
+      headers: { "content-type": "application/octet-stream" },
+      body: pcm.buffer.slice(pcm.byteOffset, pcm.byteOffset + pcm.byteLength),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(body.error || `Erro ${res.status}`);
+      err.code = body.code;
+      throw err;
+    }
+    return body;
+  }
+
+  /** Conversa: one turn -> {reply, actions, provider}. */
+  chat(messages, context) {
+    return this.call("memoria/ai/chat", { messages, context });
+  }
+
   /** Mais › Relatório: a page of the server (with Baixar PDF). */
   reportUrl(query) {
     return new URL(`relatorio?${query}`, location.href).href;
