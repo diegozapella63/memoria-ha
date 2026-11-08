@@ -4,8 +4,12 @@
 // the screen (savePage, deletePage, saveBlock, saveCategory) and the same rules (lib/writing.js, lib/links.js), and
 // every screen hears the change like one made on another device.
 //
+// Archived blocks stay out of the summary and of the search unless asked (arquivados), can be read when named, and
+// their sheets don't change until the block comes back (editar_bloco, arquivado: false). De quem é (de): the summary
+// shows the block of the moment for the person who asks, like the Agora of the screen.
+//
 // Each tool: {nome, titulo, descricao, entrada (JSON Schema), grava, apaga}. callTool() returns {texto, events}.
-import { PERIODS, PAPERS, normTime, buildSchedule, currentAt, nextAfter, minutesOf, fmtMin, periodAt, periodTimes } from "./schedule.js";
+import { PERIODS, PAPERS, normTime, buildSchedule, currentAt, nextAfter, minutesOf, fmtMin, periodAt, periodTimes, ownerName } from "./schedule.js";
 import { parseLinks, linksToText, normalizeUrl } from "./links.js";
 import { fold, firstLine, appendText, appendLink, freeColor } from "./writing.js";
 import { sheetText } from "./chat.js";
@@ -21,7 +25,10 @@ export const INSTRUCOES =
   "MemorIA: as anotações da casa em blocos (cadernos), cada um com folhas de texto; a primeira linha da folha é o título. " +
   "Um bloco pode ter categoria e abrir sozinho de manhã, à tarde, à noite ou em horários (HH:MM). Comece por memoria_resumo " +
   "(os blocos, as últimas folhas e os ids) ou memoria_buscar; uma folha se acha pelo id ou pelo bloco e o número. Links ficam " +
-  "no texto como [Nome](https://…). Datas no formato AAAA-MM-DD. Antes de gravar, diga à pessoa o que vai ser feito.";
+  "no texto como [Nome](https://…). Um bloco pode ser de uma pessoa da casa (de; sem dono, é de todos): só ela o vê no " +
+  "Agora. Blocos arquivados ficam fora do resumo e da busca (peça com arquivados: true) e só voltam a receber folhas " +
+  "depois de desarquivados (memoria_editar_bloco com arquivado: false). Datas no formato AAAA-MM-DD. Antes de gravar, " +
+  "diga à pessoa o que vai ser feito.";
 
 export class ToolError extends Error {}
 export class UnknownTool extends Error {}
@@ -37,8 +44,10 @@ const SHEET = {
   numero: { type: "integer", description: "Com o bloco: o número da folha no bloco (1 é a primeira, -1 a última)." },
 };
 const TIMES = { type: "array", items: { type: "string" }, description: "Horários HH:MM, como 07:00 e 22:30." };
+const ARCHIVED = { type: "boolean", description: "true: inclui os blocos arquivados." };
 const BLOCK_FIELDS = {
   categoria: { type: "string", description: "O id ou o nome da categoria." },
+  de: { type: "string", description: "De quem é: o nome de uma pessoa da casa (só ela vê o bloco no Agora); vazio ou Todos: de todos." },
   cor: { type: "string", enum: COLORS },
   papel: { type: "string", enum: PAPERS },
   periodos: { type: "array", items: { type: "string", enum: PERIOD_IDS }, description: "Quando abre sozinho: manha, tarde e noite." },
@@ -51,9 +60,10 @@ export const FERRAMENTAS = [
     titulo: "Resumo das anotações",
     grava: false,
     descricao:
-      "Visão geral: as categorias, os blocos (categoria, quando abrem sozinhos e quantas folhas têm) com as últimas folhas " +
-      "de cada um (número, título, quando foi editada e o id) e o bloco do momento. Comece por aqui: os ids servem nas outras ferramentas.",
-    entrada: obj({}),
+      "Visão geral: as categorias, os blocos (categoria, de quem é, quando abrem sozinhos e quantas folhas têm) com as " +
+      "últimas folhas de cada um (número, título, quando foi editada e o id) e o bloco do momento para quem pergunta (os " +
+      "dela e os de todos, como o Agora do app). Os arquivados só com arquivados: true. Comece por aqui: os ids servem nas outras ferramentas.",
+    entrada: obj({ arquivados: ARCHIVED }),
   },
   {
     nome: "buscar",
@@ -61,7 +71,8 @@ export const FERRAMENTAS = [
     grava: false,
     descricao:
       "Procura um texto em todas as folhas, sem se importar com acentos (como o Buscar do app), e/ou as folhas escritas ou " +
-      "editadas num período; dá para limitar a um bloco ou a uma categoria. Sem nada, as editadas por último. Devolve cada " +
+      "editadas num período; dá para limitar a um bloco ou a uma categoria. Sem nada, as editadas por último. Os blocos " +
+      "arquivados ficam de fora, a não ser com arquivados: true ou pedindo o bloco. Devolve cada " +
       "folha com o bloco, o número, o título, um trecho e o id, das mais recentes para as mais antigas.",
     entrada: obj({
       texto: { type: "string", description: "Uma palavra ou um trecho." },
@@ -69,6 +80,7 @@ export const FERRAMENTAS = [
       categoria: { type: "string", description: "O id ou o nome da categoria." },
       de: DATE,
       ate: DATE,
+      arquivados: ARCHIVED,
       limite: { type: "integer", minimum: 1, maximum: MAX_LIST, description: "Padrão: 30." },
     }),
   },
@@ -77,7 +89,7 @@ export const FERRAMENTAS = [
     titulo: "Ler um bloco",
     grava: false,
     descricao:
-      "Um bloco inteiro: a categoria, quando abre sozinho e as folhas em ordem (número, id, título, quando foi escrita e " +
+      "Um bloco inteiro (também um arquivado): a categoria, de quem é, quando abre sozinho e as folhas em ordem (número, id, título, quando foi escrita e " +
       "editada, horários e o texto completo, com os links como [Nome](https://…)). Num bloco muito grande, as primeiras folhas " +
       "vêm só com o título (leia com memoria_ler_folha).",
     entrada: obj({ bloco: BLOCK }, ["bloco"]),
@@ -145,15 +157,27 @@ export const FERRAMENTAS = [
     nome: "novo_bloco",
     titulo: "Novo bloco",
     grava: true,
-    descricao: "Cria um bloco (caderno). Sem cor, a primeira que nenhum bloco usa; sem papel, pautado. periodos e horarios: quando abre sozinho.",
+    descricao: "Cria um bloco (caderno). Sem cor, a primeira que nenhum bloco usa; sem papel, pautado; sem de, de todos. periodos e horarios: quando abre sozinho.",
     entrada: obj({ nome: { type: "string", description: "Curto, como Mercado ou Reunião de pais." }, ...BLOCK_FIELDS }, ["nome"]),
   },
   {
     nome: "editar_bloco",
     titulo: "Editar bloco",
     grava: true,
-    descricao: "Muda um bloco (só o que vier): o nome, a categoria (vazio tira a categoria), a cor, o papel e quando abre sozinho (periodos e horarios; lista vazia tira).",
-    entrada: obj({ bloco: BLOCK, nome: { type: "string" }, ...BLOCK_FIELDS, categoria: { type: "string", description: "O id ou o nome da categoria; vazio tira." } }, ["bloco"]),
+    descricao:
+      "Muda um bloco (só o que vier): o nome, a categoria (vazio tira a categoria), de quem é (vazio ou Todos: de todos), a cor, " +
+      "o papel, quando abre sozinho (periodos e horarios; lista vazia tira) e arquivado (true arquiva: sai do Agora, do resumo e " +
+      "da busca, sem apagar nada; false traz de volta).",
+    entrada: obj(
+      {
+        bloco: BLOCK,
+        nome: { type: "string" },
+        ...BLOCK_FIELDS,
+        categoria: { type: "string", description: "O id ou o nome da categoria; vazio tira." },
+        arquivado: { type: "boolean", description: "true arquiva o bloco; false desarquiva." },
+      },
+      ["bloco"],
+    ),
   },
   {
     nome: "nova_categoria",
@@ -221,11 +245,42 @@ function findByName(items, value, words, all) {
   throw new ToolError(`${words.none}: ${v}. ${all}`);
 }
 
+/** A block by the id or the name: the ones not archived first; an archived one when none of those is it. */
 function findBlock(store, value) {
-  const blocks = blocksOf(store);
+  const blocks = blocksOf(store).filter((b) => !b.archived);
+  const archived = blocksOf(store).filter((b) => b.archived);
   if (!oneLine(value, 200)) throw new ToolError(`Falta o bloco. Os blocos: ${listNames(blocks) || "nenhum"}.`);
-  const all = blocks.length ? `Os blocos: ${listNames(blocks)}.` : "Ainda não há blocos: crie com memoria_novo_bloco.";
-  return findByName(blocks, value, { none: "Bloco não encontrado", many: "Mais de um bloco" }, all);
+  const all = `${blocks.length ? `Os blocos: ${listNames(blocks)}.` : "Ainda não há blocos: crie com memoria_novo_bloco."}${archived.length ? ` Arquivados: ${listNames(archived)}.` : ""}`;
+  const words = { none: "Bloco não encontrado", many: "Mais de um bloco" };
+  try {
+    return findByName(blocks, value, words, all);
+  } catch (err) {
+    if (!archived.length || !err.message.startsWith(words.none)) throw err;
+  }
+  return findByName(archived, value, words, all);
+}
+
+/** The sheets of an archived block don't change (the screen doesn't offer it either) until it comes back. */
+function writable(block) {
+  if (block && block.archived) throw new ToolError(`O bloco ${block.name} está arquivado. Para mexer nas folhas dele, desarquive antes com memoria_editar_bloco (arquivado: false).`);
+  return block;
+}
+
+const archivedDay = (b) => (b.archived ? ymd(b.archived) : undefined);
+
+/**
+ * De quem é (de): "" or Todos = everyone's; else a person of the house (people: [{id, name}], from Home Assistant), by
+ * the name (accents and case ignored, a unique start also works) or the id (person.ana). Without the people (Home
+ * Assistant out of reach), the name as written.
+ */
+function ownerOf(v, people) {
+  const name = ownerName(oneLine(v, 200));
+  if (!name) return "";
+  if (!people || !people.length) return name.slice(0, 80);
+  const byId = people.find((p) => p.id === oneLine(v, 200));
+  if (byId) return byId.name;
+  const all = `As pessoas da casa: ${people.map((p) => p.name).join(", ")}. Vazio ou Todos: de todos.`;
+  return findByName(people, name, { none: "Pessoa não encontrada", many: "Mais de uma pessoa" }, all).name;
 }
 
 function findCategory(store, value) {
@@ -354,21 +409,26 @@ function snippet(page, query) {
 
 // ------------------------------------------------------------------ reading
 
-function resumo(store, now) {
+function resumo(store, a, now, pessoa) {
   const data = store.data;
-  const entries = buildSchedule(data);
+  const withArchived = a.arquivados === true;
+  // the block of the moment of the person who asks (theirs and everyone's), like the Agora of the screen
+  const entries = buildSchedule(data, { person: pessoa });
   const min = minutesOf(now);
   const cur = currentAt(entries, min);
   const nxt = nextAfter(entries, min);
   const period = PERIODS.find((p) => p.id === periodAt(min, periodTimes(data)));
   const curBlock = cur ? store.block(cur.main.block) : null;
   const nextBlock = nxt ? store.block(nxt.main.block) : null;
-  const agora = { periodo: period ? period.label.toLowerCase() : "" };
+  const agora = { periodo: period ? period.label.toLowerCase() : "", ...(pessoa ? { pessoa } : {}) };
   if (curBlock) Object.assign(agora, { bloco: curBlock.name, bloco_id: curBlock.id, desde: fmtMin(cur.min), ...(cur.main.page ? { folha_id: cur.main.page } : {}) });
   if (nextBlock) agora.proximo = `${fmtMin(nxt.min)} ${nextBlock.name}`;
   let budget = MAX_LIST;
   let shown = 0;
-  const blocos = blocksOf(store).map((b) => {
+  const listed = blocksOf(store).filter((b) => withArchived || !b.archived);
+  // the archived ones after the others
+  listed.sort((x, y) => Number(!!x.archived) - Number(!!y.archived));
+  const blocos = listed.map((b) => {
     const list = pagesOf(store, b.id);
     const k = Math.min(SUMMARY_PER_BLOCK, Math.max(0, budget));
     const last = k ? list.slice(-k) : [];
@@ -376,13 +436,17 @@ function resumo(store, now) {
     shown += last.length;
     const out = { id: b.id, nome: b.name };
     if (catName(store, b.category)) out.categoria = catName(store, b.category);
-    if (opens(store, b)) out.abre = opens(store, b);
+    if (b.owner) out.de = b.owner;
+    if (b.archived) out.arquivado = archivedDay(b);
+    else if (opens(store, b)) out.abre = opens(store, b);
     out.folhas = list.length;
     out.ultimas = last.map((p) => ({ n: list.indexOf(p) + 1, id: p.id, titulo: clip(titleOf(p), 120), editada: ymd(p.updated), ...(p.times && p.times.length ? { horarios: p.times.join(", ") } : {}) }));
     return out;
   });
-  const categorias = catsOf(store).map((c) => ({ id: c.id, nome: c.name, blocos: data.blocks.filter((b) => b.category === c.id).length }));
-  return json({ hoje: ymdhm(now.getTime()), agora, categorias, blocos, total_folhas: data.pages.filter((p) => store.block(p.block)).length, mostrando_folhas: shown });
+  const categorias = catsOf(store).map((c) => ({ id: c.id, nome: c.name, blocos: listed.filter((b) => b.category === c.id).length }));
+  const ids = new Set(listed.map((b) => b.id));
+  const hidden = data.blocks.filter((b) => b.archived && !ids.has(b.id)).length;
+  return json({ hoje: ymdhm(now.getTime()), agora, categorias, blocos, ...(hidden ? { blocos_arquivados: hidden } : {}), total_folhas: data.pages.filter((p) => ids.has(p.block)).length, mostrando_folhas: shown });
 }
 
 function buscar(store, a, now) {
@@ -396,11 +460,13 @@ function buscar(store, a, now) {
   const limit = has(a, "limite") ? toInt(a.limite) : 30;
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_LIST) throw new ToolError(`limite: de 1 a ${MAX_LIST}.`);
   const needle = fold(q);
+  // the archived blocks only when asked, or when the block asked is one
+  const withArchived = a.arquivados === true || !!(block && block.archived);
   const inTime = (p) => (p.created >= from && p.created <= to) || (p.updated >= from && p.updated <= to);
   const found = store.data.pages
     .filter((p) => {
       const b = store.block(p.block);
-      if (!b || (block && b.id !== block.id) || (cat && b.category !== cat.id)) return false;
+      if (!b || (b.archived && !withArchived) || (block && b.id !== block.id) || (cat && b.category !== cat.id)) return false;
       if (needle && !fold(p.text).includes(needle)) return false;
       if (!needle && !String(p.text || "").trim()) return false;
       return inTime(p);
@@ -408,7 +474,7 @@ function buscar(store, a, now) {
     .sort((x, y) => y.updated - x.updated);
   const folhas = found.slice(0, limit).map((p) => {
     const { block: b, n } = where(store, p);
-    const out = { id: p.id, bloco: b.name, bloco_id: b.id, n, titulo: clip(titleOf(p), 120) };
+    const out = { id: p.id, bloco: b.name, bloco_id: b.id, ...(b.archived ? { arquivado: true } : {}), n, titulo: clip(titleOf(p), 120) };
     const s = snippet(p, q);
     if (s) out.trecho = s;
     out.editada = ymdhm(p.updated);
@@ -439,7 +505,9 @@ function lerBloco(store, a) {
   });
   const out = { id: b.id, nome: b.name };
   if (catName(store, b.category)) out.categoria = catName(store, b.category);
-  if (opens(store, b)) out.abre = opens(store, b);
+  if (b.owner) out.de = b.owner;
+  if (b.archived) out.arquivado = archivedDay(b);
+  else if (opens(store, b)) out.abre = opens(store, b);
   Object.assign(out, { folhas_no_bloco: all.length, mostrando: folhas.length, com_texto: full.size, folhas });
   return json(out);
 }
@@ -453,6 +521,7 @@ function lerFolha(store, a) {
     id: page.id,
     bloco: block.name,
     bloco_id: block.id,
+    ...(block.archived ? { bloco_arquivado: true } : {}),
     n,
     de: total,
     titulo: titleOf(page),
@@ -467,7 +536,7 @@ function lerFolha(store, a) {
 // ------------------------------------------------------------------ writing
 
 function novaFolha(store, a) {
-  const b = findBlock(store, a.bloco);
+  const b = writable(findBlock(store, a.bloco));
   const text = checkSize(sheetBody(a.texto));
   const page = store.savePage({ block: b.id, text, times: times(a.horarios) });
   const extra = page.times.length ? ` Abre sozinha às ${page.times.join(", ")}.` : "";
@@ -476,13 +545,15 @@ function novaFolha(store, a) {
 
 function acrescentar(store, a) {
   const add = sheetBody(a.texto);
-  const { page } = findSheet(store, a);
+  const { page, block } = findSheet(store, a);
+  writable(block);
   const saved = store.savePage({ id: page.id, text: checkSize(appendText(page.text, add)) });
   return { texto: `Acrescentado na ${sheetRef(store, saved)}. id: ${saved.id}`, events: [{ kind: "page", page: saved }] };
 }
 
 function editarFolha(store, a) {
-  const { page } = findSheet(store, a);
+  const { page, block } = findSheet(store, a);
+  writable(block);
   const change = {};
   const said = [];
   if (has(a, "texto") && has(a, "trocar")) throw new ToolError("Mande texto (o texto inteiro) ou trocar e por, não os dois.");
@@ -517,7 +588,7 @@ function editarFolha(store, a) {
   let target = null;
   if (has(a, "mover_para") && oneLine(a.mover_para, 200)) {
     target = findBlock(store, a.mover_para);
-    if (target.id !== page.block) change.block = target.id;
+    if (target.id !== page.block) change.block = writable(target).id;
   }
   if (!Object.keys(change).length) {
     if (target) throw new ToolError(`A folha já está no bloco ${target.name}.`);
@@ -532,14 +603,16 @@ function editarFolha(store, a) {
 function adicionarLink(store, a) {
   const url = normalizeUrl(a.url);
   if (!url) throw new ToolError(`Esse link não abre: ${oneLine(a.url, 120)}. Use um endereço como https://site.com.br`);
-  const { page } = findSheet(store, a);
+  const { page, block } = findSheet(store, a);
+  writable(block);
   const name = oneLine(a.nome, 120);
   const saved = store.savePage({ id: page.id, text: checkSize(appendLink(page.text, url, name)) });
   return { texto: `Link adicionado na ${sheetRef(store, saved)}: ${name ? `${name} (${url})` : url}. id: ${saved.id}`, events: [{ kind: "page", page: saved }] };
 }
 
 function apagarFolha(store, a) {
-  const { page } = findSheet(store, a);
+  const { page, block } = findSheet(store, a);
+  writable(block);
   const ref = sheetRef(store, page);
   const text = page.text.trim();
   store.deletePage(page.id);
@@ -548,7 +621,7 @@ function apagarFolha(store, a) {
 }
 
 /** The fields of a block that came (novo_bloco, editar_bloco), checked. */
-function blockFields(store, a, existing) {
+function blockFields(store, a, existing, people) {
   const out = {};
   if (has(a, "nome")) {
     const name = oneLine(a.nome, 60);
@@ -556,6 +629,7 @@ function blockFields(store, a, existing) {
     out.name = name;
   }
   if (has(a, "categoria")) out.category = oneLine(a.categoria, 200) ? findCategory(store, a.categoria).id : "";
+  if (has(a, "de")) out.owner = ownerOf(a.de, people);
   if (has(a, "cor")) out.color = color(a.cor);
   if (has(a, "papel")) out.paper = paper(a.papel);
   if (has(a, "periodos")) out.periods = periods(a.periodos);
@@ -564,27 +638,42 @@ function blockFields(store, a, existing) {
   return out;
 }
 
-/** "Mercado · Casa · laranja · pautado · abre de manhã (05:00)". */
+/** "Mercado · categoria Casa · de Ana · laranja · pautado · abre de manhã (05:00)" (or "arquivado em …"). */
 function describeBlock(store, b) {
-  return [b.name, catName(store, b.category) ? `categoria ${catName(store, b.category)}` : "sem categoria", b.color, b.paper, opens(store, b) || "não abre sozinho"].join(" · ");
+  return [
+    b.name,
+    catName(store, b.category) ? `categoria ${catName(store, b.category)}` : "sem categoria",
+    b.owner ? `de ${b.owner}` : "",
+    b.color,
+    b.paper,
+    b.archived ? `arquivado em ${archivedDay(b)}` : opens(store, b) || "não abre sozinho",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
-function novoBloco(store, a) {
+function novoBloco(store, a, now, people) {
   if (!oneLine(a.nome, 60)) throw new ToolError("Falta o nome do bloco.");
-  const fields = blockFields(store, a, null);
+  const fields = blockFields(store, a, null, people);
   const same = store.data.blocks.filter((b) => key(b.name) === key(fields.name));
   const block = store.saveBlock({ paper: "pautado", periods: [], times: [], ...fields });
   const warn = same.length ? `\nAtenção: já havia um bloco com esse nome (${listNames(same)}).` : "";
   return { texto: `Bloco criado: ${describeBlock(store, block)}. id: ${block.id}${warn}`, events: [{ kind: "block", block }] };
 }
 
-function editarBloco(store, a) {
+function editarBloco(store, a, now, people) {
   const b = findBlock(store, a.bloco);
-  const fields = blockFields(store, a, b);
-  if (!Object.keys(fields).length) throw new ToolError("Diga o que muda: nome, categoria, cor, papel, periodos ou horarios.");
+  const fields = blockFields(store, a, b, people);
+  if (has(a, "arquivado")) {
+    if (typeof a.arquivado !== "boolean") throw new ToolError("arquivado: true (arquivar) ou false (desarquivar).");
+    if (a.arquivado !== !!b.archived) fields.archived = a.arquivado;
+    else if (!Object.keys(fields).length) throw new ToolError(`O bloco ${b.name} ${a.arquivado ? "já está arquivado" : "não está arquivado"}.`);
+  }
+  if (!Object.keys(fields).length) throw new ToolError("Diga o que muda: nome, categoria, de, cor, papel, periodos, horarios ou arquivado.");
   const before = describeBlock(store, b);
   const block = store.saveBlock({ id: b.id, ...fields });
-  return { texto: `Bloco alterado: ${describeBlock(store, block)}. Antes: ${before}. id: ${block.id}`, events: [{ kind: "block", block }] };
+  const what = fields.archived === true ? "Bloco arquivado (as folhas continuam lá)" : fields.archived === false ? "Bloco desarquivado" : "Bloco alterado";
+  return { texto: `${what}: ${describeBlock(store, block)}. Antes: ${before}. id: ${block.id}`, events: [{ kind: "block", block }] };
 }
 
 function novaCategoria(store, a) {
@@ -598,20 +687,21 @@ function novaCategoria(store, a) {
 
 // ------------------------------------------------------------------ call
 
-const READ = { resumo: (s, a, now) => resumo(s, now), buscar, ler_bloco: lerBloco, ler_folha: lerFolha };
+const READ = { resumo, buscar, ler_bloco: lerBloco, ler_folha: lerFolha };
 const WRITE = { nova_folha: novaFolha, acrescentar, editar_folha: editarFolha, adicionar_link: adicionarLink, apagar_folha: apagarFolha, novo_bloco: novoBloco, editar_bloco: editarBloco, nova_categoria: novaCategoria };
 
 /**
  * Runs a tool on the store. Returns {texto, events}: texto for the AI, events for the screens (as the WebSocket of the
- * app sends them). ToolError: a bad argument (400); UnknownTool (404).
+ * app sends them). ToolError: a bad argument (400); UnknownTool (404). pessoa: the name of the person of the house who
+ * asks ("": anyone); people: the people of the house [{id, name}] (null: unknown), for De quem é.
  */
-export function callTool(name, args, { store, now = new Date() }) {
+export function callTool(name, args, { store, now = new Date(), pessoa = "", people = null }) {
   const n = String(name || "");
   if (!BY_NAME.has(n)) throw new UnknownTool(`Ferramenta desconhecida: ${oneLine(name, 60) || "(sem nome)"}.`);
   const a = args && typeof args === "object" && !Array.isArray(args) ? args : {};
   try {
-    if (READ[n]) return { texto: READ[n](store, a, now), events: [] };
-    return WRITE[n](store, a, now);
+    if (READ[n]) return { texto: READ[n](store, a, now, pessoa), events: [] };
+    return WRITE[n](store, a, now, people);
   } catch (err) {
     // the Store says what is wrong in lower case ("blocos demais", "categoria não existe")
     if (err.code === "invalid_format") throw new ToolError(`${err.message[0].toUpperCase()}${err.message.slice(1)}.`.replace(/\.\.$/, "."));

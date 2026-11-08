@@ -1,12 +1,14 @@
 # Testes do MemorIA
 
-- `npm test` (na raiz): o servidor (`memoria/rootfs/app/lib`: dados, categorias, relatório e PDF, exportação, as ferramentas do CorrerIA em `tests/ferramentas.test.mjs`) e, em `tests/server.test.mjs`, o servidor de verdade com o Home Assistant simulado (também a rota `/api/integracao/ferramentas` e o arquivo `share/memoria/correria.json`), com `node:test`, sem instalar nada. Nunca dependem do relógio real.
+- `npm test` (na raiz): o servidor (`memoria/rootfs/app/lib`: dados, categorias, de quem é e arquivados, o Agora e o sensor, relatório e PDF, exportação, as ferramentas do CorrerIA em `tests/ferramentas.test.mjs`) e, em `tests/server.test.mjs`, o servidor de verdade com o Home Assistant simulado (também a rota `/api/integracao/ferramentas`, o arquivo `share/memoria/correria.json` e as pessoas da casa, Ana e Beto, com a pessoa de cada login), com `node:test`, sem instalar nada. Nunca dependem do relógio real.
 - Conferências visuais na prévia (`preview/memoria-preview.html`, sem servidor), em Python + Playwright
   (`pip install playwright && playwright install chromium`). Gere a prévia antes (`cd frontend && npm run build`):
 
 | Arquivo | O que confere |
 |---|---|
 | `tests/mais_check.py` | Mais em menu, Configurações em abas, Voltar, ‹ Mais e arrastar; tema automático e Cor do dia |
+| `tests/arquivar_check.py` | Arquivar bloco: fora da estante, do Agora, da Nova e do Buscar (Incluir arquivados), Arquivados no fim de Blocos, Desfazer e Desarquivar |
+| `tests/dono_check.py` | De quem é: Todos ou uma pessoa da casa (ou o nome escrito, sem as pessoas), o Agora e o Seu dia de quem usa, "de Beto" na estante |
 | `tests/categorias_check.py` | Mais › Categorias, a categoria no bloco (com Nova ali mesmo) e o filtro em Blocos |
 | `tests/correria_check.py` | Mais › Configurações › Integrações › CorrerIA: desligado por padrão, sem depender do Usar IA, e quem usou por último |
 | `tests/conversa_check.py` | Falar (com um microfone simulado) e Conversar com a IA, a chave Usar IA e o microfone sem https |

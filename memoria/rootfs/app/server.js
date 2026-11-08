@@ -8,6 +8,8 @@
 // - Exports, backups in share/memoria, imports and automatic versions.
 // - Mais › Relatório: the blocks and their sheets as a page and as a PDF.
 // - Integrações › CorrerIA: the tools (read and write the blocks) for the WhatsApp, the Claude and the Gemini.
+// - De quem é: the people of the house (person.* of Home Assistant) and the person using each screen, whose Agora
+//   shows only their blocks and everyone's.
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -22,8 +24,9 @@ import { Backups, backupZip, toCSV, parseImport, listVersions, readVersion, file
 import { anotacoes, reportHtml, reportPdf, pdfName } from "./lib/report.js";
 import { Correria, ROUTE as TOOLS_ROUTE } from "./lib/correria.js";
 import { listTools, callTool, ToolError, UnknownTool } from "./lib/ferramentas.js";
+import { sameName } from "./lib/schedule.js";
 
-const VERSION = "1.8.0";
+const VERSION = "1.9.0";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WWW = path.join(HERE, "www");
 const DEV = process.env.MEMORIA_DEV === "1";
@@ -60,6 +63,29 @@ const correria = new Correria({ dataDir: DATA_DIR, shareDir: SHARE_DIR, port: PO
 const correriaOn = () => store.data.app.correria === true;
 const watchers = new Set(); // {session, id}
 
+// De quem é: the people of the house (person.* in Home Assistant), [{id, name, user_id}] by name, kept for a minute
+let peopleCache = { at: 0, list: null };
+async function people(fresh = false) {
+  if (!fresh && peopleCache.list && Date.now() - peopleCache.at < 60000) return peopleCache.list;
+  // without Home Assistant right now: the last ones known (none: it fails, and the screen offers a name to write)
+  if (!ha.ready && peopleCache.list) return peopleCache.list;
+  const states = (await ha.sendNow({ type: "get_states" }, 15000)) || [];
+  const list = states
+    .filter((st) => /^person\.[a-z0-9_]+$/.test(st.entity_id || ""))
+    .map((st) => ({ id: st.entity_id, name: String((st.attributes && st.attributes.friendly_name) || st.entity_id.slice(7)).slice(0, 80), user_id: (st.attributes && st.attributes.user_id) || null }))
+    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  peopleCache = { at: Date.now(), list };
+  return list;
+}
+const peopleSafe = (fresh) => people(fresh).catch(() => null);
+
+/** The people for the screen: the names, and the person of this login ("": a login that is not a person of the house). */
+async function peopleFor(user, fresh = false) {
+  const list = (await peopleSafe(fresh)) || [];
+  const me = user.id ? list.find((p) => p.user_id === user.id) : null;
+  return { people: list.map((p) => p.name), person: me ? me.name : "" };
+}
+
 function broadcast(event) {
   for (const w of watchers) w.session.event(w.id, event);
   sensor.changed();
@@ -84,7 +110,11 @@ class Session {
   constructor(ws, headers) {
     this.ws = ws;
     this.subs = new Set();
-    this.user = { name: headers["x-remote-user-display-name"] || headers["x-remote-user-name"] || "" };
+    this.user = {
+      // MEMORIA_DEV_USER_ID: test hook (dev mode only) for the Home Assistant user behind ingress
+      id: headers["x-remote-user-id"] || (DEV && process.env.MEMORIA_DEV_USER_ID) || "",
+      name: headers["x-remote-user-display-name"] || headers["x-remote-user-name"] || "",
+    };
     ws.on("message", (text) => this.onMessage(text));
     ws.on("close", () => {
       for (const w of [...watchers]) if (w.session === this) watchers.delete(w);
@@ -126,9 +156,13 @@ class Session {
         return this.send({ id, type: "pong" });
 
       case "memoria/bootstrap": {
-        const aiStatus = await ai.status().catch((err) => ({ ready: false, images: false, entities: [], reason: err.message }));
-        return this.result(id, { version: VERSION, user: this.user, ai: aiStatus, data: store.data, correria: { ultimo: correria.last } });
+        const [aiStatus, who] = await Promise.all([ai.status().catch((err) => ({ ready: false, images: false, entities: [], reason: err.message })), peopleFor(this.user)]);
+        return this.result(id, { version: VERSION, user: { name: this.user.name, person: who.person }, people: who.people, ai: aiStatus, data: store.data, correria: { ultimo: correria.last } });
       }
+
+      // De quem é (the block's sheet): the people of the house, fresh, and the person of this login
+      case "memoria/people":
+        return this.result(id, await peopleFor(this.user, true));
 
       case "memoria/ai/status": {
         return this.result(id, await ai.status());
@@ -341,8 +375,15 @@ async function handleTools(req, res) {
   if (!body || typeof body !== "object") return sendJson(res, 400, { erro: "JSON inválido." });
   const cliente = String(body.cliente || "").replace(/\s+/g, " ").trim().slice(0, 40) || "CorrerIA";
   const pessoa = body.pessoa && typeof body.pessoa === "object" ? String(body.pessoa.nome || body.pessoa.id || "").slice(0, 60) : "";
+  // De quem é: the person who asks, as a person of the house (by the id, person.ana, or the name)
+  const house = await peopleSafe();
+  let who = "";
+  if (body.pessoa && typeof body.pessoa === "object") {
+    const p = house && (house.find((x) => x.id === body.pessoa.id) || house.find((x) => sameName(x.name, body.pessoa.nome)));
+    who = p ? p.name : house && house.length ? "" : String(body.pessoa.nome || "").replace(/\s+/g, " ").trim().slice(0, 80);
+  }
   try {
-    const out = callTool(body.nome, body.argumentos, { store });
+    const out = callTool(body.nome, body.argumentos, { store, pessoa: who, people: house && house.map((p) => ({ id: p.id, name: p.name })) });
     for (const ev of out.events) broadcast(ev);
     sendJson(res, 200, { texto: out.texto });
     log.info(`CorrerIA: ${cliente}${pessoa ? ` (${pessoa})` : ""} usou ${body.nome}`);

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.0
+
+- **Arquivar bloco**, nos ajustes do bloco: o bloco sai da estante, do **Agora** (não abre mais sozinho), da **Nova**, do **Buscar** e da conversa com a IA, sem apagar nada. Ele fica em **Arquivados**, recolhido no fim da tela **Blocos**: toque para ver e abrir. Logo depois de arquivar, **Desfazer** traz de volta.
+- Um bloco arquivado abre normalmente pela lista, com o aviso **Arquivado em …** e o botão **Desarquivar** no alto. Nos ajustes, **Desarquivar bloco**.
+- **Buscar**: com blocos arquivados, a etiqueta **Incluir arquivados** procura neles também (a escolha fica guardada no aparelho).
+- **De quem é**, nos ajustes do bloco: **Todos** (o padrão, e como ficam os blocos de antes) ou uma pessoa da casa, as do Home Assistant. Um bloco de uma pessoa só abre sozinho no **Agora** (e no **Seu dia**) dela; quem não é uma pessoa da casa, como um tablet da sala, vê todos. A tela **Blocos** continua mostrando todos, com "de Beto" na etiqueta da capa e na tela do bloco.
+- No **Relatório**, os arquivados ficam fora de "Todos os blocos", mas dá para escolher um deles no alto; cada bloco mostra de quem é. Na exportação, a planilha ganha as colunas **De quem é** e **Arquivado em**, e o texto de cada bloco também diz. Backup, versões e importar guardam as duas coisas.
+- **CorrerIA**: o resumo e a busca deixam os arquivados de fora (a não ser que peçam), e as folhas de um bloco arquivado só mudam depois de desarquivar. Eles também arquivam e desarquivam blocos, dizem de quem é cada um, e o bloco do momento do resumo é o de quem pergunta.
+
 ## 1.8.0
 
 - **CorrerIA**, nova chave em **Mais › Configurações › Integrações**: ligada, o WhatsApp, o Claude e o Gemini (pelo app CorrerIA) leem e mudam os seus blocos. Eles veem o resumo dos blocos e das últimas folhas, buscam nas folhas, leem um bloco ou uma folha, criam folhas, acrescentam no fim, editam (o texto, um trecho, os horários ou o bloco), põem links, arrancam folhas, criam e ajustam blocos e criam categorias. O que mudar aparece na hora em todos os aparelhos, do mesmo jeito que se fosse escrito aqui.

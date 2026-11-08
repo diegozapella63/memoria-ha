@@ -1930,6 +1930,100 @@ export const styles = css`
   .chip-row.cat-filter .pick {
     flex: none;
   }
+  /* Blocos › Arquivados (N): folded at the end of the shelf, like the inactive lists of the ResolvIA */
+  .arch-panel {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+  .arch-head .tile.muted {
+    background: color-mix(in srgb, var(--rv-muted) 16%, transparent);
+    color: var(--rv-muted);
+  }
+  .arch-row .tile {
+    background: var(--cs);
+    color: var(--ci);
+    opacity: 0.75;
+  }
+  .arch-head .label .count {
+    display: inline-block;
+    min-width: 1.6em;
+    margin-left: 6px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--rv-muted) 16%, transparent);
+    color: var(--rv-muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .arch-head .chev,
+  .arch-row .chev {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    color: var(--rv-muted);
+    transition: transform 0.2s;
+  }
+  .arch-head.open .chev {
+    transform: rotate(180deg);
+  }
+  .arch-row .label,
+  .arch-row .hint {
+    display: block;
+  }
+  .arch-row .label {
+    color: var(--rv-text-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .arch-row:active,
+  .arch-head:active {
+    opacity: 0.7;
+  }
+  /* the block's screen, archived: in place of "Abre sozinho" */
+  .hint-card.arch-card {
+    background: var(--rv-surface-2);
+  }
+  .hint-card.arch-card > span {
+    flex: 1;
+    min-width: 0;
+  }
+  .hint-card.arch-card > .i {
+    color: var(--rv-muted);
+  }
+  /* the block's sheet: Arquivar bloco, a row above the buttons */
+  .sheet .menu-row.arch-toggle {
+    border-top: 1px solid var(--rv-line);
+    border-bottom: 1px solid var(--rv-line);
+    margin: -4px 0 14px;
+  }
+  /* De quem é: Todos and each person, in a grid of the same width */
+  .chip-row.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 6.5em), 1fr));
+    gap: 8px;
+  }
+  .chip-row.grid .pick {
+    justify-content: center;
+    min-height: 44px;
+    padding: 8px 10px;
+    min-width: 0;
+  }
+  /* Blocos: whose the block is, on its sticker */
+  .cover .sticker .owner {
+    white-space: nowrap;
+  }
+  /* the buttons under an empty Agora: one line each, even at 320 px */
+  .page > .sheet-actions .btn {
+    padding: 0 10px;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  /* Buscar: Incluir arquivados */
+  .search-opts {
+    margin: -6px 0 16px;
+  }
   /* Mais › Categorias */
   .cat-row .chev {
     width: 20px;

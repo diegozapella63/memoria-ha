@@ -12,7 +12,7 @@ import { PALETTE, colorById, colorVars, hexToRgba, fold, foldKeepLength, plural,
 import { parentHass, detectDark } from "./api.js";
 import { parseLinks, hasLinks, linksToText, normalizeUrl } from "../../memoria/rootfs/app/lib/links.js";
 import { appendLink, freeColor } from "../../memoria/rootfs/app/lib/writing.js";
-import { PERIODS, PAPERS, buildSchedule, currentAt, nextAfter, timeline, minutesOf, fmtMin, periodAt, periodTimes, normTime } from "../../memoria/rootfs/app/lib/schedule.js";
+import { PERIODS, PAPERS, buildSchedule, currentAt, nextAfter, timeline, minutesOf, fmtMin, periodAt, periodTimes, normTime, opensFor, sameName, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
 
 const THEME_KEY = "memoria.theme";
 const SAVE_DELAY = 600;
@@ -23,6 +23,7 @@ const RINGS = Array.from({ length: 14 }, () => html`<i></i>`);
 const IN_MORE = ["categorias", "config", "sobre"];
 const SHELF_KEY = "memoria.blocos.categoria";
 const REPORT_KEY = "memoria.relatorio";
+const SEARCH_ARCH_KEY = "memoria.buscar.arquivados";
 
 const icon = (name, cls = "") =>
   html`<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${unsafeSVG(ICONS[name] || ICONS.notebook)}</svg>`;
@@ -99,7 +100,9 @@ class MemoriaApp extends ChatMixin(LitElement) {
     this._now = Date.now();
     this._dark = false;
     this._editing = null; // the sheet being written (the editor shows the real text, links included)
-    this._user = { name: "" };
+    this._user = { name: "" }; // {name, person}: person, the person of the house using this screen ("": none)
+    this._people = []; // De quem é: the people of the house (names, from Home Assistant)
+    this._archOpen = false; // Blocos › Arquivados, folded until tapped
     this._ai = { ready: false, images: false, entities: [] };
     this._aiAt = 0;
     this._voice = null; // Falar: the speech-to-text of Home Assistant
@@ -147,6 +150,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     if (this._hostTheme) this._hostTheme.disconnect();
     clearTimeout(this._toastTimer);
     clearTimeout(this._turnTimer);
+    clearTimeout(this._peopleRetry);
     this._stopStream();
     this._stopVoice();
     this._chatStop();
@@ -221,6 +225,9 @@ class MemoriaApp extends ChatMixin(LitElement) {
       const res = await this.api.bootstrap();
       this._version = res.version || "";
       this._user = res.user || { name: "" };
+      this._people = Array.isArray(res.people) ? res.people : [];
+      // Home Assistant still starting: the people (and who uses this screen) a little later
+      if (!this._people.length && !this._peopleRetry) this._peopleRetry = setTimeout(() => this._loadPeople(), 5000);
       this._ai = res.ai || { ready: false, images: false, entities: [] };
       this._aiAt = Date.now();
       this._correria = res.correria || { ultimo: null };
@@ -258,11 +265,28 @@ class MemoriaApp extends ChatMixin(LitElement) {
       pages.get(p.block).push(p);
     }
     for (const list of pages.values()) list.sort(byCreated);
-    this._cache = { data: this._data, pages, schedule: buildSchedule(this._data) };
+    // the Agora of the person using this screen: their blocks and everyone's, never the archived ones
+    this._cache = { data: this._data, pages, schedule: buildSchedule(this._data, { person: this._me() }) };
   }
 
-  _blocks() {
+  /** Every block, archived too, in order. */
+  _allBlocks() {
     return [...((this._data && this._data.blocks) || [])].sort((a, b) => a.order - b.order || a.created - b.created);
+  }
+
+  /** The blocks in use (not archived), in order: the shelf, Nova, Buscar, the Conversa. */
+  _blocks() {
+    return this._allBlocks().filter((b) => !b.archived);
+  }
+
+  /** The person of the house using this screen ("": a login that is not a person, like a shared tablet: sees all). */
+  _me() {
+    return (this._user && this._user.person) || "";
+  }
+
+  /** Whether a block opens in this person's Agora (theirs or everyone's, not archived). */
+  _mine(b) {
+    return opensFor(b, this._me());
   }
 
   _block(id) {
@@ -358,6 +382,13 @@ class MemoriaApp extends ChatMixin(LitElement) {
       this._dropPageLocally(ev.id);
     } else if (ev.kind === "block") {
       this._putBlock(ev.block);
+      // archived or someone else's now: Agora goes to what is on for this person (and an empty Agora takes one back)
+      const pb = this._pad && this._block(this._pad.block);
+      if (this._view().name === "now" && (!pb || !this._mine(pb))) {
+        this._peek = null;
+        this._choice = null;
+        this._setPad(this._nowPad());
+      }
     } else if (ev.kind === "block_deleted") {
       this._data = {
         ...this._data,
@@ -602,9 +633,11 @@ class MemoriaApp extends ChatMixin(LitElement) {
       if (p) return p;
     }
     if (cur) return this._padEntryPad(this._pickIn(cur));
-    // Nothing scheduled: the notebook written in most recently.
-    const recent = [...this._data.pages].sort((a, b) => b.updated - a.updated)[0];
-    const block = (recent && this._block(recent.block)) || this._blocks()[0];
+    // Nothing scheduled: the notebook written in most recently (of this person or everyone's, not archived).
+    const mine = this._blocks().filter((b) => this._mine(b));
+    const ids = new Set(mine.map((b) => b.id));
+    const recent = this._data.pages.filter((p) => ids.has(p.block)).sort((a, b) => b.updated - a.updated)[0];
+    const block = (recent && this._block(recent.block)) || mine[0];
     return block ? this._lastPad(block.id) : null;
   }
 
@@ -1374,7 +1407,10 @@ class MemoriaApp extends ChatMixin(LitElement) {
       // a new block from Blocos filtered by a category goes into it
       category: b ? b.category || "" : this._shelfCat() && this._shelfCat() !== "sem" ? this._shelfCat() : "",
       newCat: null,
+      // De quem é: "" = Todos
+      owner: b ? b.owner || "" : "",
     });
+    this._loadPeople();
     if (!b) {
       this.updateComplete.then(() => {
         const input = this.renderRoot.querySelector(".sheet input[type=text]");
@@ -1383,7 +1419,26 @@ class MemoriaApp extends ChatMixin(LitElement) {
     }
   }
 
-  async _saveBlockSheet() {
+  /** De quem é: the people of the house, fresh from Home Assistant (the sheet shows them as they come). */
+  async _loadPeople() {
+    if (!this.api.people) return;
+    try {
+      const r = await this.api.people();
+      if (Array.isArray(r.people)) this._people = r.people;
+      if ((r.person || "") !== this._me()) {
+        // now the app knows who uses this screen: Agora becomes theirs
+        this._user = { ...this._user, person: r.person || "" };
+        this._cache = { ...this._cache, data: null };
+        if (this._view().name === "now" && !this._sheet) this._enterView();
+      }
+      this.requestUpdate();
+    } catch (e) {
+      /* keep the ones from the start */
+    }
+  }
+
+  /** extra: {archived: true|false} from Arquivar / Desarquivar, saved with the rest of the sheet. */
+  async _saveBlockSheet(extra = {}) {
     const f = this._form;
     const block = {
       name: (f.name || "").trim() || "Novo bloco",
@@ -1392,6 +1447,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
       periods: f.periods,
       times: f.times,
       category: f.category || "",
+      owner: ownerName(f.owner || ""),
+      ...extra,
     };
     if (f.id) block.id = f.id;
     try {
@@ -1405,13 +1462,37 @@ class MemoriaApp extends ChatMixin(LitElement) {
         this._setForm({ category: cat.id, newCat: null });
       }
       const saved = await this.api.saveBlock(block);
-      this._putBlock(saved);
-      this._closeSheet();
+      await this._closeSheet();
+      this._onEvent({ kind: "block", block: saved });
       this._haptic("success");
-      if (!f.id) this._openPage(saved.id, "new");
+      if ("archived" in extra) this._afterArchive(saved, !!extra.archived);
+      else if (!f.id) this._openPage(saved.id, "new");
       else this._showToast("Bloco salvo");
     } catch (err) {
       this._showToast(`Não consegui salvar o bloco: ${err.message}`);
+    }
+  }
+
+  /**
+   * Arquivar bloco (nothing is deleted): it leaves Agora, the shelf, Nova and Buscar and waits under Arquivados, at
+   * the end of Blocos. From its own screen, back to Blocos; Desfazer brings it back.
+   */
+  _afterArchive(block, on) {
+    if (!on) return this._showToast("Bloco de volta aos blocos");
+    const v = this._view();
+    if (v.name === "block" && v.id === block.id) this._go("/blocos", true);
+    this._showToast("Bloco arquivado", { label: "Desfazer", run: () => this._setArchived(block, false) });
+  }
+
+  /** Arquivar / Desarquivar without the sheet (Desarquivar on the block's screen, Desfazer). */
+  async _setArchived(block, on) {
+    try {
+      const saved = await this.api.saveBlock({ id: block.id, archived: on });
+      this._onEvent({ kind: "block", block: saved });
+      this._haptic("success");
+      this._afterArchive(saved, on);
+    } catch (err) {
+      this._showToast(`Não consegui ${on ? "arquivar" : "desarquivar"}: ${err.message}`);
     }
   }
 
@@ -1652,8 +1733,9 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   _defaultTarget() {
     const pad = this._pad;
-    if (pad && this._block(pad.block)) return pad.block;
-    const b = this._blocks()[0];
+    const pb = pad && this._block(pad.block);
+    if (pb && !pb.archived) return pb.id;
+    const b = this._blocks().find((x) => this._mine(x)) || this._blocks()[0];
     return b ? b.id : null;
   }
 
@@ -1978,6 +2060,17 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const { entries, min, cur, next } = this._slot();
     const pad = this._pad;
     const b = pad ? this._block(pad.block) : null;
+    if (!b && this._data.blocks.length) {
+      // there are blocks, but none for this Agora: archived, or someone else's (De quem é)
+      return html`<section class="page">
+        ${this._renderHead("Agora", { text: "Nenhum bloco aqui", tone: "off" })}
+        <div class="panel"><div class="empty"><div class="em-icon">${icon("notebook-pen")}</div><h3>Nada para agora</h3><p>Os blocos arquivados e os de outras pessoas ficam em Blocos.</p></div></div>
+        <div class="sheet-actions" style="padding:0">
+          <button class="btn outline" @click=${() => this._goTab("/blocos")}>${icon("library")}Ver blocos</button>
+          <button class="btn primary" @click=${() => this._openBlockSheet(null)}>${icon("plus")}Novo bloco</button>
+        </div>
+      </section>`;
+    }
     if (!b) {
       return html`<section class="page">
         ${this._renderHead("Agora", { text: "Nenhum bloco ainda" })}
@@ -2192,7 +2285,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
   /** The category chosen in Blocos (kept on this device): "" all, a category id or "sem". */
   _shelfCat() {
     const v = local.get(SHELF_KEY, "") || "";
-    if (v === "sem") return this._cats().length && this._blocks().some((b) => !this._cat(b.category)) ? "sem" : "";
+    if (v === "sem") return this._cats().length && this._allBlocks().some((b) => !this._cat(b.category)) ? "sem" : "";
     return this._cat(v) ? v : "";
   }
 
@@ -2203,10 +2296,13 @@ class MemoriaApp extends ChatMixin(LitElement) {
   }
 
   _renderShelf() {
-    const all = this._blocks();
+    const all = this._allBlocks();
     const cats = this._cats();
     const fcat = this._shelfCat();
-    const blocks = !fcat ? all : fcat === "sem" ? all.filter((b) => !this._cat(b.category)) : all.filter((b) => b.category === fcat);
+    const inCat = (b) => !fcat || (fcat === "sem" ? !this._cat(b.category) : b.category === fcat);
+    const blocks = this._blocks().filter(inCat);
+    // Arquivados: at the end of the shelf, folded (the last archived first)
+    const archived = all.filter((b) => b.archived && inCat(b)).sort((a, b) => b.archived - a.archived);
     const pages = blocks.reduce((n, b) => n + this._pagesOf(b.id).length, 0);
     const none = all.some((b) => !this._cat(b.category));
     const groups = timeline(this._schedule());
@@ -2228,13 +2324,14 @@ class MemoriaApp extends ChatMixin(LitElement) {
               const n = this._pagesOf(b.id).length;
               const parts = this._whenParts(b);
               return html`<button class="cover" style=${this._cv(b)} @click=${() => this._openPage(b.id)} aria-label="Abrir ${b.name}">
-                <div class="sticker"><b>${b.name}</b><small>${plural(n, "folha", "folhas")}</small></div>
+                <div class="sticker"><b>${b.name}</b><small>${plural(n, "folha", "folhas")}${b.owner ? html` · <span class="owner">de ${clip(b.owner, 16)}</span>` : nothing}</small></div>
                 <div class="when">${parts.length ? parts.map((p) => html`<span>${icon(p.icon)}${p.label}</span>`) : html`<span>${icon("notebook")}Sem horário</span>`}</div>
               </button>`;
             },
           )}
           <button class="cover add" @click=${() => this._openBlockSheet(null)}>${icon("plus")}<span>Novo bloco</span></button>
         </div>
+        ${archived.length ? this._renderArchived(archived) : nothing}
         ${groups.length
           ? html`<div class="panel">
               <div class="overline">Seu dia</div>
@@ -2257,6 +2354,40 @@ class MemoriaApp extends ChatMixin(LitElement) {
     `;
   }
 
+  /** Blocos › Arquivados (N): folded at the end of the shelf; tap to see them, tap one to open it. */
+  _renderArchived(list) {
+    const open = this._archOpen;
+    return html`<div class="panel arch-panel">
+      <button class="row arch-head ${open ? "open" : ""}" aria-expanded=${open ? "true" : "false"} @click=${() => {
+        this._haptic("light");
+        this._archOpen = !open;
+        this.requestUpdate();
+      }}>
+        <span class="tile muted">${icon("archive")}</span>
+        <span class="grow"><span class="label">Arquivados <span class="count">${list.length}</span></span></span>
+        ${icon("chevron-down", "chev")}
+      </button>
+      ${open
+        ? repeat(
+            list,
+            (b) => b.id,
+            (b) => html`<button class="row arch-row" style=${this._cv(b)} @click=${() => this._openPage(b.id)} aria-label="Abrir ${b.name} (arquivado)">
+              <span class="tile">${icon("notebook")}</span>
+              <span class="grow"><span class="label">${b.name}</span><span class="hint">${[plural(this._pagesOf(b.id).length, "folha", "folhas"), b.owner ? `de ${b.owner}` : "", `arquivado ${this._day(b.archived)}`].filter(Boolean).join(" · ")}</span></span>
+              ${icon("chevron-right", "chev")}
+            </button>`,
+          )
+        : nothing}
+    </div>`;
+  }
+
+  /** "em 08/11" ("em 08/11/2025" in another year). */
+  _day(ms) {
+    const d = new Date(ms);
+    const p = (n) => String(n).padStart(2, "0");
+    return `em ${p(d.getDate())}/${p(d.getMonth() + 1)}${d.getFullYear() !== new Date(this._now).getFullYear() ? `/${d.getFullYear()}` : ""}`;
+  }
+
   _renderBlock(id) {
     const b = this._block(id);
     if (!b) {
@@ -2272,17 +2403,19 @@ class MemoriaApp extends ChatMixin(LitElement) {
         <div class="detail-head">
           <button class="icon-btn" @click=${() => this._back()} aria-label="Voltar">${icon("chevron-left")}</button>
           <div class="dh-text">
-            <div class="overline">${[this._cat(b.category) && this._cat(b.category).name, plural(n, "folha", "folhas"), PAPER_LABEL[b.paper] || ""].filter(Boolean).join(" · ")}</div>
+            <div class="overline">${[this._cat(b.category) && this._cat(b.category).name, plural(n, "folha", "folhas"), b.owner ? `de ${b.owner}` : "", PAPER_LABEL[b.paper] || ""].filter(Boolean).join(" · ")}</div>
             <h1 class="display">${b.name}</h1>
           </div>
           ${this._renderChatBtn()}${this._renderMicBtn()}
           <button class="icon-btn" @click=${() => this._openBlockSheet(b)} aria-label="Ajustes do bloco">${icon("sliders-horizontal")}</button>
         </div>
-        <button class="when-line" @click=${() => this._openBlockSheet(b)}>
+        ${b.archived
+          ? html`<div class="hint-card arch-card">${icon("archive")}<span>Arquivado ${this._day(b.archived)}. Não abre sozinho.</span><button class="text-btn" @click=${() => this._setArchived(b, false)}>Desarquivar</button></div>`
+          : html`<button class="when-line" @click=${() => this._openBlockSheet(b)}>
           ${parts.length
             ? html`${icon("calendar-clock")}<span>Abre sozinho: ${parts.map((p, i) => html`${i ? " · " : ""}<b>${p.icon === "clock" ? p.label : `${p.label} ${p.time}`}</b>`)}</span>`
             : html`${icon("calendar-clock")}<span>Não abre sozinho. <b>Escolher horário</b></span>`}
-        </button>
+        </button>`}
         ${this._renderPad({ tall: true })}
       </section>
     `;
@@ -2293,21 +2426,35 @@ class MemoriaApp extends ChatMixin(LitElement) {
   _renderSearch() {
     const q = this._query.trim();
     const needle = fold(q);
+    // the archived blocks only with Incluir arquivados (kept on this device)
+    const hasArch = this._data.blocks.some((b) => b.archived);
+    const withArch = hasArch && local.get(SEARCH_ARCH_KEY, false) === true;
+    const pool = this._data.pages.filter((p) => {
+      const b = this._block(p.block);
+      return b && (withArch || !b.archived);
+    });
     let results = [];
     if (needle) {
-      results = this._data.pages
-        .filter((p) => this._block(p.block) && fold(p.text).includes(needle))
+      results = pool
+        .filter((p) => fold(p.text).includes(needle))
         .sort((a, b) => b.updated - a.updated)
         .slice(0, 80);
     }
     return html`
       <section class="page">
-        ${this._renderHead("Buscar", { text: `Em ${plural(this._data.pages.length, "folha", "folhas")} · acentos não importam` })}
+        ${this._renderHead("Buscar", { text: `Em ${plural(pool.length, "folha", "folhas")} · acentos não importam` })}
         <label class="search-box">
           ${icon("search")}
           <input type="search" placeholder="Buscar em todos os blocos" .value=${this._query} @input=${(e) => (this._query = e.target.value)} enterkeyhint="search" aria-label="Buscar" />
           ${this._query ? html`<button class="icon-btn" style="width:40px;height:40px" @click=${() => (this._query = "")} aria-label="Limpar">${icon("x")}</button>` : nothing}
         </label>
+        ${hasArch
+          ? html`<div class="chip-row search-opts"><button class="pick ${withArch ? "on" : ""}" aria-pressed=${withArch ? "true" : "false"} @click=${() => {
+              this._haptic("light");
+              local.set(SEARCH_ARCH_KEY, !withArch);
+              this.requestUpdate();
+            }}>${icon("archive")}<span>Incluir arquivados</span></button></div>`
+          : nothing}
         ${!needle
           ? html`<p class="page-sub" style="margin-top:0">Procure qualquer palavra em todas as folhas.</p>`
           : results.length
@@ -2323,7 +2470,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
                       <span class="r-main">
                         <span class="r-title">${this._highlight(clip(title, 70), q)}</span>
                         <span class="r-snip">${this._highlight(this._snippet(text, title, needle), q)}</span>
-                        <span class="r-meta">${b.name} · ${writtenAt(p.updated, new Date(this._now))}</span>
+                        <span class="r-meta">${b.name}${b.archived ? " · arquivado" : ""} · ${writtenAt(p.updated, new Date(this._now))}</span>
                       </span>
                     </button>`;
                   })}
@@ -2558,9 +2705,11 @@ class MemoriaApp extends ChatMixin(LitElement) {
                 (c) => c.id,
                 (c) => {
                   const mine = blocks.filter((b) => b.category === c.id);
+                  const arch = this._data.blocks.filter((b) => b.archived && b.category === c.id).length;
+                  const hint = [mine.length ? `${plural(mine.length, "bloco", "blocos")}: ${mine.map((b) => b.name).join(", ")}` : arch ? "" : "Nenhum bloco", arch ? plural(arch, "arquivado", "arquivados") : ""].filter(Boolean).join(" · ");
                   return html`<button class="row cat-row" style=${colorVars(colorById(c.color) || PALETTE[9], this._dark)} @click=${() => this._openCategorySheet(c)}>
                     <span class="tile">${icon("tag")}</span>
-                    <div class="grow"><div class="label">${c.name}</div><div class="hint">${mine.length ? `${plural(mine.length, "bloco", "blocos")}: ${mine.map((b) => b.name).join(", ")}` : "Nenhum bloco"}</div></div>
+                    <div class="grow"><div class="label">${c.name}</div><div class="hint">${hint}</div></div>
                     ${icon("chevron-right", "chev")}
                   </button>`;
                 },
@@ -2758,6 +2907,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           ? html`<label class="new-cat"><input type="text" maxlength="40" .value=${f.newCat} placeholder="Nome da nova categoria" aria-label="Nome da nova categoria" @input=${(e) => this._setForm({ newCat: e.target.value })} @keydown=${(e) => e.key === "Enter" && this._saveBlockSheet()} /></label>`
           : nothing}
       </div>
+      ${this._renderOwnerPick(f)}
       <div class="field">
         <span class="flabel">Cor da capa</span>
         <div class="swatches">
@@ -2785,11 +2935,46 @@ class MemoriaApp extends ChatMixin(LitElement) {
         </div>
         <div class="field-hint">${icon("clock")}<span>${f.periods.length || f.times.length ? "Nesses momentos a tela Agora abre este bloco. Folhas com horário próprio têm prioridade." : "Sem horário, o bloco só abre quando você escolher."}</span></div>
       </div>
+      ${f.id
+        ? (() => {
+            const arch = !!(this._block(f.id) || {}).archived;
+            return html`<button class="menu-row arch-toggle" @click=${() => this._saveBlockSheet({ archived: !arch })}>${icon(arch ? "archive-restore" : "archive")}${arch ? "Desarquivar bloco" : "Arquivar bloco"}</button>`;
+          })()
+        : nothing}
       <div class="sheet-actions">
         ${f.id ? html`<button class="btn danger" @click=${() => this._confirmDeleteBlock()} aria-label="Excluir bloco">${icon("trash")}</button>` : nothing}
         <button class="btn primary" @click=${() => this._saveBlockSheet()}>${f.id ? "Salvar" : "Criar bloco"}</button>
       </div>
     `;
+  }
+
+  /**
+   * De quem é: Todos (the house) or one person of the house. A block of a person opens by itself only in their Agora
+   * (Blocos still shows every block). A name that is no longer a person of the house stays as a choice, so it isn't
+   * lost. Without the people of Home Assistant (out of reach), the name is written.
+   */
+  _renderOwnerPick(f) {
+    const people = this._people || [];
+    const owner = ownerName(f.owner || "");
+    const hint = owner ? html`<span class="field-hint">${icon("info")}<span>Só aparece no Agora de ${owner}.</span></span>` : nothing;
+    if (!people.length) {
+      return html`<label class="field">
+        <span class="flabel">De quem é</span>
+        <input type="text" maxlength="80" .value=${f.owner || ""} placeholder="Todos" aria-label="De quem é" @input=${(e) => this._setForm({ owner: e.target.value })} />
+        ${hint}
+      </label>`;
+    }
+    const names = owner && !people.some((n) => sameName(n, owner)) ? [...people, owner] : people;
+    return html`<div class="field">
+      <span class="flabel">De quem é</span>
+      <div class="chip-row grid owner-pick" role="radiogroup" aria-label="De quem é">
+        ${["", ...names].map((n) => {
+          const on = n ? sameName(owner, n) : !owner;
+          return html`<button class="pick ${on ? "on" : ""}" role="radio" aria-checked=${on ? "true" : "false"} @click=${() => this._setForm({ owner: n })}>${icon(n ? "user-round" : "users")}<span>${n || "Todos"}</span></button>`;
+        })}
+      </div>
+      ${hint}
+    </div>`;
   }
 
   /** Nova categoria / Categoria: the name and the color; delete (its blocks stay, without a category). */
@@ -2819,7 +3004,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
     if (!page) return this._sheetHead("Folha");
     const list = this._pagesOf(page.block);
     const idx = list.indexOf(page);
-    const blocks = this._blocks();
+    const here = this._block(page.block);
+    const blocks = here && here.archived ? [...this._blocks(), here] : this._blocks();
     const times = page.times || [];
     return html`
       ${this._sheetHead(`Folha ${idx + 1} de ${list.length}`)}

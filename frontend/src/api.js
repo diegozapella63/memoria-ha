@@ -222,6 +222,11 @@ export class Api {
     return this.call("memoria/block/delete", { block_id: id });
   }
 
+  /** De quem é: the people of the house (names) and the person of this login. */
+  people() {
+    return this.call("memoria/people");
+  }
+
   saveCategory(category) {
     return this.call("memoria/category/save", { category });
   }

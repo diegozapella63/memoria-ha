@@ -131,7 +131,7 @@ export const ChatMixin = (Base) =>
       return "o MemorIA";
     }
 
-    /** The notebooks for the AI: the block on screen first, each sheet with its title and text (links as names). */
+    /** The notebooks for the AI: the block on screen first, each sheet with its title and text (links as names), and whose. */
     _chatContext() {
       const open = this._chatOpenBlock();
       const periods = periodTimes(this._data);
@@ -140,7 +140,9 @@ export const ChatMixin = (Base) =>
       const per = PERIODS.find((p) => p.id === periodAt(min, periods));
       const { cur } = this._slot();
       const curBlock = cur && cur.entries[0] ? this._block(cur.entries[0].block) : null;
+      // the blocks in use (an archived one only when it is open on screen)
       const blocks = this._blocks().slice();
+      if (open && open.archived) blocks.push(open);
       blocks.sort((a, b) => Number(b === open) - Number(a === open));
       return {
         tela: this._chatScreen(),
@@ -152,6 +154,7 @@ export const ChatMixin = (Base) =>
             id: b.id,
             nome: b.name,
             categoria: cat ? cat.name : "",
+            dono: b.owner || "",
             abre: this._whenParts(b, false)
               .map((p) => (p.icon === "clock" ? `às ${p.label}` : `${p.label.toLowerCase()} (${p.time})`))
               .join(", ")

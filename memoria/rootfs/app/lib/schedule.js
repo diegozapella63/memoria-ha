@@ -31,6 +31,27 @@ export function periodTimes(data) {
   return { ...DEFAULT_PERIODS, ...((data && data.periods) || {}) };
 }
 
+const foldName = (s) =>
+  String(s || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+export const sameName = (a, b) => foldName(a) === foldName(b);
+
+/** De quem é: the name of a person of the house, or "" (everyone's; "Todos" is everyone's too). */
+export const ownerName = (v) => {
+  const s = typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, 80) : "";
+  return foldName(s) === "todos" ? "" : s;
+};
+
+/**
+ * Whether a block opens by itself in the Agora of a person: never when archived; a block with an owner (De quem é)
+ * only for that person. person "": nobody in particular (a shared tablet, the sensor): every block not archived.
+ */
+export const opensFor = (b, person = "") => !!b && !b.archived && (!person || !b.owner || sameName(b.owner, person));
+
 /** Which period a minute of the day belongs to. */
 export function periodAt(min, periods) {
   const starts = PERIODS.map((p) => ({ id: p.id, min: toMin(periods[p.id]) })).filter((p) => p.min != null);
@@ -42,10 +63,13 @@ export function periodAt(min, periods) {
 
 const RANK = { page: 0, time: 1, period: 2 };
 
-/** All entries of the day, sorted by start minute (pages beat exact times beat periods). */
-export function buildSchedule(data) {
+/**
+ * All entries of the day, sorted by start minute (pages beat exact times beat periods). Archived blocks are left out;
+ * person: only that person's blocks and everyone's (opensFor).
+ */
+export function buildSchedule(data, { person = "" } = {}) {
   const periods = periodTimes(data);
-  const blocks = (data && data.blocks) || [];
+  const blocks = ((data && data.blocks) || []).filter((b) => opensFor(b, person));
   const order = new Map(blocks.map((b, i) => [b.id, b.order != null ? b.order : i]));
   const entries = [];
   for (const b of blocks) {

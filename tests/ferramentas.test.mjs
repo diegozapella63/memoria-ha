@@ -215,3 +215,85 @@ test("the rules shared with the screen (lib/writing.js)", () => {
   assert.equal(freeColor([{ color: "vermelho" }, { color: "coral" }], ["vermelho", "coral", "rosa"], "lilas"), "rosa");
   assert.equal(freeColor([{ color: "vermelho" }], ["vermelho"], "lilas"), "lilas");
 });
+
+// ------------------------------------------------------------------ Arquivar bloco e De quem é (1.9.0)
+
+test("arquivados: out of resumo and buscar unless asked, read when named, no writes until desarquivado", () => {
+  const s = house();
+  let out = run(s, "editar_bloco", { bloco: "Ideias", arquivado: true });
+  assert.match(out.texto, /^Bloco arquivado \(as folhas continuam lá\): Ideias soltas · sem categoria · lilas · pautado · arquivado em 2026-11-08\. Antes: Ideias soltas · sem categoria · lilas · pautado · não abre sozinho\. id: ideias00001$/);
+  assert.equal(out.events[0].block.archived, NOW.getTime());
+  assert.equal(s.data.pages.filter((p) => p.block === "ideias00001").length, 2, "nothing deleted");
+  let r = read(s, "resumo");
+  assert.deepEqual(r.blocos.map((b) => b.nome), ["Mercado", "Reforma da cozinha", "Inglês"]);
+  assert.equal(r.blocos_arquivados, 1);
+  assert.equal(r.total_folhas, 4);
+  r = read(s, "resumo", { arquivados: true });
+  assert.deepEqual(r.blocos.map((b) => [b.nome, b.arquivado]), [["Mercado", undefined], ["Reforma da cozinha", undefined], ["Inglês", undefined], ["Ideias soltas", "2026-11-08"]]);
+  assert.equal(r.blocos_arquivados, undefined);
+  // buscar: only when asked, or in the archived block asked
+  assert.equal(read(s, "buscar", { texto: "praia" }).encontradas, 0);
+  r = read(s, "buscar", { texto: "praia", arquivados: true });
+  assert.equal(r.encontradas, 1);
+  assert.equal(r.folhas[0].arquivado, true);
+  assert.equal(read(s, "buscar", { texto: "praia", bloco: "Ideias soltas" }).encontradas, 1);
+  // read: when named (the ones in use first, then the archived)
+  r = read(s, "ler_bloco", { bloco: "ideias" });
+  assert.equal(r.arquivado, "2026-11-08");
+  assert.equal(r.abre, undefined);
+  assert.equal(read(s, "ler_folha", { folha: "pg000000005" }).bloco_arquivado, true);
+  // no writes in it
+  bad(s, "nova_folha", { bloco: "Ideias soltas", texto: "x" }, /^O bloco Ideias soltas está arquivado\. Para mexer nas folhas dele, desarquive antes com memoria_editar_bloco \(arquivado: false\)\.$/);
+  bad(s, "acrescentar", { folha: "pg000000005", texto: "x" }, /está arquivado/);
+  bad(s, "editar_folha", { folha: "pg000000005", texto: "x" }, /está arquivado/);
+  bad(s, "adicionar_link", { folha: "pg000000005", url: "https://site.com.br" }, /está arquivado/);
+  bad(s, "apagar_folha", { folha: "pg000000005" }, /está arquivado/);
+  bad(s, "editar_folha", { folha: "pg000000001", mover_para: "Ideias soltas" }, /está arquivado/);
+  bad(s, "editar_bloco", { bloco: "Ideias soltas", arquivado: true }, /^O bloco Ideias soltas já está arquivado\.$/);
+  bad(s, "editar_bloco", { bloco: "Ideias soltas", arquivado: "sim" }, /^arquivado: true \(arquivar\) ou false \(desarquivar\)\.$/);
+  // a block not found lists the archived ones too
+  bad(s, "ler_bloco", { bloco: "Academia" }, /Os blocos: Mercado \(mercado0001\), .* Arquivados: Ideias soltas \(ideias00001\)\.$/);
+  // a new block with the same name: the one in use wins
+  const novo = run(s, "novo_bloco", { nome: "Ideias soltas" }).events[0].block;
+  assert.equal(read(s, "ler_bloco", { bloco: "Ideias soltas" }).id, novo.id);
+  // back
+  out = run(s, "editar_bloco", { bloco: "ideias00001", arquivado: false });
+  assert.match(out.texto, /^Bloco desarquivado: Ideias soltas · sem categoria · lilas · pautado · não abre sozinho\./);
+  assert.equal("archived" in s.block("ideias00001"), false);
+  assert.match(run(s, "nova_folha", { bloco: "ideias00001", texto: "De volta" }).texto, /^Folha criada: folha 3 de Ideias soltas/);
+  s.flush();
+});
+
+test("De quem é: de in novo_bloco and editar_bloco (a person of the house); resumo shows it and its agora is the person's", () => {
+  const s = house();
+  const people = [
+    { id: "person.ana", name: "Ana" },
+    { id: "person.beto", name: "Beto" },
+  ];
+  const call = (nome, argumentos, extra = {}) => callTool(nome, argumentos, { store: s, now: NOW, people, ...extra });
+  let out = call("editar_bloco", { bloco: "Mercado", de: "ana" });
+  assert.match(out.texto, /^Bloco alterado: Mercado · categoria Casa · de Ana · laranja · pautado · abre de manhã \(05:00\)\. Antes: Mercado · categoria Casa · laranja/);
+  assert.equal(s.block("mercado0001").owner, "Ana");
+  out = call("novo_bloco", { nome: "Treino", de: "person.beto", horarios: ["07:00"] });
+  const treino = out.events[0].block;
+  assert.equal(treino.owner, "Beto");
+  assert.throws(() => call("editar_bloco", { bloco: "Mercado", de: "Carla" }), (err) => err instanceof ToolError && err.message === "Pessoa não encontrada: Carla. As pessoas da casa: Ana, Beto. Vazio ou Todos: de todos.");
+  // 10:30: for Beto, his Treino (07:00); for Ana, the sheet of the Mercado at 09:00; for anyone, the same as Ana
+  let r = JSON.parse(call("resumo", {}, { pessoa: "Beto" }).texto);
+  assert.deepEqual(r.agora, { periodo: "manhã", pessoa: "Beto", bloco: "Treino", bloco_id: treino.id, desde: "07:00", proximo: "19:30 Inglês" });
+  r = JSON.parse(call("resumo", {}, { pessoa: "Ana" }).texto);
+  assert.equal(r.agora.bloco, "Mercado");
+  assert.equal(r.agora.folha_id, "pg000000002");
+  r = JSON.parse(call("resumo", {}).texto);
+  assert.equal(r.agora.pessoa, undefined);
+  assert.equal(r.agora.bloco, "Mercado");
+  assert.deepEqual(r.blocos.map((b) => [b.nome, b.de]), [["Mercado", "Ana"], ["Reforma da cozinha", undefined], ["Inglês", undefined], ["Ideias soltas", undefined], ["Treino", "Beto"]]);
+  assert.equal(read(s, "ler_bloco", { bloco: "Treino" }).de, "Beto");
+  // Todos (or empty): everyone's again
+  call("editar_bloco", { bloco: "Mercado", de: "Todos" });
+  assert.equal("owner" in s.block("mercado0001"), false);
+  // without the people of Home Assistant, the name as written
+  callTool("editar_bloco", { bloco: "Mercado", de: "Carla" }, { store: s, now: NOW });
+  assert.equal(s.block("mercado0001").owner, "Carla");
+  s.flush();
+});

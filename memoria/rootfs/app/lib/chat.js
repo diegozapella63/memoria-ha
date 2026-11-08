@@ -39,7 +39,7 @@ export const CHAT_STRUCTURE = {
 
 /**
  * What the screen sends, checked: {messages: [{role: "user"|"ia", text}], context: {tela, agora, blocos: [{id, nome,
- * categoria, abre, aberto, folhas: [{n, titulo, texto, escrita, horarios}]}]}}. The last message is the person's.
+ * categoria, dono, abre, aberto, folhas: [{n, titulo, texto, escrita, horarios}]}]}}. The last message is the person's.
  * The sheets have a budget: the block open on screen first, with more of each text.
  */
 export function cleanChat(raw) {
@@ -71,6 +71,7 @@ export function cleanChat(raw) {
       id: b.id,
       nome: oneLine(b.nome, 60) || "Sem nome",
       categoria: oneLine(b.categoria, 40),
+      dono: oneLine(b.dono, 80),
       abre: oneLine(b.abre, 120),
       aberto: b.aberto === true,
       total: Number.isFinite(b.total) ? Math.max(folhas.length, Math.round(b.total)) : folhas.length,
@@ -89,7 +90,7 @@ export function chatInstructions({ messages, context }, now = new Date()) {
   const blocks = context.blocos.length
     ? context.blocos
         .map((b) => {
-          const head = `• Bloco "${b.nome}"${b.categoria ? ` (categoria ${b.categoria})` : ""}${b.abre ? `, ${b.abre}` : ""}${b.aberto ? " — aberto na tela" : ""}: ${b.total ? `${b.total} ${b.total === 1 ? "folha" : "folhas"}` : "nenhuma folha"}`;
+          const head = `• Bloco "${b.nome}"${b.categoria ? ` (categoria ${b.categoria})` : ""}${b.dono ? ` (de ${b.dono})` : ""}${b.abre ? `, ${b.abre}` : ""}${b.aberto ? " — aberto na tela" : ""}: ${b.total ? `${b.total} ${b.total === 1 ? "folha" : "folhas"}` : "nenhuma folha"}`;
           const rows = b.folhas.map((f) => {
             const meta = [f.escrita ? `escrita em ${f.escrita}` : "", f.horarios ? `aparece às ${f.horarios}` : ""].filter(Boolean).join("; ");
             const body = f.texto.split("\n").slice(1).join("\n").trim();

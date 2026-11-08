@@ -33,10 +33,10 @@ export function toCSV(data) {
     return /[";\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const cats = new Map((data.categories || []).map((c) => [c.id, c.name]));
-  const rows = [["Bloco", "Categoria", "Folha", "Título", "Escrita em", "Editada em", "Horários", "Texto"]];
+  const rows = [["Bloco", "Categoria", "De quem é", "Arquivado em", "Folha", "Título", "Escrita em", "Editada em", "Horários", "Texto"]];
   for (const b of orderedBlocks(data)) {
     pagesOf(data, b.id).forEach((p, i) => {
-      rows.push([b.name, cats.get(b.category) || "", i + 1, firstLine(linksToText(p.text)), dateTime(p.created), dateTime(p.updated), (p.times || []).join(" "), p.text]);
+      rows.push([b.name, cats.get(b.category) || "", b.owner || "Todos", b.archived ? dateTime(b.archived).slice(0, 10) : "", i + 1, firstLine(linksToText(p.text)), dateTime(p.created), dateTime(p.updated), (p.times || []).join(" "), p.text]);
     });
   }
   return Buffer.from("﻿" + rows.map((r) => r.map(q).join(";")).join("\r\n") + "\r\n", "utf8");
@@ -49,7 +49,9 @@ export function toMarkdown(data, block, periods) {
     ...(block.times || []),
   ];
   const cat = (data.categories || []).find((c) => c.id === block.category);
-  const head = `# ${block.name}\n\n${cat ? `Categoria: ${cat.name}\n\n` : ""}${when.length ? `Abre sozinho: ${when.join(", ")}\n\n` : ""}`;
+  const head =
+    `# ${block.name}\n\n${cat ? `Categoria: ${cat.name}\n\n` : ""}${block.owner ? `De quem é: ${block.owner}\n\n` : ""}` +
+    `${block.archived ? `Arquivado em ${dateTime(block.archived).slice(0, 10)}\n\n` : when.length ? `Abre sozinho: ${when.join(", ")}\n\n` : ""}`;
   const pages = pagesOf(data, block.id).map((p, i) => {
     const extra = (p.times || []).length ? ` · às ${p.times.join(", ")}` : "";
     return `## Folha ${i + 1} · ${dateTime(p.created)}${extra}\n\n${p.text.trim()}`;

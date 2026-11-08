@@ -1,7 +1,7 @@
 // A tiny fake of Home Assistant, enough to develop and test MemorIA without a
 // real Home Assistant: the websocket API (AI tasks, the Conversa, the voice assistants), the REST call that
-// sets sensor.memoria_agora and the speech-to-text of Falar (the transcript is FAKE_STT_TEXT; FAKE_NO_STT=1:
-// no speech-to-text).
+// sets sensor.memoria_agora, the speech-to-text of Falar (the transcript is FAKE_STT_TEXT; FAKE_NO_STT=1:
+// no speech-to-text) and the people of the house, Ana (user u-ana) and Beto (u-beto).
 //   node dev/fake-ha.mjs
 //   (ws://127.0.0.1:8123/api/websocket and http://127.0.0.1:8123/api, token "dev")
 import http from "node:http";
@@ -101,6 +101,13 @@ class Conn {
         case "get_states":
           return ok([
             { entity_id: "light.sala", state: "on", attributes: {} },
+            // the people of the house (De quem é), invented; FAKE_NO_PEOPLE=1: none
+            ...(process.env.FAKE_NO_PEOPLE
+              ? []
+              : [
+                  { entity_id: "person.ana", state: "home", attributes: { friendly_name: "Ana", user_id: "u-ana" } },
+                  { entity_id: "person.beto", state: "not_home", attributes: { friendly_name: "Beto", user_id: "u-beto" } },
+                ]),
             ...(WITH_AI
               ? [
                   { entity_id: "ai_task.google_ai_task", state: "unknown", attributes: { friendly_name: "Google AI Task", supported_features: 3 } },

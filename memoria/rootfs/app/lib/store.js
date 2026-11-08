@@ -1,11 +1,12 @@
 // MemorIA data in /data/memoria.json: notebooks ("blocos"), pages, the day's
-// periods and app settings. Everything is validated here. Like the other apps,
-// a copy goes to /data/versoes every 10 minutes of use (the 60 most recent)
+// periods and app settings. A block can have an owner (De quem é: the name of a person of the house; none:
+// everyone's) and be archived (archived: when, in ms; none: not archived). Everything is validated here.
+// Like the other apps, a copy goes to /data/versoes every 10 minutes of use (the 60 most recent)
 // and before importing, restoring or erasing.
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { DEFAULT_PERIODS, PAPERS, PERIODS, normTime } from "./schedule.js";
+import { DEFAULT_PERIODS, PAPERS, PERIODS, normTime, ownerName } from "./schedule.js";
 
 export const COLORS = ["vermelho", "coral", "rosa", "framboesa", "laranja", "ouro", "lilas", "azul", "menta", "grafite"];
 const PERIOD_IDS = PERIODS.map((p) => p.id);
@@ -102,6 +103,9 @@ export function normalize(raw, current = {}) {
       periods: [...new Set((Array.isArray(b.periods) ? b.periods : []).filter((p) => PERIOD_IDS.includes(p)))],
       times: looseTimes(b.times),
       ...(catIds.has(b.category) ? { category: b.category } : {}),
+      ...(ownerName(b.owner) ? { owner: ownerName(b.owner) } : {}),
+      // Arquivar bloco: when (old files: not archived)
+      ...(Number.isFinite(b.archived) && b.archived > 0 ? { archived: b.archived } : b.archived === true ? { archived: now } : {}),
       order: Number.isInteger(b.order) ? b.order : blocks.length,
       created: when(b.created, now),
       updated: when(b.updated, now),
@@ -264,10 +268,21 @@ export class Store {
       if (input.category) b.category = input.category;
       else delete b.category;
     }
+    // De quem é: "" (or "Todos") = everyone's
+    if ("owner" in input) {
+      const owner = ownerName(input.owner);
+      if (owner) b.owner = owner;
+      else delete b.owner;
+    }
+    // Arquivar bloco: true archives (keeping when it was), false brings it back
+    if ("archived" in input) {
+      if (input.archived) b.archived = (existing && existing.archived) || now;
+      else delete b.archived;
+    }
     if ("order" in input && Number.isInteger(input.order)) b.order = input.order;
     b.updated = now;
     if (existing) {
-      if (!("category" in b)) delete existing.category;
+      for (const k of ["category", "owner", "archived"]) if (!(k in b)) delete existing[k];
       Object.assign(existing, b);
     } else this.data.blocks.push(b);
     this.save();

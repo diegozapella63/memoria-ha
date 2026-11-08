@@ -143,3 +143,26 @@ test("links in the report: the name and the site, never the long address in the 
   data.pages[0].text = "Lista\n\n[x](javascript:alert(1))";
   assert.doesNotMatch(reportHtml(anotacoes(data, { now: NOW })), /href="javascript/);
 });
+
+test("Arquivar bloco and De quem é (1.9.0): the archived out of all but a choice (last); whose under the name", () => {
+  const data = casa();
+  data.blocks[3].archived = NOW - 86400000; // Ideias soltas
+  data.blocks[0].owner = "Ana"; // Mercado
+  let rep = anotacoes(data, { now: NOW });
+  assert.deepEqual(rep.sections.map((s) => s.name), ["Mercado", "Reforma da cozinha", "Inglês"]);
+  assert.equal(countText(rep), "3 blocos · 4 folhas");
+  assert.deepEqual(rep.blocks.map((b) => [b.name, !!b.archived]), [["Mercado", false], ["Reforma da cozinha", false], ["Inglês", false], ["Ideias soltas", true]]);
+  const h = reportHtml(rep);
+  assert.match(h, /<option value="ideias00001">Ideias soltas \(arquivado\)<\/option><\/select>/);
+  assert.match(h, /<h2><span>Mercado<\/span><small>Casa · de Ana · 2 folhas · abre de manhã \(05:00\)<\/small><\/h2>/);
+  // chosen: it comes, marked
+  rep = anotacoes(data, { bloco: "ideias00001", now: NOW });
+  assert.deepEqual(rep.sections.map((s) => s.name), ["Ideias soltas"]);
+  assert.match(reportHtml(rep), /<small>1 folha · arquivado<\/small>/);
+  assert.match(reportPdf(rep).toString("latin1"), /\(1 folha \\267 arquivado\)/);
+  // the archived ones count for Sem categoria (it can be chosen)
+  rep = anotacoes(data, { categoria: "sem", now: NOW });
+  assert.equal(rep.cat, "sem");
+  assert.deepEqual(rep.sections, []);
+  assert.match(reportHtml(rep), /<p class="vazio">Só blocos arquivados: escolha um no alto\.<\/p>/);
+});

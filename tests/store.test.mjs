@@ -5,6 +5,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { Store, normalize } from "../memoria/rootfs/app/lib/store.js";
+import { buildSchedule, opensFor, ownerName } from "../memoria/rootfs/app/lib/schedule.js";
+import { Sensor } from "../memoria/rootfs/app/lib/sensor.js";
 
 const log = { info() {}, warn() {}, error() {} };
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "memoria-test-"));
@@ -169,5 +171,83 @@ test("CorrerIA: off unless turned on; it belongs to this Home Assistant, not to 
   s = store.saveSettings({ app: { correria: null } });
   assert.equal("correria" in s.app, false);
   assert.equal(store.replaceAll({ blocks: [], pages: [], app: { correria: true } }, "teste").app.correria, undefined);
+  store.flush();
+});
+
+// ------------------------------------------------------------------ Arquivar bloco e De quem é (1.9.0)
+
+test("Arquivar bloco: kept with when, nothing deleted; false brings it back; an old file is not archived", () => {
+  const { store } = fresh();
+  const diario = store.data.blocks[0];
+  const pages = store.data.pages.length;
+  let b = store.saveBlock({ id: diario.id, archived: true });
+  assert.ok(Number.isFinite(b.archived) && b.archived > 0);
+  const when = b.archived;
+  // saving the sheet again (name, color…) keeps it archived, and since when
+  b = store.saveBlock({ id: diario.id, name: "Diário antigo", archived: true });
+  assert.equal(b.archived, when);
+  b = store.saveBlock({ id: diario.id, color: "azul" });
+  assert.equal(b.archived, when);
+  assert.equal(store.data.pages.length, pages);
+  b = store.saveBlock({ id: diario.id, archived: false });
+  assert.equal("archived" in b, false);
+  assert.equal("archived" in normalize({ blocks: [{ id: "abc123", name: "A" }], pages: [] }).blocks[0], false);
+  assert.equal(normalize({ blocks: [{ id: "abc123", name: "A", archived: 1790000000000 }], pages: [] }).blocks[0].archived, 1790000000000);
+  assert.equal("archived" in normalize({ blocks: [{ id: "abc123", name: "A", archived: "sim" }], pages: [] }).blocks[0], false);
+  store.flush();
+});
+
+test("De quem é: a name, or everyone's (empty or Todos); an old file is everyone's", () => {
+  const { store } = fresh();
+  const id = store.data.blocks[0].id;
+  let b = store.saveBlock({ id, owner: "  Ana   Souza " });
+  assert.equal(b.owner, "Ana Souza");
+  b = store.saveBlock({ id, name: "Diário da Ana" });
+  assert.equal(b.owner, "Ana Souza", "the sheet without owner keeps it");
+  b = store.saveBlock({ id, owner: "todos" });
+  assert.equal("owner" in b, false);
+  store.saveBlock({ id, owner: "Beto" });
+  b = store.saveBlock({ id, owner: "" });
+  assert.equal("owner" in b, false);
+  assert.equal(normalize({ blocks: [{ id: "abc123", name: "A", owner: "Beto" }], pages: [] }).blocks[0].owner, "Beto");
+  assert.equal("owner" in normalize({ blocks: [{ id: "abc123", name: "A", owner: 7 }], pages: [] }).blocks[0], false);
+  assert.equal("owner" in normalize({ blocks: [{ id: "abc123", name: "A" }], pages: [] }).blocks[0], false);
+  store.flush();
+});
+
+test("the Agora (buildSchedule): never an archived block; with a person, theirs and everyone's", () => {
+  const data = {
+    periods: { manha: "05:00", tarde: "12:00", noite: "18:00" },
+    blocks: [
+      { id: "todos00001", name: "Casa", periods: ["manha"], times: [], order: 0 },
+      { id: "ana0000001", name: "Diário da Ana", periods: ["noite"], times: [], order: 1, owner: "Ana" },
+      { id: "beto000001", name: "Treino do Beto", periods: [], times: ["07:00"], order: 2, owner: "Beto" },
+      { id: "velho00001", name: "Viagem", periods: [], times: ["08:00"], order: 3, archived: 1790000000000 },
+    ],
+    pages: [{ id: "pgvelho001", block: "velho00001", text: "Roteiro", times: ["09:00"], created: 1, updated: 1 }],
+  };
+  const ids = (person) => [...new Set(buildSchedule(data, { person }).map((e) => e.block))];
+  // nobody in particular (a shared tablet, the sensor): every block not archived, nor its sheets with a time
+  assert.deepEqual(ids(""), ["todos00001", "beto000001", "ana0000001"]);
+  assert.deepEqual(ids("Ana"), ["todos00001", "ana0000001"]);
+  assert.deepEqual(ids("beto"), ["todos00001", "beto000001"], "accents and case don't matter");
+  assert.equal(opensFor(data.blocks[1], "Beto"), false);
+  assert.equal(opensFor(data.blocks[3], ""), false);
+  assert.equal(ownerName(" Todos "), "");
+});
+
+test("sensor.memoria_agora: an archived block never is the block of the moment", () => {
+  const { store } = fresh();
+  const [diario, rascunhos] = store.data.blocks;
+  store.saveBlock({ id: diario.id, periods: [], times: ["07:00"] });
+  store.saveBlock({ id: rascunhos.id, periods: [], times: ["06:00"] });
+  const sensor = new Sensor({ store, log, restUrl: "", token: "", enabled: () => true });
+  const at = new Date(2026, 10, 8, 7, 30);
+  assert.equal(sensor.state(at).state, "Diário");
+  store.saveBlock({ id: diario.id, archived: true });
+  assert.equal(sensor.state(at).state, "Rascunhos");
+  // a block of a person still counts for the sensor (a panel is like a shared tablet)
+  store.saveBlock({ id: diario.id, archived: false, owner: "Ana" });
+  assert.equal(sensor.state(at).state, "Diário");
   store.flush();
 });

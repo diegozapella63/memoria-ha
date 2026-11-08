@@ -35,7 +35,21 @@ Em **Blocos**, abra um bloco e toque na linha **Abre sozinho** (ou no ícone de 
 - **Períodos**: Manhã, Tarde e Noite. O começo de cada um fica em **Mais › Configurações › Opções** (padrão 05:00, 12:00 e 18:00).
 - **Horários exatos**: por exemplo Treino às 07:00 e Diário às 22:00.
 
-Nos mesmos ajustes ficam o nome, a **categoria**, a **cor da capa**, o tipo de **folha** (pautada, quadriculada, pontilhada ou lisa) e o botão de excluir o bloco (as folhas dele vão junto). Para criar outro, toque em **Novo bloco**, no fim da estante.
+Nos mesmos ajustes ficam o nome, a **categoria**, **de quem é**, a **cor da capa**, o tipo de **folha** (pautada, quadriculada, pontilhada ou lisa), **Arquivar bloco** e o botão de excluir o bloco (as folhas dele vão junto). Para criar outro, toque em **Novo bloco**, no fim da estante.
+
+## De quem é
+
+Nos ajustes do bloco, **De quem é**: **Todos** (o padrão; os blocos de antes ficam assim) ou uma das pessoas da casa, as mesmas de **Configurações › Pessoas** do Home Assistant. Um bloco de uma pessoa só abre sozinho no **Agora** dela, e só aparece no **Seu dia** dela; os de **Todos** aparecem para todo mundo.
+
+O app sabe quem está usando pelo login do Home Assistant: a pessoa ligada àquele usuário. Um login que não é de nenhuma pessoa da casa (um tablet na parede, por exemplo) vê todos os blocos no **Agora**.
+
+A tela **Blocos** continua mostrando todos os blocos, de todo mundo, com "de Ana" na etiqueta da capa; a tela do bloco também diz de quem é. Se o Home Assistant não responder, dá para escrever o nome da pessoa.
+
+## Arquivar um bloco
+
+Um bloco que não se usa mais, mas que vale guardar: nos ajustes dele, toque em **Arquivar bloco**. Nada é apagado: o bloco só sai da estante, do **Agora** (não abre mais sozinho), da **Nova**, do **Buscar** e da conversa com a IA. Logo depois, **Desfazer** traz de volta.
+
+Os arquivados ficam em **Arquivados**, recolhido no fim da tela **Blocos**, com o número deles; toque para ver e toque num deles para abrir. Ele abre normalmente, com o aviso **Arquivado em …** no alto e o botão **Desarquivar**, que devolve o bloco à estante com tudo como era (inclusive os horários). Nos ajustes, o mesmo lugar vira **Desarquivar bloco**.
 
 ## Categorias
 
@@ -43,7 +57,7 @@ Em **Mais › Categorias**, crie categorias para agrupar os blocos (por exemplo 
 
 Nos ajustes do bloco, escolha **Sem categoria**, uma das categorias ou **Nova** (escreva o nome ali mesmo; ela é criada ao salvar o bloco).
 
-Com categorias, a tela **Blocos** mostra etiquetas no alto: **Todos**, cada categoria e **Sem categoria** (quando algum bloco não tem). A escolha fica guardada no aparelho, e um bloco novo criado com uma categoria escolhida já entra nela. O **Seu dia** continua mostrando todos os horários.
+Com categorias, a tela **Blocos** mostra etiquetas no alto: **Todos**, cada categoria e **Sem categoria** (quando algum bloco não tem). A escolha fica guardada no aparelho (vale também para os **Arquivados**), e um bloco novo criado com uma categoria escolhida já entra nela. O **Seu dia** continua mostrando todos os horários.
 
 No fim de **Blocos**, o quadro **Seu dia** lista os horários de hoje, com o de agora marcado. Toque num deles para abrir o bloco (ou o trecho).
 
@@ -103,11 +117,13 @@ Em **Mais › Configurações › Integrações**:
 
 Em **Buscar**, procure qualquer palavra em todas as folhas de todos os blocos, sem se importar com acentos. Cada resultado mostra o trecho com a palavra marcada, o bloco e quando foi escrito; toque para abrir a folha.
 
+Os blocos arquivados ficam de fora. Para procurar neles também, toque em **Incluir arquivados**, logo abaixo da caixa (só aparece quando há algum); a escolha fica guardada no aparelho.
+
 ## Sensor para painéis e automações
 
 O MemorIA publica `sensor.memoria_agora`:
 
-- **estado**: o nome do bloco do momento (ou `Nenhum`);
+- **estado**: o nome do bloco do momento (ou `Nenhum`), entre todos os blocos não arquivados, de qualquer pessoa (como no tablet da sala);
 - **atributos**: `periodo`, `desde`, `bloco_id`, `pagina_id`, `titulo` (primeira linha da folha), `texto` e `proximo` (ex.: `07:00 Treino`).
 
 Exemplo num cartão Markdown:
@@ -128,7 +144,9 @@ O **CorrerIA** é outro app da família: o contato da CorrerIA Code no WhatsApp,
 1. Aqui, em **Mais › Configurações › Integrações › CorrerIA**, ligue **Usar com o CorrerIA**. Vem desligado e não depende do **Usar IA**: quem pensa é a IA do CorrerIA, o Claude ou o Gemini.
 2. No app **CorrerIA**, conecte o WhatsApp, o Claude ou o Gemini (o passo a passo está na documentação dele).
 
-O que eles podem fazer: ver o resumo (os blocos, as últimas folhas e o bloco do momento), buscar nas folhas (sem se importar com acentos, também num bloco, numa categoria ou num período), ler um bloco ou uma folha, criar uma folha, acrescentar no fim de uma folha, editar (o texto inteiro, um trecho, os horários ou mover para outro bloco), adicionar um link, arrancar uma folha, criar e ajustar blocos (nome, categoria, cor, papel e quando abre sozinho) e criar categorias. Fotos, arquivos, backups e configurações ficam de fora. O que mudar aparece na hora em todos os aparelhos.
+O que eles podem fazer: ver o resumo (os blocos, de quem é cada um, as últimas folhas e o bloco do momento de quem pergunta, como no Agora dela), buscar nas folhas (sem se importar com acentos, também num bloco, numa categoria ou num período), ler um bloco ou uma folha, criar uma folha, acrescentar no fim de uma folha, editar (o texto inteiro, um trecho, os horários ou mover para outro bloco), adicionar um link, arrancar uma folha, criar e ajustar blocos (nome, categoria, de quem é, cor, papel, quando abre sozinho, arquivar e desarquivar) e criar categorias. Fotos, arquivos, backups e configurações ficam de fora. O que mudar aparece na hora em todos os aparelhos.
+
+Os blocos arquivados ficam fora do resumo e da busca, a não ser que eles peçam, e dá para ler um arquivado pelo nome. As folhas de um bloco arquivado não mudam até ele ser desarquivado.
 
 Ligado, o cartão mostra quem usou por último e quando ("Claude usou hoje às 09:41"). Desligado, o acesso deixa de valer na hora. O CorrerIA acha o MemorIA pelo arquivo `share/memoria/correria.json`, com uma chave de acesso própria, que só existe enquanto a chave está ligada.
 
@@ -136,11 +154,11 @@ Ligado, o cartão mostra quem usou por último e quando ("Claude usou hoje às 0
 
 Em **Mais › Relatório**, os blocos e as folhas escritas numa página para ver, imprimir ou salvar:
 
-- no alto, a **categoria** e o **bloco** (só os da categoria escolhida); a escolha volta da próxima vez que o relatório abrir;
+- no alto, a **categoria** e o **bloco** (só os da categoria escolhida); a escolha volta da próxima vez que o relatório abrir. Os blocos arquivados ficam fora de "Todos os blocos", mas aparecem no fim da lista, marcados "(arquivado)", para escolher um deles;
 - **Voltar** e **Baixar PDF** lado a lado. O PDF (`anotacoes-AAAA-MM-DD.pdf`, com o nome do bloco ou da categoria quando filtrado) é feito pelo próprio app e funciona também no app do Home Assistant no celular, que não imprime páginas;
 - o cabeçalho, igual ao dos relatórios dos outros apps da família: o ícone, **MemorIA · anotações**, quantos blocos e folhas e quando foi gerado;
 - os gráficos **Por categoria** e **Por bloco** (quantas folhas em cada), quando há mais de um;
-- cada bloco com a categoria, quantas folhas e quando abre sozinho, e cada folha com o número, o dia em que foi escrita, o horário próprio (se tiver) e o texto;
+- cada bloco com a categoria, de quem é, quantas folhas e quando abre sozinho, e cada folha com o número, o dia em que foi escrita, o horário próprio (se tiver) e o texto;
 - no fim, a marca da **CorrerIA Code**, como no **Sobre** (no PDF, no pé de cada página, com o número da página).
 
 A página abre no tema e na cor do app; o PDF e o papel são sempre brancos.
@@ -152,13 +170,13 @@ A página abre no tema e na cor do app; o PDF e o papel são sempre brancos.
 
 Em **Mais › Configurações › Dados**:
 
-- **Exportar**: **Tudo (ZIP)** com o `memoria.json`, uma planilha e um arquivo de texto (Markdown) por bloco; **Planilha (CSV)**, que abre no Excel (separado por ponto e vírgula, com a categoria de cada bloco); e **Dados completos (JSON)**.
+- **Exportar**: **Tudo (ZIP)** com o `memoria.json`, uma planilha e um arquivo de texto (Markdown) por bloco; **Planilha (CSV)**, que abre no Excel (separado por ponto e vírgula, com a categoria, de quem é e quando foi arquivado cada bloco); e **Dados completos (JSON)**.
 - **Backup na pasta share**: **Criar backup** salva um `.zip` em `share/memoria`, que você acessa pela rede (por exemplo `\\homeassistant.local\share\memoria` com o app Samba). Os backups da pasta aparecem logo abaixo, com **Restaurar**.
 - **Importar**: traz os blocos e folhas de um `.zip` ou `.json` exportado pelo app (também funciona pelo celular).
 - **Versões anteriores**: o app guarda sozinho uma cópia a cada 10 minutos de uso (as 60 mais recentes) em `/data/versoes`. Toque em **Restaurar** para voltar a uma delas.
 - **Começar do zero**: apaga todos os blocos e folhas; os ajustes e as categorias continuam.
 
-Antes de importar, restaurar ou apagar, o app sempre guarda uma cópia do que existe naquele momento em **Versões anteriores**. Importar e restaurar trocam os blocos, as categorias, as folhas e os períodos do dia; a IA escolhida e o CorrerIA continuam os deste Home Assistant.
+Antes de importar, restaurar ou apagar, o app sempre guarda uma cópia do que existe naquele momento em **Versões anteriores**. Importar e restaurar trocam os blocos (com de quem é cada um e os arquivados), as categorias, as folhas e os períodos do dia; a IA escolhida e o CorrerIA continuam os deste Home Assistant. Um backup de antes da 1.9.0 volta com todos os blocos de **Todos** e nenhum arquivado.
 
 ## Aparência
 

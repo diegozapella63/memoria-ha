@@ -62,30 +62,42 @@ export function opensText(b, periods) {
 
 /**
  * What goes in the report. categoria: "" (all), a category id or "sem" (the blocks without one); bloco: a block id
- * (one of those), or "" for all. Only sheets with text. Returns {at, categories, blocks, cat, block, sections, total,
- * pages}: categories and blocks are the choices of the page (blocks: the ones of the category chosen).
+ * (one of those), or "" for all. Only sheets with text. The archived blocks stay out of "all", but one of them can be
+ * chosen (they come last among the choices). Returns {at, categories, blocks, cat, block, sections, total, pages}:
+ * categories and blocks are the choices of the page (blocks: the ones of the category chosen).
  */
 export function anotacoes(data, { categoria = "", bloco = "", now = Date.now() } = {}) {
   const cats = [...(data.categories || [])].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name, "pt-BR"));
   const catById = new Map(cats.map((c) => [c.id, c]));
-  const all = [...(data.blocks || [])].sort((a, b) => a.order - b.order || a.created - b.created);
+  const all = [...(data.blocks || [])].sort((a, b) => Number(!!a.archived) - Number(!!b.archived) || a.order - b.order || a.created - b.created);
   const hasNone = all.some((b) => !catById.has(b.category));
   const cat = categoria === "sem" ? (cats.length && hasNone ? "sem" : "") : catById.has(categoria) ? categoria : "";
   const inCat = (b) => !cat || (cat === "sem" ? !catById.has(b.category) : b.category === cat);
   const blocks = all.filter(inCat);
   const block = blocks.some((b) => b.id === bloco) ? bloco : "";
   const pagesOf = (id) => (data.pages || []).filter((p) => p.block === id && String(p.text || "").trim()).sort(byCreated);
-  const sections = (block ? blocks.filter((b) => b.id === block) : blocks).map((b) => {
+  const sections = (block ? blocks.filter((b) => b.id === block) : blocks.filter((b) => !b.archived)).map((b) => {
     const c = catById.get(b.category);
     const pages = pagesOf(b.id).map((p, k) => ({ n: k + 1, id: p.id, created: p.created, updated: p.updated, times: p.times || [], ...sheetParts(p.text) }));
-    return { id: b.id, name: b.name, color: PALETTE[b.color] || DEFAULT_COLOR, category: c ? c.name : "", categoryColor: c ? PALETTE[c.color] || PALETTE.grafite : "", opens: opensText(b, data.periods), pages };
+    return {
+      id: b.id,
+      name: b.name,
+      color: PALETTE[b.color] || DEFAULT_COLOR,
+      category: c ? c.name : "",
+      categoryColor: c ? PALETTE[c.color] || PALETTE.grafite : "",
+      owner: b.owner || "",
+      archived: b.archived || 0,
+      // an archived block doesn't open by itself
+      opens: b.archived ? "" : opensText(b, data.periods),
+      pages,
+    };
   });
   const total = sections.reduce((n, s) => n + s.pages.length, 0);
   return {
     at: now,
     categories: cats.map((c) => ({ id: c.id, name: c.name, color: PALETTE[c.color] || PALETTE.grafite })),
     hasNone,
-    blocks: blocks.map((b) => ({ id: b.id, name: b.name })),
+    blocks: blocks.map((b) => ({ id: b.id, name: b.name, ...(b.archived ? { archived: true } : {}) })),
     cat,
     catName: cat === "sem" ? "Sem categoria" : cat ? catById.get(cat).name : "",
     block,
@@ -93,6 +105,12 @@ export function anotacoes(data, { categoria = "", bloco = "", now = Date.now() }
     total,
   };
 }
+
+/** Nothing to show: no block at all, or only archived ones (each can still be chosen at the top). */
+const emptyText = (rep) => (rep.blocks.length ? "Só blocos arquivados: escolha um no alto." : "Nenhum bloco ainda.");
+
+/** "Casa · de Ana · 2 folhas · abre de manhã (05:00)" (under the name of a block; "arquivado" when it is). */
+export const sectionMeta = (s) => [s.category, s.owner ? `de ${s.owner}` : "", plural(s.pages.length, "folha", "folhas"), s.opens, s.archived ? "arquivado" : ""].filter(Boolean).join(" · ");
 
 /** "Trabalho · 2 blocos · 5 folhas" (the count of the header, with what was chosen). */
 export function countText(rep) {
@@ -215,14 +233,14 @@ export function reportHtml(rep, { tema = null, cor = DEFAULT_COLOR } = {}) {
     : "";
   const blockSel =
     `<select name="bloco" aria-label="Bloco" onchange="${CHOOSE}"><option value=""${rep.block ? "" : " selected"}>${rep.cat ? "Todos os blocos dela" : "Todos os blocos"}</option>` +
-    rep.blocks.map((b) => `<option value="${esc(b.id)}"${rep.block === b.id ? " selected" : ""}>${esc(b.name)}</option>`).join("") +
+    rep.blocks.map((b) => `<option value="${esc(b.id)}"${rep.block === b.id ? " selected" : ""}>${esc(b.name)}${b.archived ? " (arquivado)" : ""}</option>`).join("") +
     `</select>`;
   const page = (p) => {
     const meta = [`Folha ${p.n}`, day(p.created), ...(p.times.length ? [`às ${p.times.join(", ")}`] : [])].join(" · ");
     return `<article class="folha"><p class="fm">${esc(meta)}</p><h3>${lineHtml(p.title)}</h3>${p.body.length ? `<div class="tx">${p.body.map(lineHtml).join("\n")}</div>` : ""}</article>`;
   };
   const section = (s) => {
-    const sub = [s.category, plural(s.pages.length, "folha", "folhas"), s.opens].filter(Boolean).join(" · ");
+    const sub = sectionMeta(s);
     return `<section class="bloco" style="--b:${s.color}"><h2><span>${esc(s.name)}</span><small>${esc(sub)}</small></h2>${s.pages.length ? s.pages.map(page).join("") : `<p class="vazio">Nenhuma folha escrita neste bloco.</p>`}</section>`;
   };
   const charts = graficos(rep);
@@ -294,7 +312,7 @@ ${catSel}${blockSel}
 </div>
 <header class="cab">${ICON(accent)}<div><div class="app"><span class="wm">Memor<b>IA</b></span> · anotações</div><h1>Relatório de anotações</h1><p>${esc(countText(rep))} · ${whenGenerated(rep.at)}</p></div></header>
 ${charts.length ? `<div class="graficos">${charts.map(chartHtml).join("")}</div>` : ""}
-${rep.sections.length ? rep.sections.map(section).join("") : `<p class="vazio">Nenhum bloco ainda.</p>`}
+${rep.sections.length ? rep.sections.map(section).join("") : `<p class="vazio">${emptyText(rep)}</p>`}
 ${MARCA}
 </main></body></html>`;
 }
@@ -410,7 +428,7 @@ export function reportPdf(rep, { cor = DEFAULT_COLOR } = {}) {
   if (charts.length) y += 6;
 
   const sectionHead = (s, cont = false) => {
-    const meta = [s.category, plural(s.pages.length, "folha", "folhas"), s.opens].filter(Boolean).join(" · ");
+    const meta = sectionMeta(s);
     const title = `${s.name}${cont ? " (continuação)" : ""}`;
     pdf.text(M, y + 14, title, { size: 14, bold: true, color: C.fg });
     const room = W - textWidth(title, 14, true) - 16;
@@ -460,7 +478,7 @@ export function reportPdf(rep, { cor = DEFAULT_COLOR } = {}) {
     });
     y += 14;
   }
-  if (!rep.sections.length) pdf.text(M, y + 10, "Nenhum bloco ainda.", { size: 11, color: C.mut });
+  if (!rep.sections.length) pdf.text(M, y + 10, emptyText(rep), { size: 11, color: C.mut });
 
   // the foot of each page: the mark of CorrerIA Code (as in Mais › Sobre) and, with more than one, the page
   const total = pdf.pages.length;

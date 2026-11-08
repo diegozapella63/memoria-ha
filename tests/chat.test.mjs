@@ -47,6 +47,10 @@ test("chatInstructions: today, the screen, the blocks with their sheets and the 
   assert.match(p, /- Folha 2: Churrasco do Beto \(escrita em 2026-11-07; aparece às 09:00\)\n {6}Carvão/);
   assert.match(p, /Pessoa: O que tem no mercado\?$/);
   assert.match(chatInstructions(cleanChat({ messages: [{ role: "user", text: "oi" }] })), /\(nenhum bloco\)/);
+  // De quem é (1.9.0): whose the block is
+  const owned = ctx();
+  owned.blocos[0].dono = "Ana";
+  assert.match(chatInstructions(cleanChat({ messages: [{ role: "user", text: "oi" }], context: owned })), /• Bloco "Ideias soltas" \(de Ana\): 1 folha/);
 });
 
 test("parseChatActions: criar and acrescentar, checked against the blocks", () => {

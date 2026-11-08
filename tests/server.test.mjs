@@ -61,6 +61,8 @@ before(async () => {
       DATA_DIR: dir,
       MEDIA_DIR: path.join(dir, "media"),
       SHARE_DIR: path.join(dir, "share"),
+      // the Home Assistant user of the screens (the fake Home Assistant has Ana, u-ana, and Beto, u-beto)
+      MEMORIA_DEV_USER_ID: "u-ana",
     },
     /ouvindo na porta/,
   );
@@ -71,9 +73,9 @@ after(() => {
   for (const p of procs) p.kill();
 });
 
-/** A screen of the app: the WebSocket of the MemorIA. */
-async function screen() {
-  const ws = new WebSocket(`${base.replace("http", "ws")}/ws`);
+/** A screen of the app: the WebSocket of the MemorIA (headers: as the ingress of Home Assistant sends them). */
+async function screen(headers = null) {
+  const ws = headers ? new WebSocket(`${base.replace("http", "ws")}/ws`, { headers }) : new WebSocket(`${base.replace("http", "ws")}/ws`);
   await new Promise((resolve, reject) => {
     ws.onopen = resolve;
     ws.onerror = reject;
@@ -290,4 +292,62 @@ test("CorrerIA: the key turns the file and the tools on and off; every screen he
   await a.call("memoria/settings/save", { app: { correria: null } });
   a.ws.close();
   b.ws.close();
+});
+
+test("De quem é: the people of the house and the person of each login; a block's owner and Arquivar over the WebSocket", async () => {
+  const a = await screen();
+  const b = await screen({ "x-remote-user-id": "u-beto", "x-remote-user-display-name": "Beto" });
+  const other = await screen({ "x-remote-user-id": "u-tablet" });
+  let boot = await a.call("memoria/bootstrap");
+  assert.deepEqual(boot.people, ["Ana", "Beto"]);
+  assert.equal(boot.user.person, "Ana");
+  boot = await b.call("memoria/bootstrap");
+  assert.equal(boot.user.person, "Beto");
+  assert.equal(boot.user.name, "Beto");
+  // a login that is not a person of the house (a shared tablet): no person, it sees every block
+  assert.deepEqual(await other.call("memoria/people"), { people: ["Ana", "Beto"], person: "" });
+  await b.call("memoria/subscribe");
+  let block = await a.call("memoria/block/save", { block: { id: "ingles00001", owner: "Beto" } });
+  assert.equal(block.owner, "Beto");
+  assert.ok(await waitFor(() => b.events.some((e) => e.kind === "block" && e.block.id === "ingles00001" && e.block.owner === "Beto")));
+  block = await a.call("memoria/block/save", { block: { id: "ingles00001", archived: true } });
+  assert.ok(block.archived > 0);
+  assert.equal(block.owner, "Beto", "archiving keeps the owner");
+  assert.ok(await waitFor(() => b.events.some((e) => e.kind === "block" && e.block.id === "ingles00001" && e.block.archived)));
+  boot = await other.call("memoria/bootstrap");
+  assert.equal(boot.data.blocks.find((x) => x.id === "ingles00001").archived, block.archived);
+  assert.equal(boot.data.pages.filter((p) => p.block === "ingles00001").length, 1, "nothing deleted");
+  block = await a.call("memoria/block/save", { block: { id: "ingles00001", archived: false, owner: "" } });
+  assert.equal("archived" in block, false);
+  assert.equal("owner" in block, false);
+  a.ws.close();
+  b.ws.close();
+  other.ws.close();
+});
+
+test("CorrerIA: the summary's block of the moment is the one of the person who asks; de is a person of the house", async () => {
+  const a = await screen();
+  await a.call("memoria/settings/save", { app: { correria: true } });
+  const key = JSON.parse(fs.readFileSync(path.join(dir, "share", "correria.json"), "utf8")).chave;
+  const call = (nome, argumentos, pessoa) =>
+    fetch(`${base}/api/integracao/ferramentas`, { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ nome, argumentos, pessoa, cliente: "WhatsApp" }) }).then(async (r) => ({ status: r.status, body: await r.json() }));
+  // the person by the id (person.beto), whatever the name says
+  let r = await call("resumo", {}, { id: "person.beto", nome: "Beto Silva" });
+  assert.equal(r.status, 200);
+  assert.equal(JSON.parse(r.body.texto).agora.pessoa, "Beto");
+  r = await call("resumo", {}, { id: "", nome: "ana" });
+  assert.equal(JSON.parse(r.body.texto).agora.pessoa, "Ana");
+  // someone who is not a person of the house: the Agora of anyone
+  r = await call("resumo", {}, { id: "", nome: "Visita" });
+  assert.equal(JSON.parse(r.body.texto).agora.pessoa, undefined);
+  r = await call("editar_bloco", { bloco: "Reforma", de: "Carla" }, { id: "person.ana", nome: "Ana" });
+  assert.equal(r.status, 400);
+  assert.equal(r.body.erro, "Pessoa não encontrada: Carla. As pessoas da casa: Ana, Beto. Vazio ou Todos: de todos.");
+  r = await call("editar_bloco", { bloco: "Reforma", de: "beto" }, { id: "person.ana", nome: "Ana" });
+  assert.equal(r.status, 200);
+  assert.match(r.body.texto, /^Bloco alterado: Reforma da cozinha · categoria Casa · de Beto ·/);
+  r = await call("editar_bloco", { bloco: "Reforma", de: "" }, { id: "person.ana", nome: "Ana" });
+  assert.equal(r.status, 200);
+  await a.call("memoria/settings/save", { app: { correria: null } });
+  a.ws.close();
 });

@@ -1,6 +1,6 @@
 // In-memory stand-in for the MemorIA server, used by the preview page.
 // Mirrors the server's rules (ids, times, conflicts) closely enough for the UI.
-import { DEFAULT_PERIODS, PAPERS, PERIODS, normTime } from "../../memoria/rootfs/app/lib/schedule.js";
+import { DEFAULT_PERIODS, PAPERS, PERIODS, normTime, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
 
 const COLORS = ["vermelho", "coral", "rosa", "framboesa", "laranja", "ouro", "lilas", "azul", "menta", "grafite"];
 const id = () => Math.random().toString(16).slice(2, 14).padEnd(12, "0");
@@ -16,10 +16,12 @@ function sample() {
     { id: "cattrabalho", name: "Trabalho", color: "laranja", order: 1 },
   ].map((c) => ({ ...c, created: now - 30 * day, updated: now - 30 * day }));
   const blocks = [
-    { id: "treino00001", name: "Treino", color: "azul", paper: "quadriculado", periods: [], times: ["07:00"], order: 0, category: "catpessoal1" },
+    // Treino is Beto's (it doesn't open in Ana's Agora); Diário is Ana's; Viagem, archived
+    { id: "treino00001", name: "Treino", color: "azul", paper: "quadriculado", periods: [], times: ["07:00"], order: 0, category: "catpessoal1", owner: "Beto" },
     { id: "trabalho001", name: "Trabalho", color: "laranja", paper: "pautado", periods: ["manha", "tarde"], times: [], order: 1, category: "cattrabalho" },
-    { id: "diario00001", name: "Diário", color: "lilas", paper: "pautado", periods: ["noite"], times: ["22:00"], order: 2, category: "catpessoal1" },
+    { id: "diario00001", name: "Diário", color: "lilas", paper: "pautado", periods: ["noite"], times: ["22:00"], order: 2, category: "catpessoal1", owner: "Ana" },
     { id: "ideias00001", name: "Ideias", color: "menta", paper: "pontilhado", periods: [], times: [], order: 3 },
+    { id: "viagem00001", name: "Viagem", color: "ouro", paper: "pautado", periods: [], times: ["08:00"], order: 4, archived: now - 20 * day },
   ].map((b) => ({ ...b, created: now - 30 * day, updated: now - 2 * day }));
   const pg = (block, text, ago, extra = {}) => ({ id: id(), block, text, times: [], created: now - ago, updated: now - ago, ...extra });
   const pages = [
@@ -30,6 +32,8 @@ function sample() {
     pg("diario00001", "Domingo\n\nAlmoço com a família e à tarde arrumei a garagem. Achei a caixa de fotos antigas, vale separar umas para emoldurar.", 2 * day),
     pg("diario00001", "Hoje\n\nGratidão:\n• café da manhã com calma\n• terminei o painel da sala no Home Assistant\n• caminhada no fim da tarde\n\nAmanhã: acordar 6h30 e não pular o treino.", 6 * 3600000),
     pg("ideias00001", "Bolo de cenoura\n\nReceita para domingo:\n[Receita da vó](https://www.receitas-exemplo.com.br/receita/23-bolo-de-cenoura.html)\n\nCobertura de chocolate: https://www.google.com/search?q=cobertura+de+chocolate+para+bolo&sca_esv=a1b2c3&ei=XyZ123abc&oq=cobertura&gs_lp=EgZwc3ktYWIiCWNvYmVydHVyYQ.\n\nComprar: cenoura, ovos, farinha.", 3 * day),
+    pg("viagem00001", "Roteiro da serra\n\nSexta: sair cedo, almoço na estrada.\nSábado: trilha da cachoeira.\nDomingo: feira e volta.", 40 * day),
+    pg("viagem00001", "Mala\n\n- Casaco\n- Bota de trilha\n- Protetor solar", 39 * day),
     pg("ideias00001", "Ideias para a casa\n\n- Sensor de presença no corredor\n- Luz da varanda acender no pôr do sol\n- Tablet na geladeira mostrando o MemorIA agora\n- Lembrete de regar as plantas às 18h", 4 * day),
   ];
   return { version: 1, periods: { ...DEFAULT_PERIODS }, app: {}, categories, blocks, pages };
@@ -50,7 +54,13 @@ export class MockApi {
 
   async bootstrap() {
     await wait(60);
-    return { version: "1.8.0", user: { name: "Ana Souza" }, ai: await this.aiStatus(), data: clone(this.data), correria: { ultimo: null } };
+    return { version: "1.9.0", user: { name: "Ana Souza", person: "Ana" }, people: ["Ana", "Beto"], ai: await this.aiStatus(), data: clone(this.data), correria: { ultimo: null } };
+  }
+
+  // De quem é: the people of the house (Ana uses the preview)
+  async people() {
+    await wait(40);
+    return { people: ["Ana", "Beto"], person: "Ana" };
   }
 
   async aiStatus() {
@@ -111,15 +121,26 @@ export class MockApi {
     const d = this.data;
     const now = Date.now();
     let b = input.id && d.blocks.find((x) => x.id === input.id);
+    const isNew = !b;
     if (!b) {
       b = { id: id(), created: now, order: d.blocks.length };
       d.blocks.push(b);
     }
-    b.name = (input.name || "Novo bloco").slice(0, 60);
-    b.color = COLORS.includes(input.color) ? input.color : "lilas";
-    b.paper = PAPERS.includes(input.paper) ? input.paper : "pautado";
-    b.periods = (input.periods || []).filter((p) => PERIODS.some((x) => x.id === p));
-    b.times = times(input.times);
+    // only what came (like the server): Arquivar sends just {id, archived}
+    if ("name" in input || isNew) b.name = (input.name || "Novo bloco").slice(0, 60);
+    if ("color" in input || isNew) b.color = COLORS.includes(input.color) ? input.color : "lilas";
+    if ("paper" in input || isNew) b.paper = PAPERS.includes(input.paper) ? input.paper : "pautado";
+    if ("periods" in input || isNew) b.periods = (input.periods || []).filter((p) => PERIODS.some((x) => x.id === p));
+    if ("times" in input || isNew) b.times = times(input.times);
+    if ("owner" in input) {
+      const owner = ownerName(input.owner);
+      if (owner) b.owner = owner;
+      else delete b.owner;
+    }
+    if ("archived" in input) {
+      if (input.archived) b.archived = b.archived || now;
+      else delete b.archived;
+    }
     if ("category" in input) {
       if (input.category && !d.categories.some((c) => c.id === input.category)) throw Object.assign(new Error("categoria não existe"), { code: "invalid_format" });
       if (input.category) b.category = input.category;
