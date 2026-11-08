@@ -200,11 +200,14 @@ with sync_playwright() as p:
         # the preview starts again from its sample (Pessoal back, Cursos gone): the kept choice that no longer exists is Todos
         check(a.locator(".cat-filter .pick.on").inner_text().strip() == "Todos", f"{tag}: a kept category that is gone: Todos")
         a.locator(".cat-filter .pick", has_text="Pessoal").click()
+        # (a slow machine: the choice on screen, and so kept, before the reload)
+        a.locator(".cat-filter .pick.on", has_text="Pessoal").wait_for(timeout=5000)
         pg.wait_for_timeout(300)
         pg.reload()
         a.locator(".page-title").first.wait_for()
         pg.wait_for_timeout(600)
         a.locator("nav .tab", has_text="Blocos").click()
+        a.locator(".cat-filter").wait_for()
         pg.wait_for_timeout(500)
         check(a.locator(".cat-filter .pick.on").inner_text().strip() == "Pessoal", f"{tag}: the choice is kept after a reload")
         # a new block from here goes into Pessoal
