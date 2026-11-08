@@ -121,6 +121,17 @@ content: >
 
 Dá para desligar em **Mais › Configurações › Integrações › Sensor no Home Assistant**.
 
+## CorrerIA
+
+O **CorrerIA** é outro app da família: o contato da CorrerIA Code no WhatsApp, que também liga o Claude e o Gemini aos apps da casa. Com ele, dá para pedir "o que eu anotei sobre a reforma?", "acrescenta café na lista do Mercado" ou "cria um bloco Receitas na categoria Casa".
+
+1. Aqui, em **Mais › Configurações › Integrações › CorrerIA**, ligue **Usar com o CorrerIA**. Vem desligado e não depende do **Usar IA**: quem pensa é a IA do CorrerIA, o Claude ou o Gemini.
+2. No app **CorrerIA**, conecte o WhatsApp, o Claude ou o Gemini (o passo a passo está na documentação dele).
+
+O que eles podem fazer: ver o resumo (os blocos, as últimas folhas e o bloco do momento), buscar nas folhas (sem se importar com acentos, também num bloco, numa categoria ou num período), ler um bloco ou uma folha, criar uma folha, acrescentar no fim de uma folha, editar (o texto inteiro, um trecho, os horários ou mover para outro bloco), adicionar um link, arrancar uma folha, criar e ajustar blocos (nome, categoria, cor, papel e quando abre sozinho) e criar categorias. Fotos, arquivos, backups e configurações ficam de fora. O que mudar aparece na hora em todos os aparelhos.
+
+Ligado, o cartão mostra quem usou por último e quando ("Claude usou hoje às 09:41"). Desligado, o acesso deixa de valer na hora. O CorrerIA acha o MemorIA pelo arquivo `share/memoria/correria.json`, com uma chave de acesso própria, que só existe enquanto a chave está ligada.
+
 ## Relatório
 
 Em **Mais › Relatório**, os blocos e as folhas escritas numa página para ver, imprimir ou salvar:
@@ -147,7 +158,7 @@ Em **Mais › Configurações › Dados**:
 - **Versões anteriores**: o app guarda sozinho uma cópia a cada 10 minutos de uso (as 60 mais recentes) em `/data/versoes`. Toque em **Restaurar** para voltar a uma delas.
 - **Começar do zero**: apaga todos os blocos e folhas; os ajustes e as categorias continuam.
 
-Antes de importar, restaurar ou apagar, o app sempre guarda uma cópia do que existe naquele momento em **Versões anteriores**. Importar e restaurar trocam os blocos, as categorias, as folhas e os períodos do dia; a IA escolhida continua a deste Home Assistant.
+Antes de importar, restaurar ou apagar, o app sempre guarda uma cópia do que existe naquele momento em **Versões anteriores**. Importar e restaurar trocam os blocos, as categorias, as folhas e os períodos do dia; a IA escolhida e o CorrerIA continuam os deste Home Assistant.
 
 ## Aparência
 
@@ -159,7 +170,7 @@ Em **Mais › Configurações › Aparência**:
 
 ## Mais
 
-O **Mais** é um menu, como nos outros apps da família: **Categorias**, **Relatório**, **Configurações** e, por último, **Sobre**. Cada linha abre a sua tela. **Configurações** tem as abas **Integrações** (Leitura por IA e o sensor), **Dados**, **Aparência** e **Opções** (os períodos do dia); a aba escolhida fica guardada. O Voltar do celular, o **‹ Mais** no alto e arrastar o dedo para a direita voltam ao menu.
+O **Mais** é um menu, como nos outros apps da família: **Categorias**, **Relatório**, **Configurações** e, por último, **Sobre**. Cada linha abre a sua tela. **Configurações** tem as abas **Integrações** (Leitura por IA, Falar, CorrerIA e o sensor), **Dados**, **Aparência** e **Opções** (os períodos do dia); a aba escolhida fica guardada. O Voltar do celular, o **‹ Mais** no alto e arrastar o dedo para a direita voltam ao menu.
 
 Arrastar o dedo para os lados (fora da folha) troca de aba: **Agora**, **Blocos**, **Buscar** e **Mais**. Na folha, arrastar continua virando a página; dentro de um bloco, arrastar para a direita volta.
 

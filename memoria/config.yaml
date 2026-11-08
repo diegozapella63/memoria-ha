@@ -1,6 +1,6 @@
 # https://developers.home-assistant.io/docs/apps/configuration
 name: MemorIA
-version: "1.7.0"
+version: "1.8.0"
 slug: memoria
 description: Blocos de anotações em forma de caderno, que se abrem sozinhos conforme o período e o horário do dia.
 url: "https://github.com/diegozapella63/memoria-ha/tree/main/memoria"
@@ -20,6 +20,7 @@ homeassistant_api: true
 # (media/memoria/ia-temp) while the AI reads them, then deleted.
 map:
   - media:rw
-  # Backups (Mais > Dados > Criar backup) go to share/memoria.
+  # Backups (Mais > Dados > Criar backup) go to share/memoria, and so does correria.json (Integrações > CorrerIA),
+  # the file the app CorrerIA reads to reach the tools of this app.
   - share:rw
 watchdog: "tcp://[HOST]:[PORT:8099]"

@@ -50,7 +50,7 @@ export class MockApi {
 
   async bootstrap() {
     await wait(60);
-    return { version: "1.7.0", user: { name: "Ana Souza" }, ai: await this.aiStatus(), data: clone(this.data) };
+    return { version: "1.8.0", user: { name: "Ana Souza" }, ai: await this.aiStatus(), data: clone(this.data), correria: { ultimo: null } };
   }
 
   async aiStatus() {

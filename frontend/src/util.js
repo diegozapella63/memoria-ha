@@ -27,11 +27,8 @@ export function colorVars(color, dark, prefix = "c") {
 
 // ---------- text ----------
 
-export const fold = (s) =>
-  (s || "")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
+// fold (accents and case ignored) and firstLine (the title of a sheet) are shared with the server
+export { fold, firstLine } from "../../memoria/rootfs/app/lib/writing.js";
 
 // Same length as the input, so indexes map back to the original string.
 export const foldKeepLength = (s) =>
@@ -77,8 +74,6 @@ export function writtenAt(ms, now = new Date()) {
 
 export const newId = () =>
   Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => b.toString(16).padStart(2, "0")).join("");
-
-export const firstLine = (text) => ((text || "").split("\n").find((l) => l.trim()) || "").trim();
 
 export function greeting(name, now = new Date()) {
   const h = now.getHours();

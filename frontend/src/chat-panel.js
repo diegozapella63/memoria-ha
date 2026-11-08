@@ -8,6 +8,7 @@ import { renderChat } from "./chat.js";
 import { Recorder, micError, VOICE_RATE, VOICE_MAX_S } from "./voice.js";
 import { fold, clip, firstLine, newId } from "./util.js";
 import { linksToText } from "../../memoria/rootfs/app/lib/links.js";
+import { appendText } from "../../memoria/rootfs/app/lib/writing.js";
 import { periodAt, periodTimes, PERIODS } from "../../memoria/rootfs/app/lib/schedule.js";
 
 const icon = (name, cls = "") =>
@@ -218,7 +219,7 @@ export const ChatMixin = (Base) =>
         const page = this._pagesOf(b.id)[a.folha - 1];
         if (!page || fold(firstLine(linksToText(page.text))) !== fold(a.titulo)) note = "Essa folha mudou. Peça de novo.";
         else {
-          this._putPage({ ...page, text: `${page.text.replace(/\s+$/, "")}\n${a.texto}` });
+          this._putPage({ ...page, text: appendText(page.text, a.texto) });
           this._queueSave(page.id, 0);
           ok = true;
         }

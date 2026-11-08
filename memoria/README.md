@@ -9,5 +9,6 @@ Blocos de anotações em forma de caderno, que se abrem sozinhos conforme o per�
 - Crie folhas a partir de mensagens, fotos e anotações em papel, com a IA do Home Assistant (escolha qual em Mais)
 - Busca em todas as folhas, sem se importar com acentos
 - Sensor `sensor.memoria_agora` para painéis e automações
+- Com o app CorrerIA, o WhatsApp, o Claude e o Gemini leem e mudam os blocos
 - Exportar, backup na pasta share, importar e versões anteriores automáticas
 - Tema claro e escuro seguindo o Home Assistant, 10 cores e letra de mão

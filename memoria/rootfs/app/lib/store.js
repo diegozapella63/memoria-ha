@@ -7,9 +7,9 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { DEFAULT_PERIODS, PAPERS, PERIODS, normTime } from "./schedule.js";
 
-const COLORS = ["vermelho", "coral", "rosa", "framboesa", "laranja", "ouro", "lilas", "azul", "menta", "grafite"];
+export const COLORS = ["vermelho", "coral", "rosa", "framboesa", "laranja", "ouro", "lilas", "azul", "menta", "grafite"];
 const PERIOD_IDS = PERIODS.map((p) => p.id);
-const MAX_TEXT = 50000;
+export const MAX_TEXT = 50000;
 const MAX_PAGES = 20000;
 const MAX_BLOCKS = 200;
 const MAX_CATEGORIES = 50;
@@ -139,6 +139,8 @@ export function normalize(raw, current = {}) {
   // The AI and the speech-to-text belong to this Home Assistant, not to the file.
   if (current.ai_entity) app.ai_entity = current.ai_entity;
   if (current.voice_engine) app.voice_engine = current.voice_engine;
+  // So does the connection with the CorrerIA (its key is in /data, not in the file).
+  if (current.correria === true) app.correria = true;
   return { version: 1, periods, app, categories, blocks, pages };
 }
 
@@ -388,6 +390,8 @@ export class Store {
       if ("ai_off" in app) next.ai_off = app.ai_off === true ? true : undefined;
       // Falar: the speech-to-text ("" = the one of the voice assistant)
       if ("voice_engine" in app) next.voice_engine = /^stt\.[a-z0-9_]+$/.test(app.voice_engine || "") ? app.voice_engine : undefined;
+      // Integrações › CorrerIA (off unless turned on): the WhatsApp, the Claude and the Gemini read and change the blocks
+      if ("correria" in app) next.correria = app.correria === true ? true : undefined;
       this.data.app = Object.fromEntries(Object.entries(next).filter(([, v]) => v !== undefined));
     }
     this.save();

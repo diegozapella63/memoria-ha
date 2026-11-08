@@ -51,7 +51,7 @@ export function sheetParts(text) {
 }
 
 /** "abre de manhã (05:00), à noite (18:00) e às 07:00". */
-function opensText(b, periods) {
+export function opensText(b, periods) {
   const parts = [
     ...(b.periods || []).map((id) => `${id === "manha" ? "de" : "à"} ${PERIOD_LABEL[id] || id}${periods && periods[id] ? ` (${periods[id]})` : ""}`),
     ...(b.times || []).map((t) => `às ${t}`),

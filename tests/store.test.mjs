@@ -153,3 +153,21 @@ test("Usar IA: on unless turned off; Falar: a stt.* engine or the automatic one"
   assert.equal(back.app.ai_off, true);
   store.flush();
 });
+
+// ------------------------------------------------------------------ Integrações › CorrerIA (1.8.0)
+
+test("CorrerIA: off unless turned on; it belongs to this Home Assistant, not to an imported file", () => {
+  const { store } = fresh();
+  assert.equal(store.data.app.correria, undefined);
+  let s = store.saveSettings({ app: { correria: "sim" } });
+  assert.equal("correria" in s.app, false);
+  s = store.saveSettings({ app: { correria: true } });
+  assert.equal(s.app.correria, true);
+  // an import (or Começar do zero) keeps it on; a file that brings it on doesn't turn it on
+  assert.equal(store.replaceAll({ blocks: [], pages: [], app: {} }, "teste").app.correria, true);
+  assert.equal(store.erase().app.correria, true);
+  s = store.saveSettings({ app: { correria: null } });
+  assert.equal("correria" in s.app, false);
+  assert.equal(store.replaceAll({ blocks: [], pages: [], app: { correria: true } }, "teste").app.correria, undefined);
+  store.flush();
+});

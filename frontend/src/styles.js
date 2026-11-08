@@ -2000,6 +2000,10 @@ export const styles = css`
     border-top: 0;
     padding-top: 0;
   }
+  /* Integrações › CorrerIA: who used it last */
+  .ai-state.correria-uso {
+    margin-top: 12px;
+  }
   /* Falar: the microphone, with a ring that follows the voice */
   .voice {
     display: flex;

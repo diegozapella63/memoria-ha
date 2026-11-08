@@ -124,8 +124,8 @@ function findBlock(blocks, name) {
   return blocks.find((b) => fold(b.nome) === n || b.id === String(name).trim()) || blocks.find((b) => fold(b.nome).startsWith(n) || n.startsWith(fold(b.nome))) || null;
 }
 
-/** The text of a sheet the AI wrote: "\n" becomes a line break. */
-const sheetText = (s) =>
+/** The text of a sheet the AI wrote: "\n" becomes a line break (also for the tools of the CorrerIA, with their own max). */
+export const sheetText = (s, max = 20000) =>
   String(s || "")
     .replace(/\\n/g, "\n")
     .replace(/\r/g, "")
@@ -133,7 +133,7 @@ const sheetText = (s) =>
     .map((l) => l.trimEnd())
     .join("\n")
     .trim()
-    .slice(0, 20000);
+    .slice(0, max);
 
 /**
  * The actions of an answer, checked against the blocks the screen sent: [{tipo: "criar", bloco, nome, texto} |

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.0
+
+- **CorrerIA**, nova chave em **Mais › Configurações › Integrações**: ligada, o WhatsApp, o Claude e o Gemini (pelo app CorrerIA) leem e mudam os seus blocos. Eles veem o resumo dos blocos e das últimas folhas, buscam nas folhas, leem um bloco ou uma folha, criam folhas, acrescentam no fim, editam (o texto, um trecho, os horários ou o bloco), põem links, arrancam folhas, criam e ajustam blocos e criam categorias. O que mudar aparece na hora em todos os aparelhos, do mesmo jeito que se fosse escrito aqui.
+- Vem desligada e não depende do **Usar IA** (quem pensa é a IA do CorrerIA, o Claude ou o Gemini). Ligada, o cartão mostra quem usou por último e quando, como "Claude usou hoje às 09:41". Desligada, o acesso deixa de valer na hora.
+- **Conversar com a IA**: acrescentar numa folha em branco não deixa mais uma linha vazia no começo.
+
 ## 1.7.0
 
 - **Falar e Conversar com a IA**, como no ResolvIA e na CronologIA: os dois botões ficam no alto das telas (e de um bloco).

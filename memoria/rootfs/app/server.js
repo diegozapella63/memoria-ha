@@ -7,6 +7,7 @@
 // - Publishes sensor.memoria_agora with what is "on" right now.
 // - Exports, backups in share/memoria, imports and automatic versions.
 // - Mais › Relatório: the blocks and their sheets as a page and as a PDF.
+// - Integrações › CorrerIA: the tools (read and write the blocks) for the WhatsApp, the Claude and the Gemini.
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -19,8 +20,10 @@ import { Voice, readRaw, MAX_VOICE_BYTES } from "./lib/voice.js";
 import { Sensor } from "./lib/sensor.js";
 import { Backups, backupZip, toCSV, parseImport, listVersions, readVersion, fileStamp } from "./lib/data.js";
 import { anotacoes, reportHtml, reportPdf, pdfName } from "./lib/report.js";
+import { Correria, ROUTE as TOOLS_ROUTE } from "./lib/correria.js";
+import { listTools, callTool, ToolError, UnknownTool } from "./lib/ferramentas.js";
 
-const VERSION = "1.7.0";
+const VERSION = "1.8.0";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WWW = path.join(HERE, "www");
 const DEV = process.env.MEMORIA_DEV === "1";
@@ -51,6 +54,10 @@ const aiOff = () => store.data.app.ai_off === true;
 const offError = () => Object.assign(new Error("A IA está desligada em Mais › Configurações › Integrações."), { code: "ai_off" });
 const sensor = new Sensor({ store, log, restUrl: HA_REST, token: TOKEN, enabled: () => store.data.app.sensor !== false });
 const backups = new Backups({ dir: SHARE_DIR });
+// Mais › Configurações › Integrações › CorrerIA (off unless turned on; it doesn't need Usar IA: the AI is the CorrerIA's,
+// the Claude's or the Gemini's)
+const correria = new Correria({ dataDir: DATA_DIR, shareDir: SHARE_DIR, port: PORT, version: VERSION, log });
+const correriaOn = () => store.data.app.correria === true;
 const watchers = new Set(); // {session, id}
 
 function broadcast(event) {
@@ -120,7 +127,7 @@ class Session {
 
       case "memoria/bootstrap": {
         const aiStatus = await ai.status().catch((err) => ({ ready: false, images: false, entities: [], reason: err.message }));
-        return this.result(id, { version: VERSION, user: this.user, ai: aiStatus, data: store.data });
+        return this.result(id, { version: VERSION, user: this.user, ai: aiStatus, data: store.data, correria: { ultimo: correria.last } });
       }
 
       case "memoria/ai/status": {
@@ -219,7 +226,12 @@ class Session {
 
       case "memoria/settings/save": {
         if (msg.app && "voice_engine" in msg.app) voice.forget();
+        const wasOn = correriaOn();
         const settings = store.saveSettings({ periods: msg.periods, app: msg.app });
+        if (correriaOn() !== wasOn) {
+          correria.publish(correriaOn());
+          log.info(`CorrerIA ${correriaOn() ? "ligado" : "desligado"}`);
+        }
         this.result(id, settings);
         return broadcast({ kind: "settings", ...settings });
       }
@@ -311,6 +323,40 @@ async function handleVoice(req, res) {
   }
 }
 
+/**
+ * GET|POST /api/integracao/ferramentas: the CorrerIA (the WhatsApp, the Claude and the Gemini), with the key of
+ * share/memoria/correria.json. GET lists the tools; POST {nome, argumentos, pessoa, cliente} runs one -> {texto}
+ * (400 {erro}: a bad argument, saying what works; 404: no such tool). Every screen hears what changed.
+ */
+async function handleTools(req, res) {
+  if (!correriaOn() || !correria.authorized(req.headers)) return sendJson(res, 401, { erro: "Chave inválida ou CorrerIA desligado no MemorIA." });
+  if (req.method === "GET") return sendJson(res, 200, listTools());
+  if (req.method !== "POST") return sendJson(res, 405, { erro: "Use GET ou POST." });
+  let body;
+  try {
+    body = JSON.parse((await readRaw(req, 1024 * 1024)).toString("utf8") || "{}");
+  } catch (err) {
+    return sendJson(res, err.code === "too_big" ? 413 : 400, { erro: err.code === "too_big" ? "Pedido grande demais." : "JSON inválido." });
+  }
+  if (!body || typeof body !== "object") return sendJson(res, 400, { erro: "JSON inválido." });
+  const cliente = String(body.cliente || "").replace(/\s+/g, " ").trim().slice(0, 40) || "CorrerIA";
+  const pessoa = body.pessoa && typeof body.pessoa === "object" ? String(body.pessoa.nome || body.pessoa.id || "").slice(0, 60) : "";
+  try {
+    const out = callTool(body.nome, body.argumentos, { store });
+    for (const ev of out.events) broadcast(ev);
+    sendJson(res, 200, { texto: out.texto });
+    log.info(`CorrerIA: ${cliente}${pessoa ? ` (${pessoa})` : ""} usou ${body.nome}`);
+  } catch (err) {
+    if (err instanceof UnknownTool) sendJson(res, 404, { erro: err.message });
+    else if (err instanceof ToolError) sendJson(res, 400, { erro: err.message });
+    else {
+      log.warn(`CorrerIA: ${body.nome} falhou: ${err.stack || err.message}`);
+      sendJson(res, 500, { erro: `Não deu certo: ${err.message}` });
+    }
+  }
+  broadcast({ kind: "correria", ultimo: correria.used(cliente) });
+}
+
 function download(res, body, type, name) {
   res.writeHead(200, {
     "Content-Type": type,
@@ -382,6 +428,14 @@ function handleReport(url, res, pdf) {
 }
 
 const server = http.createServer((req, res) => {
+  // the other apps of Home Assistant (the CorrerIA) come through the internal network, with the key
+  if (req.url.split("?")[0] === TOOLS_ROUTE) {
+    handleTools(req, res).catch((err) => {
+      log.warn(`CorrerIA: ${err.message}`);
+      if (!res.headersSent) sendJson(res, 500, { erro: "Não deu certo." });
+    });
+    return;
+  }
   if (!allowed(req)) {
     res.writeHead(403).end("Forbidden");
     return;
@@ -441,6 +495,8 @@ server.on("upgrade", (req, socket, head) => {
 });
 
 server.listen(PORT, () => log.info(`MemorIA ${VERSION} ouvindo na porta ${PORT}${DEV ? " (modo dev)" : ""}`));
+// the file of the CorrerIA with this version and address (or none, when off)
+correria.publish(correriaOn());
 ha.start();
 sensor.start();
 

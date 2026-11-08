@@ -155,14 +155,14 @@ with sync_playwright() as p:
         a.evaluate("(el) => el._go('/config')")
         pg.wait_for_timeout(500)
         heads = [h.strip() for h in a.locator("[role=tabpanel] .mais-head h2").all_inner_texts()]
-        check(heads == ["Leitura por IA", "Falar", "Sensor no Home Assistant"], f"{tag}: Integrações: Leitura por IA, Falar and the sensor ({heads})")
+        check(heads == ["Leitura por IA", "Falar", "CorrerIA", "Sensor no Home Assistant"], f"{tag}: Integrações: Leitura por IA, Falar, CorrerIA and the sensor ({heads})")
         sw = a.locator(".ai-switch input[role=switch]")
         check(sw.is_checked(), f"{tag}: Usar IA on")
         pg.screenshot(path=str(SHOTS / f"integracoes-ia-{scheme}-{w}.png"))
         sw.click()
         pg.wait_for_timeout(500)
         heads = [h.strip() for h in a.locator("[role=tabpanel] .mais-head h2").all_inner_texts()]
-        check(heads == ["Leitura por IA", "Sensor no Home Assistant"] and a.locator("#leitura-ia select").count() == 0, f"{tag}: off: only the switch ({heads})")
+        check(heads == ["Leitura por IA", "CorrerIA", "Sensor no Home Assistant"] and a.locator("#leitura-ia select").count() == 0, f"{tag}: off: only the switch; CorrerIA stays ({heads})")
         check(tops(a) == [], f"{tag}: off: no Conversar, no Falar ({tops(a)})")
         pg.screenshot(path=str(SHOTS / f"integracoes-ia-desligada-{scheme}-{w}.png"))
         a.locator("nav .tab.fab").click()

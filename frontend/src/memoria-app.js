@@ -8,9 +8,10 @@ import { swipeStart, swipeEnd, slideIn } from "./swipe.js";
 import { chatStyles } from "./chat.js";
 import { ChatMixin } from "./chat-panel.js";
 import { Recorder, micError, VOICE_RATE, VOICE_MAX_S } from "./voice.js";
-import { PALETTE, colorById, colorVars, hexToRgba, fold, foldKeepLength, plural, clip, writtenAt, newId, firstLine, prepareImage } from "./util.js";
+import { PALETTE, colorById, colorVars, hexToRgba, fold, foldKeepLength, plural, clip, writtenAt, hm, newId, firstLine, prepareImage } from "./util.js";
 import { parentHass, detectDark } from "./api.js";
-import { parseLinks, hasLinks, linksToText, normalizeUrl, linkMarkdown } from "../../memoria/rootfs/app/lib/links.js";
+import { parseLinks, hasLinks, linksToText, normalizeUrl } from "../../memoria/rootfs/app/lib/links.js";
+import { appendLink, freeColor } from "../../memoria/rootfs/app/lib/writing.js";
 import { PERIODS, PAPERS, buildSchedule, currentAt, nextAfter, timeline, minutesOf, fmtMin, periodAt, periodTimes, normTime } from "../../memoria/rootfs/app/lib/schedule.js";
 
 const THEME_KEY = "memoria.theme";
@@ -70,6 +71,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     _now: { state: true },
     _dark: { state: true },
     _editing: { state: true },
+    _correria: { state: true },
   };
 
   static styles = [styles, notebookStyles, aboutStyles, unsafeCSS(lookStyles), unsafeCSS(chatStyles)];
@@ -79,6 +81,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     this.api = null;
     this.env = null;
     this._data = null;
+    this._correria = { ultimo: null }; // Integrações › CorrerIA: the last use ({cliente, em})
     this._ready = false;
     this._bootError = null;
     this._online = true;
@@ -220,6 +223,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       this._user = res.user || { name: "" };
       this._ai = res.ai || { ready: false, images: false, entities: [] };
       this._aiAt = Date.now();
+      this._correria = res.correria || { ultimo: null };
       const data = res.data;
       // Keep what is still being typed here.
       const pages = data.pages.filter((p) => !this._dropped.has(p.id));
@@ -376,6 +380,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
     } else if (ev.kind === "reset") {
       this._applyReset(ev.data);
       return;
+    } else if (ev.kind === "correria") {
+      this._correria = { ...this._correria, ultimo: ev.ultimo || null };
     } else if (ev.kind === "settings") {
       const aiChanged = (ev.app && ev.app.ai_entity) !== this._app("ai_entity", undefined);
       const wasOn = this._aiOn();
@@ -1358,12 +1364,10 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   _openBlockSheet(block) {
     const b = block || null;
-    const used = new Set(this._data.blocks.map((x) => x.color));
-    const freeColor = (PALETTE.find((c) => !used.has(c.id)) || PALETTE[6]).id;
     this._openSheet("block", {
       id: b ? b.id : null,
       name: b ? b.name : "",
-      color: b ? b.color : freeColor,
+      color: b ? b.color : freeColor(this._data.blocks, PALETTE.map((c) => c.id), "lilas"),
       paper: b ? b.paper : "pautado",
       periods: b ? [...(b.periods || [])] : [],
       times: b ? [...(b.times || [])] : [],
@@ -1438,8 +1442,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   /** The color for a new category: one not used yet by the others. */
   _freeCatColor() {
-    const used = new Set(this._cats().map((c) => c.color));
-    return (PALETTE.find((c) => !used.has(c.id)) || PALETTE[9]).id;
+    return freeColor(this._cats(), PALETTE.map((c) => c.id), "grafite");
   }
 
   _openCategorySheet(cat) {
@@ -1626,10 +1629,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       this._setForm({ error: "Esse link não abre. Use um endereço como https://site.com.br" });
       return;
     }
-    const md = linkMarkdown(url, f.name);
-    const base = page.text.replace(/\s+$/, "");
-    const text = base ? `${base}\n${md}` : md;
-    this._putPage({ ...page, text });
+    this._putPage({ ...page, text: appendLink(page.text, url, f.name) });
     this._queueSave(page.id, 0);
     this._closeSheet();
     this._haptic("success");
@@ -2441,7 +2441,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       this._go(this._configPath(k), true, history.state && history.state.rvUp ? { rvUp: true } : null);
     };
     let body;
-    if (tab === "integracoes") body = html`${this._renderAiPanel()} ${this._aiOn() && this.api.voiceStatus ? this._renderVoicePanel() : nothing} ${this._renderSensorPanel()}`;
+    if (tab === "integracoes") body = html`${this._renderAiPanel()} ${this._aiOn() && this.api.voiceStatus ? this._renderVoicePanel() : nothing} ${this._renderCorreriaPanel()} ${this._renderSensorPanel()}`;
     else if (tab === "dados") body = this._renderDataPanel();
     else if (tab === "aparencia") body = this._renderAppearanceTab();
     else body = this._renderOptionsTab();
@@ -2500,6 +2500,35 @@ class MemoriaApp extends ChatMixin(LitElement) {
           <input class="time-input" type="time" .value=${periods[p.id]} aria-label="Começo da ${p.label}" @change=${(e) => normTime(e.target.value) && this._saveSettings({ periods: { [p.id]: e.target.value } })} />
         </div>`,
       )}
+    </div>`;
+  }
+
+  /**
+   * Mais › Configurações › Integrações › CorrerIA (off unless turned on, with or without Usar IA): the WhatsApp, the
+   * Claude and the Gemini read and change the blocks through the app CorrerIA. When on, who used it last and when.
+   */
+  _renderCorreriaPanel() {
+    const on = this._app("correria", false) === true;
+    const last = this._correria && this._correria.ultimo;
+    let used = "";
+    if (last && last.em) {
+      const d = new Date(last.em);
+      if (!Number.isNaN(d.getTime())) {
+        const today = new Date(this._now);
+        const days = Math.round((new Date(today.getFullYear(), today.getMonth(), today.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+        const when = days === 0 ? "hoje" : days === 1 ? "ontem" : `em ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+        used = `${last.cliente || "CorrerIA"} usou ${when} às ${hm(d)}`;
+      }
+    }
+    return html`<div class="panel" id="correria">
+      ${this._secHead("zap", "CorrerIA")}
+      <div class="row switch-row">
+        <div class="grow"><div class="label">Usar com o CorrerIA</div><div class="hint" style="white-space:normal">${on ? "Ligado: pelo WhatsApp, o Claude e o Gemini leem e mudam os seus blocos." : "Desligado."}</div></div>
+        ${this._switch(on, "Usar com o CorrerIA", (e) => this._saveSettings({ app: { correria: e.target.checked ? true : null } }))}
+      </div>
+      ${on
+        ? html`<div class="ai-state ${used ? "ok" : "off"} correria-uso"><span class="dot"></span><div>${used ? html`<b>${used}</b>` : html`<b>Ainda não usado</b><span>No app CorrerIA, conecte o WhatsApp, o Claude ou o Gemini.</span>`}</div></div>`
+        : nothing}
     </div>`;
   }
 

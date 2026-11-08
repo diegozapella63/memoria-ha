@@ -40,6 +40,7 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **Falar e Conversar com a IA**, no alto das telas: diga uma anotação (a fala para texto do Home Assistant transcreve e a IA organiza) ou converse sobre os blocos; o que a IA propõe escrever só acontece depois do seu toque.
 - **Buscar** em todas as folhas, sem se importar com acentos.
 - **Sensor** `sensor.memoria_agora` com o bloco e a folha do momento, para painéis e automações.
+- **CorrerIA**: com o app CorrerIA, o WhatsApp, o Claude e o Gemini leem e mudam os blocos (buscar, ler, criar e editar folhas, links, blocos e categorias). Ligue em **Mais → Configurações → Integrações**.
 - **Salvo no Home Assistant**: sincroniza na hora entre aparelhos e entra no backup.
 - **Dados**: exportar (ZIP com um arquivo de texto por bloco, CSV e JSON), backup na pasta `share/memoria`, importar, versões anteriores automáticas e começar do zero.
 - **Mais** em menu, como nos outros apps: **Categorias**, **Relatório**, **Configurações** em abas (Integrações, Dados, Aparência e Opções) e **Sobre**. Arrastar o dedo para os lados troca de aba.
@@ -73,6 +74,10 @@ Testes: `npm test` (servidor, com `node:test`) e as conferências visuais na pr�
 Arquivos iguais aos dos outros apps da família (ao mudar um, mude nos outros): `frontend/src/selectsheet.js`, `about.js`, `look.js`, `swipe.js`, `voice.js` e `chat.js` (os do ResolvIA e da CronologIA) e `memoria/rootfs/app/lib/ws.js`, `ha.js` e `voice.js` (os de `lib/` do ResolvIA). O `lib/pdf.js` é o do ResolvIA, com o nome do app como opção.
 
 O HA falso simula duas IAs (`ai_task.google_ai_task`, que lê fotos, e `ai_task.ollama_ai_task`, só texto) e recebe o `sensor.memoria_agora`; use `FAKE_MEDIA_DIR` igual a `MEDIA_DIR` para testar a leitura de fotos, ou `FAKE_HA_NO_AI=1` para testar sem IA. A prévia (`preview/memoria-preview.html`) abre direto no navegador, sem servidor.
+
+## Como os apps conversam
+
+- **CorrerIA → MemorIA** (o contrato é o mesmo para todos os apps da família; ver o AGENTS.md do `correria-ha`): com **Mais › Configurações › Integrações › CorrerIA** ligado (desligado por padrão, sem depender do Usar IA), o app grava `share/memoria/correria.json` (`app: "memoria"`, `nome`, `assunto`, `url`, `ip_url`, `chave`, `versao`, `ferramentas`, `gravado_em`; permissão 600, gravado de uma vez; chave própria em `/data/correria.key`; `MEMORIA_URL_INTERNA` troca o `url`) e responde, com `Authorization: Bearer <chave>`, em `GET /api/integracao/ferramentas` → `{instrucoes, ferramentas: [{nome, titulo, descricao, entrada (JSON Schema), grava, apaga}]}` e `POST` `{nome, argumentos, pessoa, cliente}` → `{texto}` (400 `{erro}` dizendo o que vale; 404 ferramenta desconhecida; 401 desligado ou chave errada). As ferramentas (`memoria/rootfs/app/lib/ferramentas.js`): `resumo`, `buscar`, `ler_bloco`, `ler_folha`, `nova_folha`, `acrescentar`, `editar_folha`, `adicionar_link`, `apagar_folha`, `novo_bloco`, `editar_bloco` e `nova_categoria`; gravam pelas mesmas funções da tela (`lib/store.js` e as regras de `lib/writing.js`, usadas também pela interface) e avisam todas as telas pelo WebSocket. Desligado, o arquivo some. O último uso (`cliente` e quando) fica em `/data/correria-uso.json` e aparece no cartão.
 
 ## Créditos
 
