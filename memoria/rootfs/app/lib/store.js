@@ -12,6 +12,7 @@ const PERIOD_IDS = PERIODS.map((p) => p.id);
 const MAX_TEXT = 50000;
 const MAX_PAGES = 20000;
 const MAX_BLOCKS = 200;
+const MAX_CATEGORIES = 50;
 const MAX_VERSIONS = 60;
 const VERSION_EVERY = 10 * 60 * 1000;
 const ID_RE = /^[a-z0-9]{6,32}$/i;
@@ -43,6 +44,39 @@ const times = (list) => {
 const looseTimes = (list) => (Array.isArray(list) ? [...new Set(list.map(normTime).filter(Boolean))].sort().slice(0, 24) : []);
 const when = (v, fallback) => (Number.isFinite(v) && v > 0 ? v : fallback);
 
+const catKey = (name) =>
+  name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+/** The categories of the blocks (Mais › Categorias): [{id, name, color, order, created, updated}], names unique. */
+function normCategories(list, now) {
+  const out = [];
+  const ids = new Set();
+  const names = new Set();
+  for (const c of Array.isArray(list) ? list : []) {
+    if (out.length >= MAX_CATEGORIES) break;
+    if (!c || typeof c !== "object") continue;
+    const name = typeof c.name === "string" ? c.name.replace(/\s+/g, " ").trim().slice(0, 40) : "";
+    if (!name || names.has(catKey(name))) continue;
+    const id = typeof c.id === "string" && ID_RE.test(c.id) && !ids.has(c.id) ? c.id : newId();
+    ids.add(id);
+    names.add(catKey(name));
+    out.push({
+      id,
+      name,
+      color: COLORS.includes(c.color) ? c.color : "grafite",
+      order: Number.isInteger(c.order) ? c.order : out.length,
+      created: when(c.created, now),
+      updated: when(c.updated, now),
+    });
+  }
+  return out;
+}
+
 /** Validates a whole data file (an import, a backup or an old version). */
 export function normalize(raw, current = {}) {
   if (!raw || typeof raw !== "object" || !Array.isArray(raw.blocks) || !Array.isArray(raw.pages)) {
@@ -51,6 +85,8 @@ export function normalize(raw, current = {}) {
     throw err;
   }
   const now = Date.now();
+  const categories = normCategories(raw.categories, now);
+  const catIds = new Set(categories.map((c) => c.id));
   const blockIds = new Set();
   const blocks = [];
   for (const b of raw.blocks) {
@@ -65,6 +101,7 @@ export function normalize(raw, current = {}) {
       paper: PAPERS.includes(b.paper) ? b.paper : "pautado",
       periods: [...new Set((Array.isArray(b.periods) ? b.periods : []).filter((p) => PERIOD_IDS.includes(p)))],
       times: looseTimes(b.times),
+      ...(catIds.has(b.category) ? { category: b.category } : {}),
       order: Number.isInteger(b.order) ? b.order : blocks.length,
       created: when(b.created, now),
       updated: when(b.updated, now),
@@ -100,7 +137,7 @@ export function normalize(raw, current = {}) {
   if (typeof a.sensor === "boolean") app.sensor = a.sensor;
   // The AI belongs to this Home Assistant, not to the file.
   if (current.ai_entity) app.ai_entity = current.ai_entity;
-  return { version: 1, periods, app, blocks, pages };
+  return { version: 1, periods, app, categories, blocks, pages };
 }
 
 function sample(now) {
@@ -138,6 +175,7 @@ export class Store {
       version: 1,
       periods: { ...DEFAULT_PERIODS, ...((raw && raw.periods) || {}) },
       app: (raw && raw.app && typeof raw.app === "object" && raw.app) || {},
+      categories: (raw && Array.isArray(raw.categories) && raw.categories) || [],
       blocks: (raw && Array.isArray(raw.blocks) && raw.blocks) || seed.blocks,
       pages: (raw && Array.isArray(raw.pages) && raw.pages) || (seed ? seed.pages : []),
     };
@@ -216,12 +254,64 @@ export class Store {
       b.periods = [...new Set(ps)];
     }
     if ("times" in input || !existing) b.times = times(input.times);
+    if ("category" in input) {
+      // "" or null = sem categoria
+      if (input.category && !this.category(input.category)) fail("categoria não existe");
+      if (input.category) b.category = input.category;
+      else delete b.category;
+    }
     if ("order" in input && Number.isInteger(input.order)) b.order = input.order;
     b.updated = now;
-    if (existing) Object.assign(existing, b);
-    else this.data.blocks.push(b);
+    if (existing) {
+      if (!("category" in b)) delete existing.category;
+      Object.assign(existing, b);
+    } else this.data.blocks.push(b);
     this.save();
     return existing || b;
+  }
+
+  category(id) {
+    return this.data.categories.find((c) => c.id === id);
+  }
+
+  /** Mais › Categorias: a new one ({name, color}) or a change ({id, name?, color?}). */
+  saveCategory(input) {
+    if (!input || typeof input !== "object") fail("categoria inválida");
+    const now = Date.now();
+    const existing = input.id ? this.category(input.id) : null;
+    if (input.id && !existing) fail("categoria não existe");
+    if (!existing && this.data.categories.length >= MAX_CATEGORIES) fail("categorias demais");
+    const c = existing ? { ...existing } : { id: newId(), created: now, order: this.data.categories.length, color: "grafite" };
+    if ("name" in input || !existing) {
+      const name = str(input.name == null ? "" : input.name, 200, "nome").replace(/\s+/g, " ").trim().slice(0, 40);
+      if (!name) fail("Dê um nome à categoria.");
+      if (this.data.categories.some((x) => x.id !== c.id && catKey(x.name) === catKey(name))) fail(`Já existe a categoria ${name}.`);
+      c.name = name;
+    }
+    if ("color" in input) c.color = COLORS.includes(input.color) ? input.color : c.color;
+    if ("order" in input && Number.isInteger(input.order)) c.order = input.order;
+    c.updated = now;
+    if (existing) Object.assign(existing, c);
+    else this.data.categories.push(c);
+    this.save();
+    return existing || c;
+  }
+
+  /** Deletes a category; its blocks stay, without a category. Returns those blocks. */
+  deleteCategory(id) {
+    const before = this.data.categories.length;
+    this.data.categories = this.data.categories.filter((c) => c.id !== id);
+    if (this.data.categories.length === before) fail("categoria não existe");
+    const now = Date.now();
+    const changed = [];
+    for (const b of this.data.blocks) {
+      if (b.category !== id) continue;
+      delete b.category;
+      b.updated = now;
+      changed.push(b);
+    }
+    this.save();
+    return changed;
   }
 
   deleteBlock(id) {

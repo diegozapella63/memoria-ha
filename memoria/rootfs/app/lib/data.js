@@ -31,10 +31,11 @@ export function toCSV(data) {
     const s = String(v == null ? "" : v);
     return /[";\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const rows = [["Bloco", "Folha", "Título", "Escrita em", "Editada em", "Horários", "Texto"]];
+  const cats = new Map((data.categories || []).map((c) => [c.id, c.name]));
+  const rows = [["Bloco", "Categoria", "Folha", "Título", "Escrita em", "Editada em", "Horários", "Texto"]];
   for (const b of orderedBlocks(data)) {
     pagesOf(data, b.id).forEach((p, i) => {
-      rows.push([b.name, i + 1, firstLine(p.text), dateTime(p.created), dateTime(p.updated), (p.times || []).join(" "), p.text]);
+      rows.push([b.name, cats.get(b.category) || "", i + 1, firstLine(p.text), dateTime(p.created), dateTime(p.updated), (p.times || []).join(" "), p.text]);
     });
   }
   return Buffer.from("﻿" + rows.map((r) => r.map(q).join(";")).join("\r\n") + "\r\n", "utf8");
@@ -46,7 +47,8 @@ export function toMarkdown(data, block, periods) {
     ...(block.periods || []).map((id) => `${{ manha: "manhã", tarde: "tarde", noite: "noite" }[id]} (${periods[id]})`),
     ...(block.times || []),
   ];
-  const head = `# ${block.name}\n\n${when.length ? `Abre sozinho: ${when.join(", ")}\n\n` : ""}`;
+  const cat = (data.categories || []).find((c) => c.id === block.category);
+  const head = `# ${block.name}\n\n${cat ? `Categoria: ${cat.name}\n\n` : ""}${when.length ? `Abre sozinho: ${when.join(", ")}\n\n` : ""}`;
   const pages = pagesOf(data, block.id).map((p, i) => {
     const extra = (p.times || []).length ? ` · às ${p.times.join(", ")}` : "";
     return `## Folha ${i + 1} · ${dateTime(p.created)}${extra}\n\n${p.text.trim()}`;
@@ -77,7 +79,7 @@ export function backupZip(data, version) {
     name: "LEIA-ME.txt",
     data:
       `Backup do MemorIA ${version} criado em ${dateTime(Date.now())}.\n` +
-      "memoria.json tem tudo (blocos, folhas, horários e ajustes); memoria.csv abre no Excel;\n" +
+      "memoria.json tem tudo (blocos, categorias, folhas, horários e ajustes); memoria.csv abre no Excel;\n" +
       "a pasta blocos tem um arquivo de texto por bloco.\n" +
       "Para restaurar: Mais > Configurações > Dados > Importar, e escolha este .zip.\n",
   });

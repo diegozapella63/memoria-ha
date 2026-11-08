@@ -222,8 +222,21 @@ export class Api {
     return this.call("memoria/block/delete", { block_id: id });
   }
 
+  saveCategory(category) {
+    return this.call("memoria/category/save", { category });
+  }
+
+  deleteCategory(id) {
+    return this.call("memoria/category/delete", { category_id: id });
+  }
+
   aiStatus() {
     return this.call("memoria/ai/status");
+  }
+
+  /** Mais › Relatório: a page of the server (with Baixar PDF). */
+  reportUrl(query) {
+    return new URL(`relatorio?${query}`, location.href).href;
   }
 
   saveSettings(settings) {

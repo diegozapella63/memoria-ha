@@ -5,6 +5,7 @@
 // - Reads pasted messages and photos with the AI configured in Home Assistant.
 // - Publishes sensor.memoria_agora with what is "on" right now.
 // - Exports, backups in share/memoria, imports and automatic versions.
+// - Mais › Relatório: the blocks and their sheets as a page and as a PDF.
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -15,8 +16,9 @@ import { Store } from "./lib/store.js";
 import { AI } from "./lib/ai.js";
 import { Sensor } from "./lib/sensor.js";
 import { Backups, backupZip, toCSV, parseImport, listVersions, readVersion, fileStamp } from "./lib/data.js";
+import { anotacoes, reportHtml, reportPdf, pdfName } from "./lib/report.js";
 
-const VERSION = "1.4.0";
+const VERSION = "1.5.0";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WWW = path.join(HERE, "www");
 const DEV = process.env.MEMORIA_DEV === "1";
@@ -155,6 +157,19 @@ class Session {
         return broadcast({ kind: "block_deleted", id: blockId, pages });
       }
 
+      case "memoria/category/save": {
+        const category = store.saveCategory(msg.category);
+        this.result(id, category);
+        return broadcast({ kind: "category", category });
+      }
+
+      case "memoria/category/delete": {
+        const catId = String(msg.category_id || "");
+        const blocks = store.deleteCategory(catId);
+        this.result(id, { blocks });
+        return broadcast({ kind: "category_deleted", id: catId, blocks });
+      }
+
       case "memoria/versions/list":
         return this.result(id, listVersions(store.versionsDir));
 
@@ -210,6 +225,7 @@ const FILES = {
   "/": ["index.html", "text/html; charset=utf-8"],
   "/index.html": ["index.html", "text/html; charset=utf-8"],
   "/memoria.js": ["memoria.js", "text/javascript; charset=utf-8"],
+  "/selectsheet.js": ["selectsheet.js", "text/javascript; charset=utf-8"],
 };
 
 function allowed(req) {
@@ -311,6 +327,24 @@ function handleImport(req, res) {
   });
 }
 
+/**
+ * Mais › Relatório: the blocks (?categoria=, ?bloco=) and their sheets, as a page (?tema=claro|escuro, ?cor=#rrggbb,
+ * the ones of the app) or as a PDF to download (the app Home Assistant on the phone doesn't print a page).
+ */
+function handleReport(url, res, pdf) {
+  const rep = anotacoes(store.data, { categoria: url.searchParams.get("categoria") || "", bloco: url.searchParams.get("bloco") || "" });
+  const cor = url.searchParams.get("cor");
+  if (pdf) {
+    const file = reportPdf(rep, { cor });
+    res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${pdfName(rep)}"`, "Cache-Control": "no-store", "Content-Length": file.length, "X-Content-Type-Options": "nosniff" });
+    return res.end(file);
+  }
+  const tema = url.searchParams.get("tema");
+  const body = Buffer.from(reportHtml(rep, { tema: tema === "claro" || tema === "escuro" ? tema : null, cor }), "utf8");
+  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "Content-Length": body.length, "X-Content-Type-Options": "nosniff" });
+  res.end(body);
+}
+
 const server = http.createServer((req, res) => {
   if (!allowed(req)) {
     res.writeHead(403).end("Forbidden");
@@ -321,6 +355,15 @@ const server = http.createServer((req, res) => {
   if (url.pathname === "/api/import" && req.method === "POST") return handleImport(req, res);
   const exp = url.pathname.match(/^\/api\/export\/(json|csv|zip)$/);
   if (exp && req.method === "GET") return handleExport(exp[1], res);
+  if ((url.pathname === "/relatorio" || url.pathname === "/relatorio.pdf") && req.method === "GET") {
+    try {
+      return handleReport(url, res, url.pathname.endsWith(".pdf"));
+    } catch (err) {
+      log.warn(`Relatório: ${err.message}`);
+      if (!res.headersSent) res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" }).end("Não deu para montar o relatório.");
+      return;
+    }
+  }
   const font = url.pathname.match(/^\/fonts\/([a-z0-9-]+\.woff2)$/);
   const file = font ? [`fonts/${font[1]}`, "font/woff2", true] : FILES[url.pathname];
   if (!file || (req.method !== "GET" && req.method !== "HEAD")) {

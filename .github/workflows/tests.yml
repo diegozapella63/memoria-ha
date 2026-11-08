@@ -23,7 +23,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      # the preview in the repository (built with cd frontend && npm run build)
+      # the preview in the repository (built with cd frontend && npm run build); Node for the server of the report
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

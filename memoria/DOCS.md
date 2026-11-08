@@ -25,7 +25,15 @@ Em **Blocos**, abra um bloco e toque na linha **Abre sozinho** (ou no ícone de 
 - **Períodos**: Manhã, Tarde e Noite. O começo de cada um fica em **Mais › Configurações › Opções** (padrão 05:00, 12:00 e 18:00).
 - **Horários exatos**: por exemplo Treino às 07:00 e Diário às 22:00.
 
-Nos mesmos ajustes ficam o nome, a **cor da capa**, o tipo de **folha** (pautada, quadriculada, pontilhada ou lisa) e o botão de excluir o bloco (as folhas dele vão junto). Para criar outro, toque em **Novo bloco**, no fim da estante.
+Nos mesmos ajustes ficam o nome, a **categoria**, a **cor da capa**, o tipo de **folha** (pautada, quadriculada, pontilhada ou lisa) e o botão de excluir o bloco (as folhas dele vão junto). Para criar outro, toque em **Novo bloco**, no fim da estante.
+
+## Categorias
+
+Em **Mais › Categorias**, crie categorias para agrupar os blocos (por exemplo Trabalho, Casa e Estudos). Toque numa categoria para mudar o nome ou a cor, ou para apagá-la: os blocos dela ficam sem categoria, e as folhas não mudam. Não dá para ter duas com o mesmo nome.
+
+Nos ajustes do bloco, escolha **Sem categoria**, uma das categorias ou **Nova** (escreva o nome ali mesmo; ela é criada ao salvar o bloco).
+
+Com categorias, a tela **Blocos** mostra etiquetas no alto: **Todos**, cada categoria e **Sem categoria** (quando algum bloco não tem). A escolha fica guardada no aparelho, e um bloco novo criado com uma categoria escolhida já entra nela. O **Seu dia** continua mostrando todos os horários.
 
 No fim de **Blocos**, o quadro **Seu dia** lista os horários de hoje, com o de agora marcado. Toque num deles para abrir o bloco (ou o trecho).
 
@@ -89,6 +97,19 @@ content: >
 
 Dá para desligar em **Mais › Configurações › Integrações › Sensor no Home Assistant**.
 
+## Relatório
+
+Em **Mais › Relatório**, os blocos e as folhas escritas numa página para ver, imprimir ou salvar:
+
+- no alto, a **categoria** e o **bloco** (só os da categoria escolhida); a escolha volta da próxima vez que o relatório abrir;
+- **Voltar** e **Baixar PDF** lado a lado. O PDF (`anotacoes-AAAA-MM-DD.pdf`, com o nome do bloco ou da categoria quando filtrado) é feito pelo próprio app e funciona também no app do Home Assistant no celular, que não imprime páginas;
+- o cabeçalho, igual ao dos relatórios dos outros apps da família: o ícone, **MemorIA · anotações**, quantos blocos e folhas e quando foi gerado;
+- os gráficos **Por categoria** e **Por bloco** (quantas folhas em cada), quando há mais de um;
+- cada bloco com a categoria, quantas folhas e quando abre sozinho, e cada folha com o número, o dia em que foi escrita, o horário próprio (se tiver) e o texto;
+- no fim, a marca da **CorrerIA Code**, como no **Sobre** (no PDF, no pé de cada página, com o número da página).
+
+A página abre no tema e na cor do app; o PDF e o papel são sempre brancos.
+
 ## Dados e backup
 
 - Blocos, folhas e ajustes ficam em `/data/memoria.json` dentro do app e entram nos backups do Home Assistant.
@@ -96,13 +117,13 @@ Dá para desligar em **Mais › Configurações › Integrações › Sensor no 
 
 Em **Mais › Configurações › Dados**:
 
-- **Exportar**: **Tudo (ZIP)** com o `memoria.json`, uma planilha e um arquivo de texto (Markdown) por bloco; **Planilha (CSV)**, que abre no Excel (separado por ponto e vírgula); e **Dados completos (JSON)**.
+- **Exportar**: **Tudo (ZIP)** com o `memoria.json`, uma planilha e um arquivo de texto (Markdown) por bloco; **Planilha (CSV)**, que abre no Excel (separado por ponto e vírgula, com a categoria de cada bloco); e **Dados completos (JSON)**.
 - **Backup na pasta share**: **Criar backup** salva um `.zip` em `share/memoria`, que você acessa pela rede (por exemplo `\\homeassistant.local\share\memoria` com o app Samba). Os backups da pasta aparecem logo abaixo, com **Restaurar**.
 - **Importar**: traz os blocos e folhas de um `.zip` ou `.json` exportado pelo app (também funciona pelo celular).
 - **Versões anteriores**: o app guarda sozinho uma cópia a cada 10 minutos de uso (as 60 mais recentes) em `/data/versoes`. Toque em **Restaurar** para voltar a uma delas.
-- **Começar do zero**: apaga todos os blocos e folhas; os ajustes continuam.
+- **Começar do zero**: apaga todos os blocos e folhas; os ajustes e as categorias continuam.
 
-Antes de importar, restaurar ou apagar, o app sempre guarda uma cópia do que existe naquele momento em **Versões anteriores**. Importar e restaurar trocam os blocos, as folhas e os períodos do dia; a IA escolhida continua a deste Home Assistant.
+Antes de importar, restaurar ou apagar, o app sempre guarda uma cópia do que existe naquele momento em **Versões anteriores**. Importar e restaurar trocam os blocos, as categorias, as folhas e os períodos do dia; a IA escolhida continua a deste Home Assistant.
 
 ## Aparência
 
@@ -114,7 +135,7 @@ Em **Mais › Configurações › Aparência**:
 
 ## Mais
 
-O **Mais** é um menu, como nos outros apps da família: cada linha abre a sua tela. **Configurações** tem as abas **Integrações** (Leitura por IA e o sensor), **Dados**, **Aparência** e **Opções** (os períodos do dia); a aba escolhida fica guardada. O Voltar do celular, o **‹ Mais** no alto e arrastar o dedo para a direita voltam ao menu.
+O **Mais** é um menu, como nos outros apps da família: **Categorias**, **Relatório**, **Configurações** e, por último, **Sobre**. Cada linha abre a sua tela. **Configurações** tem as abas **Integrações** (Leitura por IA e o sensor), **Dados**, **Aparência** e **Opções** (os períodos do dia); a aba escolhida fica guardada. O Voltar do celular, o **‹ Mais** no alto e arrastar o dedo para a direita voltam ao menu.
 
 Arrastar o dedo para os lados (fora da folha) troca de aba: **Agora**, **Blocos**, **Buscar** e **Mais**. Na folha, arrastar continua virando a página; dentro de um bloco, arrastar para a direita volta.
 

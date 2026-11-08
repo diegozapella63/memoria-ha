@@ -15,7 +15,9 @@ const TURN_MS = 600;
 const PAPER_LABEL = { pautado: "Pautado", quadriculado: "Quadriculado", pontilhado: "Pontilhado", liso: "Liso" };
 const RINGS = Array.from({ length: 14 }, () => html`<i></i>`);
 // The screens of Mais (a menu, like the other apps): each one goes over the menu, and Back returns to it.
-const IN_MORE = ["config", "sobre"];
+const IN_MORE = ["categorias", "config", "sobre"];
+const SHELF_KEY = "memoria.blocos.categoria";
+const REPORT_KEY = "memoria.relatorio";
 
 const icon = (name, cls = "") =>
   html`<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${unsafeSVG(ICONS[name] || ICONS.notebook)}</svg>`;
@@ -249,6 +251,15 @@ class MemoriaApp extends LitElement {
     return this._data && this._data.blocks.find((b) => b.id === id);
   }
 
+  /** The categories of the blocks (Mais › Categorias), in order. */
+  _cats() {
+    return [...((this._data && this._data.categories) || [])].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name, "pt-BR"));
+  }
+
+  _cat(id) {
+    return id ? this._cats().find((c) => c.id === id) : null;
+  }
+
   _page(id) {
     return this._data && this._data.pages.find((p) => p.id === id);
   }
@@ -339,6 +350,15 @@ class MemoriaApp extends LitElement {
         if (this._view().name === "block") this._go("/blocos", true);
         else this._enterView();
       }
+    } else if (ev.kind === "category") {
+      const categories = this._cats().slice();
+      const i = categories.findIndex((c) => c.id === ev.category.id);
+      if (i >= 0) categories[i] = ev.category;
+      else categories.push(ev.category);
+      this._data = { ...this._data, categories };
+    } else if (ev.kind === "category_deleted") {
+      const blocks = this._data.blocks.map((b) => (b.category === ev.id ? Object.fromEntries(Object.entries(b).filter(([k]) => k !== "category")) : b));
+      this._data = { ...this._data, categories: this._cats().filter((c) => c.id !== ev.id), blocks };
     } else if (ev.kind === "reset") {
       this._applyReset(ev.data);
       return;
@@ -735,8 +755,10 @@ class MemoriaApp extends LitElement {
     if ((m = p.match(/^\/bloco\/([a-z0-9]+)$/i))) return { name: "block", id: m[1] };
     if (p === "/blocos") return { name: "shelf" };
     if (p === "/buscar") return { name: "search" };
-    // Mais is a menu (/mais): Configurações (/config/<aba>) and, last, Sobre (/sobre)
+    // Mais is a menu (/mais): Categorias (/categorias), Relatório (a page of the server), Configurações
+    // (/config/<aba>) and, last, Sobre (/sobre)
     if (p === "/mais") return { name: "more" };
+    if (p === "/categorias") return { name: "categorias" };
     if (p === "/sobre") return { name: "sobre" };
     if ((m = p.match(/^\/config(?:\/(integracoes|dados|aparencia|opcoes))?$/))) return { name: "config", tab: m[1] || "integracoes" };
     return { name: "now" };
@@ -764,7 +786,23 @@ class MemoriaApp extends LitElement {
   /** A row of the menu Mais: its screen goes over the menu, so Back returns to it. */
   _openFromMenu(path) {
     this._haptic("light");
+    if (path === "relatorio") return this._openReport();
     this._go(path, false, { rvUp: true });
+  }
+
+  /**
+   * Mais › Relatório: a page of the server (like the other apps), in the theme and the color of the app, with the
+   * category and the block chosen last time (the page keeps them in memoria.relatorio).
+   */
+  _openReport() {
+    if (!this.api.reportUrl) return this._showToast("Na prévia o relatório não abre. No app, ele abre pronto para imprimir ou baixar em PDF.");
+    const last = local.get(REPORT_KEY, {}) || {};
+    const q = new URLSearchParams();
+    if (last.categoria && (last.categoria === "sem" || this._cat(last.categoria))) q.set("categoria", last.categoria);
+    if (last.bloco && this._block(last.bloco)) q.set("bloco", last.bloco);
+    q.set("tema", this._dark ? "escuro" : "claro");
+    q.set("cor", this._accent().fill);
+    location.href = this.api.reportUrl(q.toString());
   }
 
   /** A screen of Mais opened from its menu (Back returns to the menu). */
@@ -817,8 +855,8 @@ class MemoriaApp extends LitElement {
     slideIn(this, order[j][0], d);
   }
 
-  /** Leave a history entry we pushed (sheet, camera); resolves once it is gone. */
-  _popEntry(flag) {
+  /** Leave a history entry we pushed (sheet, camera; n: two for a window opened from another); resolves once it is gone. */
+  _popEntry(flag, n = 1) {
     if (!(history.state && history.state[flag])) return Promise.resolve();
     const p = new Promise((resolve) => {
       const done = () => {
@@ -831,7 +869,7 @@ class MemoriaApp extends LitElement {
       this._popWaiters = [...(this._popWaiters || []), done];
     });
     this._popping = p;
-    history.back();
+    history.go(-n);
     return p;
   }
 
@@ -869,6 +907,15 @@ class MemoriaApp extends LitElement {
 
   _onPopState() {
     if (this._cam && !(history.state && history.state.rvCam)) this._closeCamera(true);
+    // a window opened from another one (a confirmation): Back returns to that one
+    if (this._parentSheet && !(history.state && history.state.rvSub)) {
+      const parent = this._parentSheet;
+      this._parentSheet = null;
+      if (this._sheet && history.state && history.state.rvSheet) {
+        this._sheet = parent.sheet;
+        this._form = parent.form;
+      }
+    }
     if (this._sheet && !(history.state && history.state.rvSheet)) {
       this._sheet = null;
       this._form = null;
@@ -905,9 +952,34 @@ class MemoriaApp extends LitElement {
   _closeSheet() {
     if (!this._sheet) return Promise.resolve();
     this._releaseImages();
+    const sub = !!this._parentSheet;
+    this._parentSheet = null;
     this._sheet = null;
     this._form = null;
-    return this._popEntry("rvSheet");
+    return this._popEntry("rvSheet", sub ? 2 : 1);
+  }
+
+  /** A window opened from another one (a confirmation): Back, the X and Cancelar return to that one. */
+  _openSubSheet(sheet, form) {
+    if (!this._sheet) return this._openSheet(sheet, form);
+    this._parentSheet = { sheet: this._sheet, form: this._form };
+    this._sheet = sheet;
+    this._form = form;
+    try {
+      history.pushState({ ...(history.state || {}), rvSheet: true, rvSub: true }, "");
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  /** The X, Cancelar, a tap outside and Esc: back to the window under this one, or closed. */
+  _sheetBack() {
+    if (this._parentSheet && history.state && history.state.rvSub) history.back();
+    else this._closeSheet();
+  }
+
+  _openConfirm(form) {
+    return this._openSubSheet("confirm", form);
   }
 
   _setForm(changes) {
@@ -1008,7 +1080,7 @@ class MemoriaApp extends LitElement {
     const file = ev.target.files && ev.target.files[0];
     ev.target.value = "";
     if (!file) return;
-    this._openSheet("confirm", {
+    this._openConfirm({
       title: "Importar arquivo?",
       text: `Os blocos e folhas de agora são trocados pelos de “${clip(file.name, 40)}”. Antes, o app guarda uma cópia do que existe hoje em Versões anteriores.`,
       label: "Importar",
@@ -1026,7 +1098,7 @@ class MemoriaApp extends LitElement {
   }
 
   _confirmRestoreBackup(b) {
-    this._openSheet("confirm", {
+    this._openConfirm({
       title: "Restaurar este backup?",
       text: `Os blocos e folhas de agora são trocados pelos do backup de ${this._dateTime(b.date)}. Antes, o app guarda uma cópia do que existe hoje.`,
       label: "Restaurar",
@@ -1053,7 +1125,7 @@ class MemoriaApp extends LitElement {
   }
 
   _confirmRestoreVersion(v) {
-    this._openSheet("confirm", {
+    this._openConfirm({
       title: "Restaurar esta versão?",
       text: `Os blocos e folhas de agora são trocados pelos de ${this._dateTime(v.when)}. Antes, o app guarda uma cópia do que existe hoje.`,
       label: "Restaurar",
@@ -1071,7 +1143,7 @@ class MemoriaApp extends LitElement {
 
   _confirmErase() {
     const d = this._data;
-    this._openSheet("confirm", {
+    this._openConfirm({
       title: "Apagar tudo?",
       text: `Saem ${plural(d.blocks.length, "bloco", "blocos")} e ${plural(d.pages.length, "folha", "folhas")}. Os ajustes continuam e uma cópia fica em Versões anteriores.`,
       label: "Apagar tudo",
@@ -1107,6 +1179,9 @@ class MemoriaApp extends LitElement {
       paper: b ? b.paper : "pautado",
       periods: b ? [...(b.periods || [])] : [],
       times: b ? [...(b.times || [])] : [],
+      // a new block from Blocos filtered by a category goes into it
+      category: b ? b.category || "" : this._shelfCat() && this._shelfCat() !== "sem" ? this._shelfCat() : "",
+      newCat: null,
     });
     if (!b) {
       this.updateComplete.then(() => {
@@ -1124,9 +1199,19 @@ class MemoriaApp extends LitElement {
       paper: f.paper,
       periods: f.periods,
       times: f.times,
+      category: f.category || "",
     };
     if (f.id) block.id = f.id;
     try {
+      // Nova categoria, written here: created first (with the color of the block), then the block goes into it
+      if (f.newCat != null && f.newCat.trim()) {
+        const name = f.newCat.trim();
+        const same = this._cats().find((c) => fold(c.name).trim() === fold(name));
+        const cat = same || (await this.api.saveCategory({ name, color: this._cats().some((c) => c.color === f.color) ? this._freeCatColor() : f.color }));
+        if (!same) this._putCategory(cat);
+        block.category = cat.id;
+        this._setForm({ category: cat.id, newCat: null });
+      }
       const saved = await this.api.saveBlock(block);
       this._putBlock(saved);
       this._closeSheet();
@@ -1143,7 +1228,7 @@ class MemoriaApp extends LitElement {
     const b = this._block(f.id);
     if (!b) return;
     const n = this._pagesOf(b.id).length;
-    this._openSheet("confirm", {
+    this._openConfirm({
       title: `Excluir “${clip(b.name, 24)}”?`,
       text: n ? `As ${plural(n, "folha", "folhas")} deste bloco também serão apagadas. Não dá para desfazer.` : "Este bloco está vazio.",
       label: "Excluir bloco",
@@ -1156,6 +1241,68 @@ class MemoriaApp extends LitElement {
           this._showToast("Bloco excluído");
         } catch (err) {
           this._showToast(`Não consegui excluir: ${err.message}`);
+        }
+      },
+    });
+  }
+
+  // ---------- Mais › Categorias
+
+  /** The color for a new category: one not used yet by the others. */
+  _freeCatColor() {
+    const used = new Set(this._cats().map((c) => c.color));
+    return (PALETTE.find((c) => !used.has(c.id)) || PALETTE[9]).id;
+  }
+
+  _openCategorySheet(cat) {
+    this._openSheet("category", { id: cat ? cat.id : null, name: cat ? cat.name : "", color: cat ? cat.color : this._freeCatColor() });
+    if (!cat) {
+      this.updateComplete.then(() => {
+        const input = this.renderRoot.querySelector(".sheet input[type=text]");
+        if (input) input.focus();
+      });
+    }
+  }
+
+  _putCategory(c) {
+    this._onEvent({ kind: "category", category: c });
+  }
+
+  async _saveCategorySheet() {
+    const f = this._form;
+    const name = (f.name || "").trim();
+    if (!name || f.busy) return;
+    this._setForm({ busy: true });
+    try {
+      const saved = await this.api.saveCategory({ ...(f.id ? { id: f.id } : {}), name, color: f.color });
+      this._putCategory(saved);
+      this._closeSheet();
+      this._haptic("success");
+      this._showToast(f.id ? "Categoria salva" : "Categoria criada");
+    } catch (err) {
+      if (this._sheet === "category") this._setForm({ busy: false });
+      this._showToast(err.message);
+    }
+  }
+
+  _confirmDeleteCategory() {
+    const c = this._cat(this._form.id);
+    if (!c) return;
+    const n = this._data.blocks.filter((b) => b.category === c.id).length;
+    this._openConfirm({
+      title: `Apagar “${clip(c.name, 24)}”?`,
+      text: n ? `${n === 1 ? "O bloco dela fica" : `Os ${n} blocos dela ficam`} sem categoria. As folhas não mudam.` : "Nenhum bloco usa esta categoria.",
+      label: "Apagar categoria",
+      danger: true,
+      run: async () => {
+        this._closeSheet();
+        try {
+          await this.api.deleteCategory(c.id);
+          this._onEvent({ kind: "category_deleted", id: c.id });
+          if (local.get(SHELF_KEY, "") === c.id) local.set(SHELF_KEY, "");
+          this._showToast("Categoria apagada");
+        } catch (err) {
+          this._showToast(`Não consegui apagar: ${err.message}`);
         }
       },
     });
@@ -1228,7 +1375,7 @@ class MemoriaApp extends LitElement {
   _confirmDeletePage(id) {
     const page = this._page(id);
     if (!page) return;
-    this._openSheet("confirm", {
+    this._openConfirm({
       title: "Arrancar esta folha?",
       text: page.text.trim() ? `“${clip(firstLine(page.text), 60)}” será apagada.` : "A folha em branco será removida.",
       label: "Apagar folha",
@@ -1537,6 +1684,7 @@ class MemoriaApp extends LitElement {
     else if (view.name === "search") page = this._renderSearch();
     else if (view.name === "more") page = this._renderMore();
     else if (view.name === "config") page = this._renderConfig();
+    else if (view.name === "categorias") page = this._renderCategories();
     else if (view.name === "sobre") page = this._renderAbout();
     else page = this._renderNow();
     return html`
@@ -1716,14 +1864,37 @@ class MemoriaApp extends LitElement {
 
   // ---------- Blocos
 
+  /** The category chosen in Blocos (kept on this device): "" all, a category id or "sem". */
+  _shelfCat() {
+    const v = local.get(SHELF_KEY, "") || "";
+    if (v === "sem") return this._cats().length && this._blocks().some((b) => !this._cat(b.category)) ? "sem" : "";
+    return this._cat(v) ? v : "";
+  }
+
+  _setShelfCat(v) {
+    this._haptic("light");
+    local.set(SHELF_KEY, v);
+    this.requestUpdate();
+  }
+
   _renderShelf() {
-    const blocks = this._blocks();
-    const pages = this._data.pages.length;
+    const all = this._blocks();
+    const cats = this._cats();
+    const fcat = this._shelfCat();
+    const blocks = !fcat ? all : fcat === "sem" ? all.filter((b) => !this._cat(b.category)) : all.filter((b) => b.category === fcat);
+    const pages = blocks.reduce((n, b) => n + this._pagesOf(b.id).length, 0);
+    const none = all.some((b) => !this._cat(b.category));
     const groups = timeline(this._schedule());
     const { cur } = this._slot();
+    const chip = (v, label, c = null) => html`<button class="pick ${c ? "list" : ""} ${fcat === v ? "on" : ""}" style=${c ? colorVars(colorById(c.color) || PALETTE[9], this._dark) : ""} aria-pressed=${fcat === v ? "true" : "false"} @click=${() => this._setShelfCat(v)}>${c ? html`<span class="dot"></span>` : nothing}<span>${label}</span></button>`;
     return html`
       <section class="page">
         ${this._renderHead("Blocos", { text: `${plural(blocks.length, "bloco", "blocos")} · ${plural(pages, "folha", "folhas")}` })}
+        ${cats.length
+          ? html`<div class="chip-row cat-filter" role="group" aria-label="Categoria">
+              ${chip("", "Todos")} ${cats.map((c) => chip(c.id, clip(c.name, 22), c))} ${none ? chip("sem", "Sem categoria") : nothing}
+            </div>`
+          : nothing}
         <div class="shelf">
           ${repeat(
             blocks,
@@ -1776,7 +1947,7 @@ class MemoriaApp extends LitElement {
         <div class="detail-head">
           <button class="icon-btn" @click=${() => this._back()} aria-label="Voltar">${icon("chevron-left")}</button>
           <div class="dh-text">
-            <div class="overline">${plural(n, "folha", "folhas")} · ${PAPER_LABEL[b.paper] || ""}</div>
+            <div class="overline">${[this._cat(b.category) && this._cat(b.category).name, plural(n, "folha", "folhas"), PAPER_LABEL[b.paper] || ""].filter(Boolean).join(" · ")}</div>
             <h1 class="display">${b.name}</h1>
           </div>
           <button class="icon-btn" @click=${() => this._openBlockSheet(b)} aria-label="Ajustes do bloco">${icon("sliders-horizontal")}</button>
@@ -1883,11 +2054,14 @@ class MemoriaApp extends LitElement {
     return tab === "integracoes" ? "/config" : `/config/${tab}`;
   }
 
-  /** The rows of the menu Mais, in order: Configurações and, last, Sobre. */
+  /** The rows of the menu Mais, in order: Categorias, Relatório, Configurações and, last, Sobre. */
   _moreRows() {
     const words = this._configTabs().map((t) => t[3]);
     const cfg = `${words.slice(0, -1).join(", ")} e ${words[words.length - 1]}.`;
+    const cats = this._cats();
     return [
+      ["/categorias", "tag", "Categorias", cats.length ? `${clip(cats.map((c) => c.name).join(", "), 44)}.` : "Para agrupar os blocos."],
+      ["relatorio", "clipboard-list", "Relatório", "Os blocos e as folhas, para imprimir ou salvar em PDF."],
       ["/config", "sliders-horizontal", "Configurações", cfg[0].toUpperCase() + cfg.slice(1)],
       ["/sobre", "info", "Sobre", "CorrerIA Code, os apps e o GitHub."],
     ];
@@ -2013,6 +2187,36 @@ class MemoriaApp extends LitElement {
     </div>`;
   }
 
+  /** Mais › Categorias: the categories of the blocks; tap one to change its name or color, or delete it. */
+  _renderCategories() {
+    const cats = this._cats();
+    const blocks = this._blocks();
+    return html`<section class="page">
+      ${this._renderHead("Categorias", { text: cats.length ? plural(cats.length, "categoria", "categorias") : "Nenhuma categoria ainda" }, true)}
+      <div class="panel cats-panel">
+        ${cats.length
+          ? html`<p class="panel-lead">Toque numa categoria para mudar o nome ou a cor.</p>
+              ${repeat(
+                cats,
+                (c) => c.id,
+                (c) => {
+                  const mine = blocks.filter((b) => b.category === c.id);
+                  return html`<button class="row cat-row" style=${colorVars(colorById(c.color) || PALETTE[9], this._dark)} @click=${() => this._openCategorySheet(c)}>
+                    <span class="tile">${icon("tag")}</span>
+                    <div class="grow"><div class="label">${c.name}</div><div class="hint">${mine.length ? `${plural(mine.length, "bloco", "blocos")}: ${mine.map((b) => b.name).join(", ")}` : "Nenhum bloco"}</div></div>
+                    ${icon("chevron-right", "chev")}
+                  </button>`;
+                },
+              )}`
+          : html`<div class="empty"><div class="em-icon">${icon("tag")}</div><h3>Agrupe os blocos</h3><p>Por exemplo Trabalho, Casa e Estudos. Em Blocos, filtre por categoria.</p></div>`}
+        <button class="row cat-row add" @click=${() => this._openCategorySheet(null)}>
+          <span class="tile" style=${colorVars(this._accent(), this._dark)}>${icon("plus")}</span>
+          <div class="grow"><div class="label">Nova categoria</div></div>
+        </button>
+      </div>
+    </section>`;
+  }
+
   /** Mais › Sobre: CorrerIA Code, the apps of the family and the GitHub (the same page as the other apps). */
   _renderAbout() {
     return html`<section class="page">
@@ -2114,17 +2318,18 @@ class MemoriaApp extends LitElement {
     if (!this._sheet) return nothing;
     let body = nothing;
     if (this._sheet === "block") body = this._renderBlockSheet();
+    else if (this._sheet === "category") body = this._renderCategorySheet();
     else if (this._sheet === "pagemenu") body = this._renderPageMenu();
     else if (this._sheet === "new") body = this._renderNewSheet();
     else if (this._sheet === "confirm") body = this._renderConfirm();
     else if (this._sheet === "versions") body = this._renderVersions();
     const f = this._form || {};
-    const b = this._sheet === "block" ? { color: f.color } : this._block(f.target || (f.page && this._page(f.page) && this._page(f.page).block));
+    const b = this._sheet === "block" || this._sheet === "category" ? { color: f.color } : this._block(f.target || (f.page && this._page(f.page) && this._page(f.page).block));
     const c = b ? colorById(b.color) : null;
     const style = c ? `--rv-accent:${c.fill};--rv-accent-ink:${this._dark ? c.fill : c.ink};--rv-accent-soft:${hexToRgba(c.fill, this._dark ? 0.18 : 0.14)};` : "";
     return html`
-      <div class="scrim" @click=${() => this._closeSheet()}></div>
-      <div class="sheet" role="dialog" aria-modal="true" style=${style} @keydown=${(e) => e.key === "Escape" && this._closeSheet()}>
+      <div class="scrim" @click=${() => this._sheetBack()}></div>
+      <div class="sheet" role="dialog" aria-modal="true" style=${style} @keydown=${(e) => e.key === "Escape" && this._sheetBack()}>
         <div class="grab"></div>
         ${body}
       </div>
@@ -2135,7 +2340,7 @@ class MemoriaApp extends LitElement {
     return html`<div class="sheet-head">
       ${back ? html`<button class="icon-btn back" @click=${back} aria-label="Voltar">${icon("chevron-left")}</button>` : nothing}
       <h3 class="display">${title}</h3>
-      <button class="icon-btn" @click=${() => this._closeSheet()} aria-label="Fechar">${icon("x")}</button>
+      <button class="icon-btn" @click=${() => this._sheetBack()} aria-label="Fechar">${icon("x")}</button>
     </div>`;
   }
 
@@ -2169,6 +2374,25 @@ class MemoriaApp extends LitElement {
         <input type="text" maxlength="60" .value=${f.name} placeholder="Ex.: Diário, Treino, Trabalho" @input=${(e) => this._setForm({ name: e.target.value })} @keydown=${(e) => e.key === "Enter" && this._saveBlockSheet()} />
       </label>
       <div class="field">
+        <span class="flabel">Categoria</span>
+        <div class="chip-row cat-pick">
+          <button class="pick ${!f.category && f.newCat == null ? "on" : ""}" @click=${() => this._setForm({ category: "", newCat: null })}><span>Sem categoria</span></button>
+          ${this._cats().map(
+            (c) => html`<button class="pick list ${f.category === c.id && f.newCat == null ? "on" : ""}" style=${colorVars(colorById(c.color) || PALETTE[9], this._dark)} @click=${() => this._setForm({ category: c.id, newCat: null })}><span class="dot"></span><span>${clip(c.name, 22)}</span></button>`,
+          )}
+          <button class="pick ${f.newCat != null ? "on" : ""}" @click=${() => {
+            this._setForm({ newCat: f.newCat == null ? "" : f.newCat });
+            this.updateComplete.then(() => {
+              const input = this.renderRoot.querySelector(".new-cat input");
+              if (input) input.focus();
+            });
+          }}>${icon("plus")}<span>Nova</span></button>
+        </div>
+        ${f.newCat != null
+          ? html`<label class="new-cat"><input type="text" maxlength="40" .value=${f.newCat} placeholder="Nome da nova categoria" aria-label="Nome da nova categoria" @input=${(e) => this._setForm({ newCat: e.target.value })} @keydown=${(e) => e.key === "Enter" && this._saveBlockSheet()} /></label>`
+          : nothing}
+      </div>
+      <div class="field">
         <span class="flabel">Cor da capa</span>
         <div class="swatches">
           ${PALETTE.map((c) => html`<button class="sw ${f.color === c.id ? "on" : ""}" style="--c:${c.fill}" aria-label=${c.label} @click=${() => this._setForm({ color: c.id })}>${f.color === c.id ? icon("check") : nothing}</button>`)}
@@ -2198,6 +2422,28 @@ class MemoriaApp extends LitElement {
       <div class="sheet-actions">
         ${f.id ? html`<button class="btn danger" @click=${() => this._confirmDeleteBlock()} aria-label="Excluir bloco">${icon("trash")}</button>` : nothing}
         <button class="btn primary" @click=${() => this._saveBlockSheet()}>${f.id ? "Salvar" : "Criar bloco"}</button>
+      </div>
+    `;
+  }
+
+  /** Nova categoria / Categoria: the name and the color; delete (its blocks stay, without a category). */
+  _renderCategorySheet() {
+    const f = this._form;
+    return html`
+      ${this._sheetHead(f.id ? "Categoria" : "Nova categoria")}
+      <label class="field">
+        <span class="flabel">Nome</span>
+        <input type="text" maxlength="40" .value=${f.name} placeholder="Ex.: Trabalho, Casa, Estudos" @input=${(e) => this._setForm({ name: e.target.value })} @keydown=${(e) => e.key === "Enter" && this._saveCategorySheet()} />
+      </label>
+      <div class="field">
+        <span class="flabel">Cor</span>
+        <div class="swatches">
+          ${PALETTE.map((c) => html`<button class="sw ${f.color === c.id ? "on" : ""}" style="--c:${c.fill}" aria-label=${c.label} @click=${() => this._setForm({ color: c.id })}>${f.color === c.id ? icon("check") : nothing}</button>`)}
+        </div>
+      </div>
+      <div class="sheet-actions">
+        ${f.id ? html`<button class="btn danger" @click=${() => this._confirmDeleteCategory()} aria-label="Apagar categoria">${icon("trash")}</button>` : nothing}
+        <button class="btn primary" ?disabled=${!(f.name || "").trim() || f.busy} @click=${() => this._saveCategorySheet()}>${f.id ? "Salvar" : "Criar categoria"}</button>
       </div>
     `;
   }
@@ -2363,7 +2609,7 @@ class MemoriaApp extends LitElement {
       <div class="sheet-head"><h3 class="display">${f.title}</h3></div>
       <p class="confirm-text">${f.text}</p>
       <div class="sheet-actions">
-        <button class="btn outline" @click=${() => this._closeSheet()}>Cancelar</button>
+        <button class="btn outline" @click=${() => this._sheetBack()}>Cancelar</button>
         <button class="btn ${f.danger ? "danger-fill" : "primary"}" @click=${() => f.run()}>${f.label}</button>
       </div>
     `;

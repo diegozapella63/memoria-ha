@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.0
+
+- **Categorias dos blocos**: em **Mais › Categorias**, crie categorias (Trabalho, Casa, Estudos…), mude o nome ou a cor e apague (os blocos dela ficam sem categoria; o app pergunta antes). Cada bloco escolhe a sua nos ajustes do bloco, e dá para criar uma **Nova** ali mesmo.
+- **Blocos por categoria**: com categorias, a tela Blocos ganha etiquetas no alto (Todos, cada categoria e Sem categoria) para mostrar só os blocos de uma. A escolha fica guardada no aparelho, e um bloco novo criado ali já entra na categoria escolhida. A tela do bloco mostra a categoria dele.
+- **Relatório** (linha própria em Mais): os blocos e as folhas, para ver, imprimir ou **Baixar PDF** (funciona também no app do Home Assistant no celular). O cabeçalho é o dos relatórios dos outros apps (o ícone, MemorIA · anotações, quantos blocos e folhas e quando); depois vêm os gráficos por categoria e por bloco e cada bloco com as suas folhas; no fim, a marca da CorrerIA Code, como no Sobre (no PDF, no pé de cada página, com o número da página). Escolha a categoria e o bloco no alto: a escolha volta da próxima vez. A página abre no tema e na cor do app.
+- As categorias entram na exportação (a coluna Categoria na planilha e no texto de cada bloco), no backup, nas versões e na importação. **Começar do zero** mantém as categorias.
+- Uma confirmação aberta de dentro de outra janela (Apagar categoria, Excluir bloco, Apagar folha, Restaurar versão) volta para ela no Voltar do celular, em Cancelar e ao tocar fora.
+
 ## 1.4.0
 
 - **Mais virou um menu**, como nos outros apps da família: **Configurações** e, por último, **Sobre**. Cada linha abre a sua tela; o Voltar do celular, o **‹ Mais** no alto e arrastar o dedo para a direita voltam ao menu.

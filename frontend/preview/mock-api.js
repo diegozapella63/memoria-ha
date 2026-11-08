@@ -11,10 +11,14 @@ const times = (list) => [...new Set((list || []).map(normTime).filter(Boolean))]
 function sample() {
   const now = Date.now();
   const day = 86400000;
+  const categories = [
+    { id: "catpessoal1", name: "Pessoal", color: "lilas", order: 0 },
+    { id: "cattrabalho", name: "Trabalho", color: "laranja", order: 1 },
+  ].map((c) => ({ ...c, created: now - 30 * day, updated: now - 30 * day }));
   const blocks = [
-    { id: "treino00001", name: "Treino", color: "azul", paper: "quadriculado", periods: [], times: ["07:00"], order: 0 },
-    { id: "trabalho001", name: "Trabalho", color: "laranja", paper: "pautado", periods: ["manha", "tarde"], times: [], order: 1 },
-    { id: "diario00001", name: "Diário", color: "lilas", paper: "pautado", periods: ["noite"], times: ["22:00"], order: 2 },
+    { id: "treino00001", name: "Treino", color: "azul", paper: "quadriculado", periods: [], times: ["07:00"], order: 0, category: "catpessoal1" },
+    { id: "trabalho001", name: "Trabalho", color: "laranja", paper: "pautado", periods: ["manha", "tarde"], times: [], order: 1, category: "cattrabalho" },
+    { id: "diario00001", name: "Diário", color: "lilas", paper: "pautado", periods: ["noite"], times: ["22:00"], order: 2, category: "catpessoal1" },
     { id: "ideias00001", name: "Ideias", color: "menta", paper: "pontilhado", periods: [], times: [], order: 3 },
   ].map((b) => ({ ...b, created: now - 30 * day, updated: now - 2 * day }));
   const pg = (block, text, ago, extra = {}) => ({ id: id(), block, text, times: [], created: now - ago, updated: now - ago, ...extra });
@@ -27,7 +31,7 @@ function sample() {
     pg("diario00001", "Hoje\n\nGratidão:\n• café da manhã com calma\n• terminei o painel da sala no Home Assistant\n• caminhada no fim da tarde\n\nAmanhã: acordar 6h30 e não pular o treino.", 6 * 3600000),
     pg("ideias00001", "Ideias para a casa\n\n- Sensor de presença no corredor\n- Luz da varanda acender no pôr do sol\n- Tablet na geladeira mostrando o MemorIA agora\n- Lembrete de regar as plantas às 18h", 4 * day),
   ];
-  return { version: 1, periods: { ...DEFAULT_PERIODS }, app: {}, blocks, pages };
+  return { version: 1, periods: { ...DEFAULT_PERIODS }, app: {}, categories, blocks, pages };
 }
 
 export class MockApi {
@@ -45,7 +49,7 @@ export class MockApi {
 
   async bootstrap() {
     await wait(60);
-    return { version: "1.4.0", user: { name: "Diego Zapella" }, ai: await this.aiStatus(), data: clone(this.data) };
+    return { version: "1.5.0", user: { name: "Ana Souza" }, ai: await this.aiStatus(), data: clone(this.data) };
   }
 
   async aiStatus() {
@@ -115,9 +119,50 @@ export class MockApi {
     b.paper = PAPERS.includes(input.paper) ? input.paper : "pautado";
     b.periods = (input.periods || []).filter((p) => PERIODS.some((x) => x.id === p));
     b.times = times(input.times);
+    if ("category" in input) {
+      if (input.category && !d.categories.some((c) => c.id === input.category)) throw Object.assign(new Error("categoria não existe"), { code: "invalid_format" });
+      if (input.category) b.category = input.category;
+      else delete b.category;
+    }
     b.updated = now;
     this.emit({ kind: "block", block: b });
     return clone(b);
+  }
+
+  async saveCategory(input) {
+    await wait(40);
+    const d = this.data;
+    const now = Date.now();
+    const key = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    let c = input.id && d.categories.find((x) => x.id === input.id);
+    if ("name" in input || !c) {
+      const name = String(input.name || "").replace(/\s+/g, " ").trim().slice(0, 40);
+      if (!name) throw Object.assign(new Error("Dê um nome à categoria."), { code: "invalid_format" });
+      if (d.categories.some((x) => x !== c && key(x.name) === key(name))) throw Object.assign(new Error(`Já existe a categoria ${name}.`), { code: "invalid_format" });
+      if (!c) {
+        c = { id: id(), created: now, order: d.categories.length, color: "grafite" };
+        d.categories.push(c);
+      }
+      c.name = name;
+    }
+    if (COLORS.includes(input.color)) c.color = input.color;
+    c.updated = now;
+    this.emit({ kind: "category", category: c });
+    return clone(c);
+  }
+
+  async deleteCategory(cid) {
+    await wait(40);
+    const d = this.data;
+    d.categories = d.categories.filter((c) => c.id !== cid);
+    const blocks = [];
+    for (const b of d.blocks) {
+      if (b.category !== cid) continue;
+      delete b.category;
+      blocks.push(b);
+    }
+    this.emit({ kind: "category_deleted", id: cid, blocks: clone(blocks) });
+    return { blocks: clone(blocks) };
   }
 
   async deleteBlock(bid) {
@@ -154,7 +199,7 @@ export class MockApi {
     if (!/\.json$/i.test(file.name)) throw new Error("Na prévia só dá para importar um .json.");
     const raw = JSON.parse(await file.text());
     if (!Array.isArray(raw.blocks) || !Array.isArray(raw.pages)) throw new Error("Esse arquivo não parece um backup do MemorIA.");
-    this.data = { ...this.data, blocks: raw.blocks, pages: raw.pages };
+    this.data = { ...this.data, categories: Array.isArray(raw.categories) ? raw.categories : [], blocks: raw.blocks, pages: raw.pages };
     this.emit({ kind: "reset", data: this.data });
     return { blocks: raw.blocks.length, pages: raw.pages.length };
   }

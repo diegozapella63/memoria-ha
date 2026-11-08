@@ -32,13 +32,15 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **Trechos com horário**: uma folha específica pode aparecer às 10h, por exemplo a pauta de uma reunião.
 - **Tela Agora** com a linha do tempo do dia: toque num horário para espiar o que vem depois.
 - **Estante de blocos** com o **Seu dia**: os horários de hoje, com o de agora marcado.
+- **Categorias** para agrupar os blocos (Trabalho, Casa, Estudos…), com filtro na estante.
+- **Relatório** dos blocos e das folhas, com **Baixar PDF** (funciona no app do Home Assistant no celular).
 - **No ⋯ da folha**: horário próprio, mover para outro bloco, copiar o texto ou arrancar a folha, com Desfazer.
 - **Nova folha de mensagem ou foto**: cole uma mensagem do WhatsApp, escolha fotos ou digitalize uma anotação em papel; a IA configurada no Home Assistant (Claude, OpenAI, Gemini ou Ollama) transcreve e você revisa. Escolha qual em **Mais → Configurações → Integrações**.
 - **Buscar** em todas as folhas, sem se importar com acentos.
 - **Sensor** `sensor.memoria_agora` com o bloco e a folha do momento, para painéis e automações.
 - **Salvo no Home Assistant**: sincroniza na hora entre aparelhos e entra no backup.
 - **Dados**: exportar (ZIP com um arquivo de texto por bloco, CSV e JSON), backup na pasta `share/memoria`, importar, versões anteriores automáticas e começar do zero.
-- **Mais** em menu, como nos outros apps: **Configurações** em abas (Integrações, Dados, Aparência e Opções) e **Sobre**. Arrastar o dedo para os lados troca de aba.
+- **Mais** em menu, como nos outros apps: **Categorias**, **Relatório**, **Configurações** em abas (Integrações, Dados, Aparência e Opções) e **Sobre**. Arrastar o dedo para os lados troca de aba.
 - **Aparência**: tema automático (segue o claro ou escuro do Home Assistant, na hora), claro ou escuro, **Cor do dia** ou uma das 10 cores, e letra de mão, que dá para desligar.
 
 Mais detalhes em [memoria/DOCS.md](memoria/DOCS.md).

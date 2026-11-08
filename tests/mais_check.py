@@ -37,7 +37,7 @@ OVER = """(el) => {
   const W = window.innerWidth, bad = [];
   for (const e of el.renderRoot.querySelectorAll(".page *")) {
     const r = e.getBoundingClientRect();
-    if (e.closest(".more-tabs")) continue;
+    if (e.closest(".more-tabs, .cat-filter")) continue;
     if (r.width && (r.right > W + 1 || r.left < -1)) bad.push(e.tagName.toLowerCase() + "." + [...e.classList].join(".") + " " + Math.round(r.left) + ".." + Math.round(r.right));
   }
   if (document.documentElement.scrollWidth > W) bad.push("page " + document.documentElement.scrollWidth);
@@ -85,7 +85,7 @@ with sync_playwright() as p:
         pg.wait_for_timeout(500)
         check(view(a) == "more", f"{tag}: Mais open")
         rows = [" ".join(t.split()) for t in a.locator(".more-menu .more-row").all_inner_texts()]
-        check(rows == ["Configurações Integrações, dados e backup, aparência e opções.", "Sobre CorrerIA Code, os apps e o GitHub."], f"{tag}: the menu: Configurações, then Sobre ({rows})")
+        check(rows[-2:] == ["Configurações Integrações, dados e backup, aparência e opções.", "Sobre CorrerIA Code, os apps e o GitHub."], f"{tag}: the menu: Configurações, then Sobre, the last ({rows})")
         after = a.evaluate("(el) => { const p = [...el.renderRoot.querySelectorAll('section.page > *')]; const i = p.findIndex((x) => x.classList.contains('more-menu')); return p.slice(i + 1).map((x) => x.className); }")
         check(after == ["foot"], f"{tag}: only the foot after the menu ({after})")
         check(a.locator(".overline", has_text="Aparência").count() == 0 and a.locator(".swatches, .tag-swatches").count() == 0, f"{tag}: no settings on the menu")

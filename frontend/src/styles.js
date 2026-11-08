@@ -1913,6 +1913,53 @@ export const styles = css`
     background: var(--rv-line);
   }
 
+  /* Blocos: the categories, in a row that scrolls sideways (the chosen one is kept on this device) */
+  .chip-row.cat-filter {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: -4px -18px 16px;
+    padding: 2px 18px;
+  }
+  .chip-row.cat-filter::-webkit-scrollbar {
+    display: none;
+  }
+  .chip-row.cat-filter .pick {
+    flex: none;
+  }
+  /* Mais › Categorias */
+  .cat-row .chev {
+    width: 20px;
+    height: 20px;
+    color: var(--rv-muted);
+  }
+  .cat-row:active {
+    opacity: 0.7;
+  }
+  .cats-panel .empty {
+    padding-top: 18px;
+  }
+  .cats-panel .panel-lead {
+    margin-top: 14px;
+  }
+  .cats-panel .panel-lead + .row {
+    border-top: 0;
+  }
+  /* the block's sheet: Nova categoria written there */
+  .new-cat input {
+    width: 100%;
+    margin-top: 2px;
+    border: 1.5px solid var(--rv-line-strong);
+    background: var(--rv-bg);
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-size: 16px;
+    outline: 0;
+  }
+  .new-cat input:focus {
+    border-color: var(--rv-accent);
+  }
+
   /* ---------- camera ("Digitalizar com IA") ---------- */
   .cam {
     position: fixed;

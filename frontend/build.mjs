@@ -1,9 +1,9 @@
 // Build: cd frontend && npm install && npm run build
 // Outputs:
-//   memoria/rootfs/app/www/memoria.js   UI served by the app (+ www/fonts/)
+//   memoria/rootfs/app/www/memoria.js   UI served by the app (+ www/fonts/, www/selectsheet.js for the report)
 //   preview/memoria-preview.html        self-contained preview with sample notebooks
 import { build } from "esbuild";
-import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, rmSync, copyFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -34,6 +34,9 @@ await build({
   assetNames: "fonts/[name]",
   publicPath: "./",
 });
+
+// The report page (Mais › Relatório, made by the server) has the boxes of choice in the look of the app too.
+copyFileSync(resolve(here, "src/selectsheet.js"), resolve(root, "memoria/rootfs/app/www/selectsheet.js"));
 
 // The preview is a single file, so fonts are inlined there.
 const out = await build({ ...common, entryPoints: [resolve(here, "preview/preview.js")], write: false });
