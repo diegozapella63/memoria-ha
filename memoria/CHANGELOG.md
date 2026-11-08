@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0
+
+- **Mais virou um menu**, como nos outros apps da família: **Configurações** e, por último, **Sobre**. Cada linha abre a sua tela; o Voltar do celular, o **‹ Mais** no alto e arrastar o dedo para a direita voltam ao menu.
+- **Configurações em abas**: **Integrações** (Leitura por IA e o sensor no Home Assistant), **Dados** (exportar, backup, importar, versões e começar do zero), **Aparência** (tema, cor do app e letra de mão) e **Opções** (os períodos do dia). A aba escolhida fica guardada.
+- **Aparência como nos outros apps**: o tema em três botões grandes (Automático, Claro, Escuro) e a cor do app em etiquetas com o nome de cada cor.
+- **Cor do dia**: a cor do app muda todo dia, sozinha (a mesma em todos os aparelhos, e troca à meia-noite mesmo com o app aberto). Vem ligada; em Mais › Configurações › Aparência, desligue em **Cor do dia** ou escolha uma cor para ficar sempre nela. Os blocos continuam com a cor da capa.
+- **Tema automático** troca na hora quando o Home Assistant (ou o celular) muda entre claro e escuro, com o app aberto, inclusive o fundo em volta do app. Na prévia, segue o tema de quem está vendo.
+- **Arrastar o dedo para os lados** troca de aba (Agora, Blocos, Buscar e Mais), como nos outros apps. Na folha, arrastar continua virando a página; dentro de um bloco, arrastar para a direita volta.
+
 ## 1.3.1
 
 - **Caixas de seleção**: tocar num botão que fica por cima de uma caixa aciona o botão, e não abre a caixa escondida (o mesmo ajuste dos outros apps).

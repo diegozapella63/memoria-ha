@@ -33,12 +33,13 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **Tela Agora** com a linha do tempo do dia: toque num horário para espiar o que vem depois.
 - **Estante de blocos** com o **Seu dia**: os horários de hoje, com o de agora marcado.
 - **No ⋯ da folha**: horário próprio, mover para outro bloco, copiar o texto ou arrancar a folha, com Desfazer.
-- **Nova folha de mensagem ou foto**: cole uma mensagem do WhatsApp, escolha fotos ou digitalize uma anotação em papel; a IA configurada no Home Assistant (Claude, OpenAI, Gemini ou Ollama) transcreve e você revisa. Escolha qual em **Mais → Leitura por IA**.
+- **Nova folha de mensagem ou foto**: cole uma mensagem do WhatsApp, escolha fotos ou digitalize uma anotação em papel; a IA configurada no Home Assistant (Claude, OpenAI, Gemini ou Ollama) transcreve e você revisa. Escolha qual em **Mais → Configurações → Integrações**.
 - **Buscar** em todas as folhas, sem se importar com acentos.
 - **Sensor** `sensor.memoria_agora` com o bloco e a folha do momento, para painéis e automações.
 - **Salvo no Home Assistant**: sincroniza na hora entre aparelhos e entra no backup.
 - **Dados**: exportar (ZIP com um arquivo de texto por bloco, CSV e JSON), backup na pasta `share/memoria`, importar, versões anteriores automáticas e começar do zero.
-- **Aparência**: tema claro ou escuro (segue o Home Assistant ou escolha em Mais), 10 cores e letra de mão, que dá para desligar.
+- **Mais** em menu, como nos outros apps: **Configurações** em abas (Integrações, Dados, Aparência e Opções) e **Sobre**. Arrastar o dedo para os lados troca de aba.
+- **Aparência**: tema automático (segue o claro ou escuro do Home Assistant, na hora), claro ou escuro, **Cor do dia** ou uma das 10 cores, e letra de mão, que dá para desligar.
 
 Mais detalhes em [memoria/DOCS.md](memoria/DOCS.md).
 
@@ -63,8 +64,7 @@ MEMORIA_DEV=1 HA_WS_URL=ws://127.0.0.1:8123/api/websocket HA_REST_URL=http://127
                                                  # abre em http://127.0.0.1:8099
 ```
 
-Conferência da tela **Mais › Sobre** na prévia (Playwright): `python3 tests/about_check.py [pasta das capturas]`.
-Conferência das caixas de seleção (`frontend/src/selectsheet.js`, o mesmo arquivo dos outros apps): `python3 tests/selects_check.py [pasta das capturas]`.
+Testes: `npm test` (servidor, com `node:test`) e as conferências visuais na prévia (Playwright), descritas em [tests/README.md](tests/README.md). O GitHub roda todos a cada push.
 
 O HA falso simula duas IAs (`ai_task.google_ai_task`, que lê fotos, e `ai_task.ollama_ai_task`, só texto) e recebe o `sensor.memoria_agora`; use `FAKE_MEDIA_DIR` igual a `MEDIA_DIR` para testar a leitura de fotos, ou `FAKE_HA_NO_AI=1` para testar sem IA. A prévia (`preview/memoria-preview.html`) abre direto no navegador, sem servidor.
 

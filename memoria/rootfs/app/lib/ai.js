@@ -1,7 +1,7 @@
 // Turns a pasted message or photos of handwritten/printed pages into the text
 // of a notebook page. Like the other apps (InventarIA, GerencIA, EconomIA), it
 // only uses the AI configured in Home Assistant (ai_task.generate_data) and
-// keeps no API key: the person picks which AI in Mais > Leitura por IA.
+// keeps no API key: the person picks which AI in Mais > Configurações > Integrações.
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -115,9 +115,9 @@ export class AI {
     if (!ents.length) throw coded("no_ai", "Nenhuma IA configurada no Home Assistant (integração com tarefa de IA).");
     if (sel) {
       const e = ents.find((x) => x.id === sel);
-      if (!e) throw coded("gone", "A IA escolhida não está mais no Home Assistant. Escolha outra em Mais › Leitura por IA.");
+      if (!e) throw coded("gone", "A IA escolhida não está mais no Home Assistant. Escolha outra em Mais › Configurações › Integrações.");
       if (!e.available) throw coded("unavailable", `${e.name} está indisponível no Home Assistant.`);
-      if (needImages && !e.images) throw coded("no_vision", `${e.name} não lê fotos. Escolha outra IA em Mais › Leitura por IA.`);
+      if (needImages && !e.images) throw coded("no_vision", `${e.name} não lê fotos. Escolha outra IA em Mais › Configurações › Integrações.`);
       return e;
     }
     const ok = ents.filter((e) => e.available && (!needImages || e.images));
@@ -130,7 +130,7 @@ export class AI {
     return ok.find((e) => e.id === pref) || ok[0];
   }
 
-  /** For Mais › Leitura por IA (and to enable the photo buttons). */
+  /** For Mais › Configurações › Integrações › Leitura por IA (and to enable the photo buttons). */
   async status() {
     const sel = this.selected();
     const base = { ready: false, images: false, selected: sel, using: null, entities: [], reason: null };

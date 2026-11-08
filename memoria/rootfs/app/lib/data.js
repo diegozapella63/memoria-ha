@@ -79,7 +79,7 @@ export function backupZip(data, version) {
       `Backup do MemorIA ${version} criado em ${dateTime(Date.now())}.\n` +
       "memoria.json tem tudo (blocos, folhas, horários e ajustes); memoria.csv abre no Excel;\n" +
       "a pasta blocos tem um arquivo de texto por bloco.\n" +
-      "Para restaurar: Mais > Dados > Importar backup, e escolha este .zip.\n",
+      "Para restaurar: Mais > Configurações > Dados > Importar, e escolha este .zip.\n",
   });
   return makeZip(files);
 }

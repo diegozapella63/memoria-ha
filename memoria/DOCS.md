@@ -8,13 +8,13 @@ Blocos de anotações que funcionam como um caderno de verdade: folhas com espir
 2. Ative **Mostrar na barra lateral** (e, se quiser, **Watchdog**).
 3. Abra o **MemorIA** pela barra lateral.
 
-Na primeira vez já existem dois blocos de exemplo, **Diário** (abre à noite) e **Rascunhos** (manhã e tarde). Dá para renomear, mudar ou excluir. Já tem um backup? Em **Mais › Dados › Importar backup ou JSON**, escolha o `.zip` e tudo volta.
+Na primeira vez já existem dois blocos de exemplo, **Diário** (abre à noite) e **Rascunhos** (manhã e tarde). Dá para renomear, mudar ou excluir. Já tem um backup? Em **Mais › Configurações › Dados › Importar**, escolha o `.zip` e tudo volta.
 
 ## Escrever e virar a página
 
 - Toque na folha e escreva. Tudo é salvo sozinho enquanto você digita.
 - **Borda direita** da folha: vira para a próxima. Na última folha, vira para uma folha nova, já pronta para escrever.
-- **Borda esquerda**: volta uma folha. Arrastar o dedo para os lados também vira.
+- **Borda esquerda**: volta uma folha. Arrastar o dedo para os lados na folha também vira.
 - Folhas deixadas em branco somem sozinhas.
 - No **⋯** da folha: horário próprio, mover para outro bloco, copiar o texto ou arrancar a folha (com **Desfazer**).
 
@@ -22,7 +22,7 @@ Na primeira vez já existem dois blocos de exemplo, **Diário** (abre à noite) 
 
 Em **Blocos**, abra um bloco e toque na linha **Abre sozinho** (ou no ícone de ajustes). Em **Quando abrir sozinho**:
 
-- **Períodos**: Manhã, Tarde e Noite. O começo de cada um fica em **Mais › Períodos do dia** (padrão 05:00, 12:00 e 18:00).
+- **Períodos**: Manhã, Tarde e Noite. O começo de cada um fica em **Mais › Configurações › Opções** (padrão 05:00, 12:00 e 18:00).
 - **Horários exatos**: por exemplo Treino às 07:00 e Diário às 22:00.
 
 Nos mesmos ajustes ficam o nome, a **cor da capa**, o tipo de **folha** (pautada, quadriculada, pontilhada ou lisa) e o botão de excluir o bloco (as folhas dele vão junto). Para criar outro, toque em **Novo bloco**, no fim da estante.
@@ -61,7 +61,7 @@ Para configurar:
 
 1. Em **Configurações › Dispositivos e serviços › Adicionar integração**, escolha a integração e siga os passos.
 2. Na página da integração, adicione uma **tarefa de IA** (AI Task). Para ler fotos, escolha um modelo que entenda imagens.
-3. No MemorIA, abra **Mais › Leitura por IA** e escolha essa IA (a caixa abre uma janela de baixo para cima com as opções; o Voltar do celular, o **X** ou tocar fora fecham sem mudar nada). "Padrão do Home Assistant" usa a IA preferida definida em **Configurações › Sistema › Geral**. Toque em **Verificar de novo** para conferir se ela está pronta.
+3. No MemorIA, abra **Mais › Configurações › Integrações** e, em **Leitura por IA**, escolha essa IA (a caixa abre uma janela de baixo para cima com as opções; o Voltar do celular, o **X** ou tocar fora fecham sem mudar nada). "Padrão do Home Assistant" usa a IA preferida definida em **Configurações › Sistema › Geral**. Toque em **Verificar de novo** para conferir se ela está pronta.
 
 Na hora da leitura, o app copia a foto por alguns segundos para `media/memoria/ia-temp`, chama a IA pelo Home Assistant e apaga a cópia em seguida.
 
@@ -87,18 +87,18 @@ content: >
   {{ state_attr('sensor.memoria_agora', 'texto') }}
 ```
 
-Dá para desligar em **Mais › Home Assistant**.
+Dá para desligar em **Mais › Configurações › Integrações › Sensor no Home Assistant**.
 
 ## Dados e backup
 
 - Blocos, folhas e ajustes ficam em `/data/memoria.json` dentro do app e entram nos backups do Home Assistant.
 - Tudo sincroniza na hora entre os aparelhos abertos. Se a mesma folha for editada em dois aparelhos ao mesmo tempo, nada se perde: a sua versão vira uma folha nova.
 
-Em **Mais › Dados**:
+Em **Mais › Configurações › Dados**:
 
-- **Exportar**: **Tudo (ZIP)** com o `memoria.json`, uma planilha e um arquivo de texto (Markdown) por bloco; **Folhas (CSV)**, que abre no Excel (separado por ponto e vírgula); e **JSON**.
+- **Exportar**: **Tudo (ZIP)** com o `memoria.json`, uma planilha e um arquivo de texto (Markdown) por bloco; **Planilha (CSV)**, que abre no Excel (separado por ponto e vírgula); e **Dados completos (JSON)**.
 - **Backup na pasta share**: **Criar backup** salva um `.zip` em `share/memoria`, que você acessa pela rede (por exemplo `\\homeassistant.local\share\memoria` com o app Samba). Os backups da pasta aparecem logo abaixo, com **Restaurar**.
-- **Importar backup ou JSON**: traz os blocos e folhas de um `.zip` ou `.json` exportado pelo app (também funciona pelo celular).
+- **Importar**: traz os blocos e folhas de um `.zip` ou `.json` exportado pelo app (também funciona pelo celular).
 - **Versões anteriores**: o app guarda sozinho uma cópia a cada 10 minutos de uso (as 60 mais recentes) em `/data/versoes`. Toque em **Restaurar** para voltar a uma delas.
 - **Começar do zero**: apaga todos os blocos e folhas; os ajustes continuam.
 
@@ -106,11 +106,17 @@ Antes de importar, restaurar ou apagar, o app sempre guarda uma cópia do que ex
 
 ## Aparência
 
-Em **Mais › Aparência**:
+Em **Mais › Configurações › Aparência**:
 
-- **Tema**: automático (segue o claro ou escuro do Home Assistant), claro ou escuro. Vale só para o aparelho.
-- **Cor do app**: 10 cores. Dentro de um bloco, vale a cor da capa dele.
+- **Tema**: **Automático** segue o claro ou escuro do Home Assistant (e, fora dele, o do celular) e troca na hora, com o app aberto, quando o modo muda. **Claro** e **Escuro** ficam fixos. Cada aparelho guarda a sua escolha.
+- **Cor do app**: com **Cor do dia** ligada (o padrão), a cor muda sozinha todo dia, passando pelas cores (sem o Grafite); é a mesma em todos os aparelhos e troca à meia-noite mesmo com o app aberto. Tocar numa cor desliga a Cor do dia e fica com ela. Dentro de um bloco, vale a cor da capa dele.
 - **Letra de mão**: ligada, as folhas são escritas como num caderno de verdade; desligada, com a letra comum.
+
+## Mais
+
+O **Mais** é um menu, como nos outros apps da família: cada linha abre a sua tela. **Configurações** tem as abas **Integrações** (Leitura por IA e o sensor), **Dados**, **Aparência** e **Opções** (os períodos do dia); a aba escolhida fica guardada. O Voltar do celular, o **‹ Mais** no alto e arrastar o dedo para a direita voltam ao menu.
+
+Arrastar o dedo para os lados (fora da folha) troca de aba: **Agora**, **Blocos**, **Buscar** e **Mais**. Na folha, arrastar continua virando a página; dentro de um bloco, arrastar para a direita volta.
 
 ## Sobre
 

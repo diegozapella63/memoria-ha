@@ -1767,6 +1767,152 @@ export const styles = css`
     stroke-width: 1.9;
   }
 
+  .mais-head + .panel-lead {
+    margin-top: 0;
+  }
+  .panel > .panel-lead:last-child {
+    margin-bottom: 18px;
+  }
+  .sec-actions {
+    padding-bottom: 16px;
+  }
+  /* Mais: the menu (Configurações, Sobre), like the other apps */
+  .more-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .more-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    min-height: 76px;
+    padding: 12px 0;
+    border-top: 1px solid var(--rv-line);
+    text-align: left;
+  }
+  .more-menu li:first-child .more-row {
+    border-top: 0;
+  }
+  .more-row .mb {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+  .more-row b {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+  .more-row .mb span {
+    color: var(--rv-muted);
+    font-size: 14px;
+    line-height: 1.35;
+  }
+  .more-row .chev {
+    width: 20px;
+    height: 20px;
+    color: var(--rv-muted);
+  }
+  .more-row:active {
+    opacity: 0.7;
+  }
+  /* Mais › Configurações: tabs at the top (the same as the other apps) */
+  .seg.compact button {
+    font-size: 14px;
+    gap: 5px;
+  }
+  .seg.compact .i {
+    width: 16px;
+    height: 16px;
+  }
+  .more-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    margin: 0 0 14px;
+    box-shadow: 0 0 0 6px var(--rv-bg);
+    overflow-x: auto;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .more-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .more-tabs button {
+    flex: 1 0 auto;
+    padding-left: 6px;
+    padding-right: 6px;
+    white-space: nowrap;
+  }
+  /* the icons only where there is room for them */
+  @media (max-width: 600px) {
+    .more-tabs .i {
+      display: none;
+    }
+  }
+  /* phones: smaller so the four fit (below ~340 px the bar scrolls sideways) */
+  @media (max-width: 440px) {
+    .more-tabs {
+      gap: 1px;
+    }
+    .more-tabs button {
+      font-size: 13px;
+      padding-left: 4px;
+      padding-right: 4px;
+    }
+  }
+  /* Dados: one line per file, what it is and its button; every button the same width */
+  .opts {
+    list-style: none;
+    margin: 0 0 6px;
+    padding: 0;
+    border-top: 1px solid var(--rv-line);
+  }
+  .opts > li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--rv-line);
+  }
+  .opts > li:last-child {
+    border-bottom: 0;
+  }
+  .opts .ot {
+    flex: 1;
+    min-width: min(100%, 13em);
+  }
+  .opts .ot b {
+    display: block;
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .opts .ot span {
+    display: block;
+    margin-top: 2px;
+    font-size: 13.5px;
+    line-height: 1.4;
+    color: var(--rv-muted);
+  }
+  .opts .btn,
+  #dados .sec-actions .btn {
+    flex: none;
+    width: 11.5em;
+    max-width: 100%;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  .panel code {
+    font-size: 13px;
+    padding: 1px 5px;
+    border-radius: 6px;
+    background: var(--rv-line);
+  }
+
   /* ---------- camera ("Digitalizar com IA") ---------- */
   .cam {
     position: fixed;
@@ -1960,7 +2106,7 @@ export const styles = css`
     background: rgba(255, 255, 255, 0.18);
     color: rgba(255, 255, 255, 0.6);
   }
-  .more-row {
+  .extra-row {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;

@@ -1,4 +1,4 @@
-# MemorIA 1.3.0: the boxes of choice open a sheet in the look of the app (frontend/src/selectsheet.js, the same
+# MemorIA 1.3.0 (1.4.0: in Mais › Configurações › Integrações): the boxes of choice open a sheet in the look of the app (frontend/src/selectsheet.js, the same
 # file in all the apps of the family), never the window of the phone: the options in rows, the current one marked
 # in the color of the app, light and dark; choosing goes into the box (the app hears change as always); the Back of
 # the phone, the X and a tap outside close only the sheet. On a computer, a card in the middle; the keyboard too.
@@ -43,7 +43,7 @@ with sync_playwright() as p:
         pg.goto(PREVIEW)
         pg.wait_for_timeout(1500)
         a = pg.locator("memoria-app")
-        a.evaluate("(el) => el._go('/mais')")
+        a.evaluate("(el) => el._go('/config')")
         pg.wait_for_timeout(900)
         sel = a.locator("#leitura-ia select")
         check(sel.count() == 1, f"{scheme}: IA usada pelo app")
@@ -72,15 +72,15 @@ with sync_playwright() as p:
         tap(pg, sel)
         pg.go_back()
         pg.wait_for_timeout(600)
-        check(pg.locator(".ss-wrap").count() == 0 and a.evaluate("(el) => el._view().name") == "more", f"{scheme}: Back closes only the sheet")
+        check(pg.locator(".ss-wrap").count() == 0 and a.evaluate("(el) => el._view().name") == "config", f"{scheme}: Back closes only the sheet")
         check(sel.evaluate("(s) => s.value") == "ai_task.ollama_ai_task", f"{scheme}: Back changes nothing")
         tap(pg, sel)
         tap(pg, pg.locator(".ss-x"))
-        check(pg.locator(".ss-wrap").count() == 0 and a.evaluate("(el) => el._view().name") == "more", f"{scheme}: the X closes it")
+        check(pg.locator(".ss-wrap").count() == 0 and a.evaluate("(el) => el._view().name") == "config", f"{scheme}: the X closes it")
         tap(pg, sel)
         pg.touchscreen.tap(195, 60)
         pg.wait_for_timeout(450)
-        check(pg.locator(".ss-wrap").count() == 0 and a.evaluate("(el) => el._view().name") == "more", f"{scheme}: a tap outside closes it")
+        check(pg.locator(".ss-wrap").count() == 0 and a.evaluate("(el) => el._view().name") == "config", f"{scheme}: a tap outside closes it")
         tap(pg, sel)
         tap(pg, pg.locator(".ss-opt").first)
         pg.wait_for_timeout(700)
@@ -95,7 +95,7 @@ with sync_playwright() as p:
     pg.goto(PREVIEW)
     pg.wait_for_timeout(1500)
     a = pg.locator("memoria-app")
-    a.evaluate("(el) => el._go('/mais')")
+    a.evaluate("(el) => el._go('/config')")
     pg.wait_for_timeout(900)
     sel = a.locator("#leitura-ia select")
     sel.scroll_into_view_if_needed()

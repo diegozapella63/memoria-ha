@@ -45,7 +45,7 @@ export class MockApi {
 
   async bootstrap() {
     await wait(60);
-    return { version: "1.3.1", user: { name: "Diego Zapella" }, ai: await this.aiStatus(), data: clone(this.data) };
+    return { version: "1.4.0", user: { name: "Diego Zapella" }, ai: await this.aiStatus(), data: clone(this.data) };
   }
 
   async aiStatus() {
@@ -62,7 +62,7 @@ export class MockApi {
       selected: sel,
       using: { id: using.id, name: using.name },
       entities,
-      reason: using.images ? null : `${using.name} não lê fotos. Escolha outra IA em Mais › Leitura por IA.`,
+      reason: using.images ? null : `${using.name} não lê fotos. Escolha outra IA em Mais › Configurações › Integrações.`,
     };
   }
 
@@ -137,6 +137,7 @@ export class MockApi {
     if (app) {
       d.app = { ...d.app, ...app };
       if (!d.app.ai_entity) delete d.app.ai_entity;
+      for (const k of Object.keys(d.app)) if (d.app[k] == null) delete d.app[k];
     }
     const res = { periods: clone(d.periods), app: clone(d.app) };
     this.emit({ kind: "settings", ...res });

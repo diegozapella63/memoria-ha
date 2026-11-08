@@ -1,4 +1,4 @@
-# MemorIA 1.2.0: Mais › Sobre, the last row of Mais, the same page as the other apps of the family
+# MemorIA 1.2.0 (1.4.0: Mais is a menu): Mais › Sobre, the last row of Mais, the same page as the other apps of the family
 # (frontend/src/about.js is the same file as in the ResolvIA and the CronologIA): CorrerIA Code and why
 # the name, the six apps with a line and their GitHub (this one marked with its version) and Meu GitHub.
 # 320 px to the computer, light and dark; Back of the phone, "‹ Mais" and Mais in the bar return to Mais.
@@ -69,12 +69,11 @@ with sync_playwright() as p:
         a.locator("nav .tab", has_text="Mais").click()
         pg.wait_for_timeout(500)
         check(view(a) == "more", f"{tag}: Mais open")
-        last = a.locator("section.page > .panel").last
-        row = last.locator("button.go-row")
+        row = a.locator(".more-menu .more-row").last
         check(row.count() == 1 and " ".join(row.inner_text().split()) == "Sobre CorrerIA Code, os apps e o GitHub.", f"{tag}: Sobre, the last row of Mais ({row.inner_text() if row.count() else ''})")
-        after = a.evaluate("(el) => { const p = [...el.renderRoot.querySelectorAll('section.page > *')]; const i = p.findIndex((x) => x.querySelector && x.querySelector('.go-row')); return p.slice(i + 1).map((x) => x.className); }")
-        check(after == ["foot"], f"{tag}: only the foot after Sobre ({after})")
-        info = a.evaluate("(el) => { const i = el.renderRoot.querySelector('.go-row .tile svg'); return i ? i.innerHTML : ''; }")
+        after = a.evaluate("(el) => { const p = [...el.renderRoot.querySelectorAll('section.page > *')]; const i = p.findIndex((x) => x.querySelector && x.querySelector('.more-row')); return p.slice(i + 1).map((x) => x.className); }")
+        check(after == ["foot"], f"{tag}: only the foot after the menu ({after})")
+        info = a.evaluate("(el) => { const r = [...el.renderRoot.querySelectorAll('.more-row')].pop(); const i = r && r.querySelector('.mais-ic svg'); return i ? i.innerHTML : ''; }")
         check('r="10"' in info and "M12 16v-4" in info and "M12 8h.01" in info, f"{tag}: info icon on the row")
         if w == 390:
             row.scroll_into_view_if_needed()
@@ -142,7 +141,7 @@ with sync_playwright() as p:
         for how in ("uplink", "tab"):
             a.locator("nav .tab", has_text="Mais").click()
             pg.wait_for_timeout(400)
-            a.locator("button.go-row").click()
+            a.locator(".more-menu .more-row").last.click()
             pg.wait_for_timeout(500)
             if how == "uplink":
                 a.locator(".uplink").click()

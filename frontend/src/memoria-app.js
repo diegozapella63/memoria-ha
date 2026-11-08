@@ -1,8 +1,10 @@
-import { LitElement, html, nothing, repeat, live, unsafeSVG } from "../vendor/lit-all.min.js";
+import { LitElement, html, nothing, repeat, live, unsafeSVG, unsafeCSS } from "../vendor/lit-all.min.js";
 import { ICONS } from "./icons.js";
 import { ensureFonts } from "./fonts.js";
 import { styles, notebookStyles } from "./styles.js";
 import { aboutPage, aboutStyles } from "./about.js";
+import { themePicker, colorPicker, lookStyles, colorOfDay } from "./look.js";
+import { swipeStart, swipeEnd, slideIn } from "./swipe.js";
 import { PALETTE, colorById, colorVars, hexToRgba, fold, foldKeepLength, plural, clip, writtenAt, newId, firstLine, prepareImage } from "./util.js";
 import { parentHass, detectDark } from "./api.js";
 import { PERIODS, PAPERS, buildSchedule, currentAt, nextAfter, timeline, minutesOf, fmtMin, periodAt, periodTimes, normTime } from "../../memoria/rootfs/app/lib/schedule.js";
@@ -12,6 +14,8 @@ const SAVE_DELAY = 600;
 const TURN_MS = 600;
 const PAPER_LABEL = { pautado: "Pautado", quadriculado: "Quadriculado", pontilhado: "Pontilhado", liso: "Liso" };
 const RINGS = Array.from({ length: 14 }, () => html`<i></i>`);
+// The screens of Mais (a menu, like the other apps): each one goes over the menu, and Back returns to it.
+const IN_MORE = ["config", "sobre"];
 
 const icon = (name, cls = "") =>
   html`<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${unsafeSVG(ICONS[name] || ICONS.notebook)}</svg>`;
@@ -61,7 +65,7 @@ class MemoriaApp extends LitElement {
     _dark: { state: true },
   };
 
-  static styles = [styles, notebookStyles, aboutStyles];
+  static styles = [styles, notebookStyles, aboutStyles, unsafeCSS(lookStyles)];
 
   constructor() {
     super();
@@ -110,7 +114,13 @@ class MemoriaApp extends LitElement {
     document.addEventListener("visibilitychange", this._onVisible);
     if (this._mql && this._mql.addEventListener) this._mql.addEventListener("change", this._onScheme);
     this._tickTimer = setInterval(() => this._tick(), 20000);
-    this._themeTimer = setInterval(() => this._syncDark(), 3000);
+    // Automático follows Home Assistant's light/dark mode while the app is open (and the system, and in the
+    // preview the viewer's choice on the page)
+    this._themeTimer = setInterval(() => this._theme === "auto" && this._syncDark(), 1500);
+    if (window.MutationObserver) {
+      this._hostTheme = new MutationObserver(() => this._syncDark());
+      this._hostTheme.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    }
     this._syncDark();
     if (this.api && !this._started) this._start();
   }
@@ -122,6 +132,7 @@ class MemoriaApp extends LitElement {
     if (this._mql && this._mql.removeEventListener) this._mql.removeEventListener("change", this._onScheme);
     clearInterval(this._tickTimer);
     clearInterval(this._themeTimer);
+    if (this._hostTheme) this._hostTheme.disconnect();
     clearTimeout(this._toastTimer);
     clearTimeout(this._turnTimer);
     this._stopStream();
@@ -135,6 +146,11 @@ class MemoriaApp extends LitElement {
 
   updated(changed) {
     this.toggleAttribute("dark", this._dark);
+    if (changed.has("_dark")) {
+      // the page around the app too (behind the keyboard and the edges of the phone)
+      document.documentElement.style.colorScheme = this._dark ? "dark" : "light";
+      document.body.style.background = this._dark ? "#141217" : "#f8f6fb";
+    }
     if (this._turn && changed.has("_turn")) {
       const el = this.renderRoot.querySelector(".turn .face.front .ink");
       if (el) el.scrollTop = this._turn.snap.scroll || 0;
@@ -252,7 +268,13 @@ class MemoriaApp extends LitElement {
     return v === undefined ? fallback : v;
   }
 
+  /** Mais › Configurações › Aparência › Cor do dia: on unless turned off (like the other apps). */
+  _accentDaily() {
+    return this._app("accent_daily", true) !== false;
+  }
+
   _accent() {
+    if (this._accentDaily()) return colorOfDay(PALETTE, new Date(this._now));
     return colorById(this._app("accent", "lilas")) || PALETTE[6];
   }
 
@@ -560,9 +582,10 @@ class MemoriaApp extends LitElement {
     } else if (this._pad) {
       this._leave(this._pad);
     }
-    if (v.name === "more") {
-      this._refreshAi(false);
-      this._loadBackups();
+    if (v.name === "config") {
+      const tab = this._configTab();
+      if (tab === "integracoes") this._refreshAi(false);
+      if (tab === "dados") this._loadBackups();
     }
   }
 
@@ -712,9 +735,10 @@ class MemoriaApp extends LitElement {
     if ((m = p.match(/^\/bloco\/([a-z0-9]+)$/i))) return { name: "block", id: m[1] };
     if (p === "/blocos") return { name: "shelf" };
     if (p === "/buscar") return { name: "search" };
+    // Mais is a menu (/mais): Configurações (/config/<aba>) and, last, Sobre (/sobre)
     if (p === "/mais") return { name: "more" };
-    // Mais › Sobre (the last row of Mais): Back and "‹ Mais" return to Mais
     if (p === "/sobre") return { name: "sobre" };
+    if ((m = p.match(/^\/config(?:\/(integracoes|dados|aparencia|opcoes))?$/))) return { name: "config", tab: m[1] || "integracoes" };
     return { name: "now" };
   }
 
@@ -737,16 +761,60 @@ class MemoriaApp extends LitElement {
     else this._go("", true);
   }
 
-  /** A screen opened from Mais (Sobre): its entry goes over Mais, so Back returns to it. */
-  _openFromMore(path) {
+  /** A row of the menu Mais: its screen goes over the menu, so Back returns to it. */
+  _openFromMenu(path) {
     this._haptic("light");
     this._go(path, false, { rvUp: true });
   }
 
-  /** "‹ Mais" and Mais in the bar, on a screen of Mais: back to Mais. */
-  _toMore() {
-    if (this._view().name === "sobre" && history.state && history.state.rvUp) history.back();
+  /** A screen of Mais opened from its menu (Back returns to the menu). */
+  _fromMenu() {
+    return IN_MORE.includes(this._view().name) && !!(history.state && history.state.rvUp);
+  }
+
+  /** "‹ Mais", Mais in the bar and the swipe to the right on a screen of Mais: back to the menu. */
+  _toMenu() {
+    if (this._fromMenu()) history.back();
     else this._go("/mais", true);
+  }
+
+  // Arrastar para o lado: Agora ⇄ Blocos ⇄ Buscar ⇄ Mais, like the other apps; inside a block, to the right
+  // goes back, and on a screen of Mais, to the right goes back to the menu. The notebook keeps its own swipe
+  // (it turns the page), and so do the rows that scroll sideways.
+  _onSwipeStart(e) {
+    this._sw = this._sheet || this._cam || this._turn ? null : swipeStart(e, ".pad");
+  }
+
+  _onSwipeEnd(e) {
+    const d = swipeEnd(e, this._sw);
+    this._sw = null;
+    if (!d || this._sheet || this._cam) return;
+    const order = [
+      ["now", ""],
+      ["shelf", "/blocos"],
+      ["search", "/buscar"],
+      ["more", "/mais"],
+    ];
+    const name = this._view().name;
+    if (name === "block") {
+      if (d > 0) return;
+      this._haptic("light");
+      this._back();
+      return;
+    }
+    if (IN_MORE.includes(name)) {
+      if (d > 0) return;
+      this._haptic("light");
+      this._toMenu();
+      slideIn(this, "more", d);
+      return;
+    }
+    const i = order.findIndex(([n]) => n === name);
+    const j = i + d;
+    if (i < 0 || j < 0 || j >= order.length) return;
+    this._haptic("light");
+    this._goTab(order[j][1]);
+    slideIn(this, order[j][0], d);
   }
 
   /** Leave a history entry we pushed (sheet, camera); resolves once it is gone. */
@@ -769,6 +837,15 @@ class MemoriaApp extends LitElement {
 
   _goTab(path) {
     const view = this._view().name;
+    if (IN_MORE.includes(view)) {
+      if (path === "/mais") return this._toMenu();
+      if (path !== "" && this._fromMenu()) {
+        // the menu under this screen goes too: as if the tab were tapped on the menu
+        this._afterPop = path;
+        history.back();
+        return;
+      }
+    }
     if (path === "") {
       if (view === "now") {
         if (this._peek) this._backToNow();
@@ -784,10 +861,6 @@ class MemoriaApp extends LitElement {
     }
     if (path === "/blocos" && view === "block") {
       this._go(path, true);
-      return;
-    }
-    if (path === "/mais" && view === "sobre") {
-      this._toMore();
       return;
     }
     // Switching between tabs replaces the entry so Back always returns to Agora.
@@ -809,6 +882,10 @@ class MemoriaApp extends LitElement {
       else this._enterView();
     }
     for (const done of [...(this._popWaiters || [])]) done();
+    // a tab of the bar tapped on a screen of Mais: once back on the menu, the tab in its place
+    const to = this._afterPop;
+    this._afterPop = null;
+    if (to != null) this._go(to, true);
   }
 
   async _openSheet(sheet, form = null) {
@@ -879,7 +956,7 @@ class MemoriaApp extends LitElement {
 
   _openAiSettings() {
     this._closeSheet();
-    this._go("/mais", this._view().name !== "now").then(() =>
+    this._go("/config", this._view().name !== "now").then(() =>
       this.updateComplete.then(() => {
         const el = this.renderRoot.querySelector("#leitura-ia");
         if (el) el.scrollIntoView({ block: "start", behavior: "smooth" });
@@ -1459,6 +1536,7 @@ class MemoriaApp extends LitElement {
     else if (view.name === "shelf") page = this._renderShelf();
     else if (view.name === "search") page = this._renderSearch();
     else if (view.name === "more") page = this._renderMore();
+    else if (view.name === "config") page = this._renderConfig();
     else if (view.name === "sobre") page = this._renderAbout();
     else page = this._renderNow();
     return html`
@@ -1468,7 +1546,7 @@ class MemoriaApp extends LitElement {
             ? html`<header class="topbar"><div class="title">Memor<b>IA</b></div></header>`
             : nothing}
           ${!this._online ? html`<div class="offline">${icon("wifi-off")}<span>Sem conexão com o MemorIA. Reconectando…</span></div>` : nothing}
-          <main>${page}</main>
+          <main @touchstart=${(e) => this._onSwipeStart(e)} @touchend=${(e) => this._onSwipeEnd(e)}>${page}</main>
           ${this._renderNav(view)}
         </div>
         ${this._renderSheet()} ${this._renderToast()} ${this._renderCamera()}
@@ -1490,7 +1568,7 @@ class MemoriaApp extends LitElement {
           <button class="tab fab" @click=${() => this._openNew()} aria-label="Nova folha">
             <span class="pill">${icon("plus")}</span><span>Nova</span>
           </button>
-          ${tab(["search"], "/buscar", "Buscar", "search")} ${tab(["more", "sobre"], "/mais", "Mais", "sliders-horizontal")}
+          ${tab(["search"], "/buscar", "Buscar", "search")} ${tab(["more", ...IN_MORE], "/mais", "Mais", "sliders-horizontal")}
         </div>
       </nav>
     `;
@@ -1502,7 +1580,7 @@ class MemoriaApp extends LitElement {
     const st = !this._online ? { text: "Reconectando ao MemorIA…", tone: "off" } : status;
     return html`<header class="brand-head">
       <p class="eyebrow"><span class="brand">Memor<span>IA</span></span>${name ? ` · Olá, ${name}` : ""}</p>
-      ${up ? html`<button class="uplink" @click=${() => this._toMore()}>${icon("chevron-left")}Mais</button>` : nothing}
+      ${up ? html`<button class="uplink" @click=${() => this._toMenu()}>${icon("chevron-left")}Mais</button>` : nothing}
       <h1 class="page-title">${title}</h1>
       ${st ? html`<p class="status"><span class="dot ${st.tone || ""}" aria-hidden="true"></span><span>${st.text}</span>${st.extra || nothing}</p>` : nothing}
     </header>`;
@@ -1783,76 +1861,156 @@ class MemoriaApp extends LitElement {
 
   // ---------- Mais
 
+  /** The tabs of Mais › Configurações, like the other apps: [key, label, icon, how the menu says it]. */
+  _configTabs() {
+    return [
+      ["integracoes", "Integrações", "blocks", "integrações"],
+      ["dados", "Dados", "archive", "dados e backup"],
+      ["aparencia", "Aparência", "palette", "aparência"],
+      ["opcoes", "Opções", "toggle-right", "opções"],
+    ];
+  }
+
+  /** The tab of Configurações on screen (the first one when the address asks for one that is not there). */
+  _configTab() {
+    const tabs = this._configTabs();
+    const want = this._view().tab;
+    return tabs.some((t) => t[0] === want) ? want : tabs[0][0];
+  }
+
+  /** The address of a tab of Configurações (Integrações, the first one, is /config). */
+  _configPath(tab) {
+    return tab === "integracoes" ? "/config" : `/config/${tab}`;
+  }
+
+  /** The rows of the menu Mais, in order: Configurações and, last, Sobre. */
+  _moreRows() {
+    const words = this._configTabs().map((t) => t[3]);
+    const cfg = `${words.slice(0, -1).join(", ")} e ${words[words.length - 1]}.`;
+    return [
+      ["/config", "sliders-horizontal", "Configurações", cfg[0].toUpperCase() + cfg.slice(1)],
+      ["/sobre", "info", "Sobre", "CorrerIA Code, os apps e o GitHub."],
+    ];
+  }
+
+  /** Section heading of a screen of Mais: the icon in a soft square, a big title and, optionally, a line about it. */
+  _secHead(ic, title, lead = null) {
+    return html`<div class="mais-head"><span class="mais-ic" aria-hidden="true">${icon(ic)}</span><h2>${title}</h2></div>${lead ? html`<p class="panel-lead">${lead}</p>` : nothing}`;
+  }
+
+  _renderFoot() {
+    return html`<p class="foot"><b>MemorIA</b><br />v${this._version} · suas anotações ficam no Home Assistant<br />e entram no backup dele.</p>`;
+  }
+
+  // ---------- Mais: a menu; each row opens its own screen (Configurações, then Sobre)
+
   _renderMore() {
-    const accent = this._app("accent", "lilas");
-    const periods = periodTimes(this._data);
-    const ai = this._ai || {};
-    const sw = (on, label, ev) => html`<label class="switch"><input type="checkbox" role="switch" .checked=${on} @change=${ev} aria-label=${label} /><span class="track"></span></label>`;
     return html`
       <section class="page">
-        ${this._renderHead("Mais", { text: `MemorIA ${this._version} · salvo no Home Assistant` })}
-
-        <div class="panel">
-          <div class="overline">Aparência</div>
-          <div class="row col">
-            <div class="label">Tema</div>
-            <div class="seg" role="radiogroup" aria-label="Tema">
-              ${[
-                ["auto", "Automático", "sun-moon"],
-                ["light", "Claro", "sun"],
-                ["dark", "Escuro", "moon"],
-              ].map(([k, label, ic]) => html`<button class=${this._theme === k ? "on" : ""} role="radio" aria-checked=${this._theme === k ? "true" : "false"} @click=${() => this._setTheme(k)}>${icon(ic)}${label}</button>`)}
-            </div>
-            <div class="hint" style="white-space:normal">${this._theme === "auto" ? "Segue o modo claro/escuro do Home Assistant." : "Vale só para este aparelho."}</div>
-          </div>
-          <div class="row col">
-            <div class="label">Cor do app</div>
-            <div class="swatches">
-              ${PALETTE.map(
-                (c) => html`<button class="sw ${accent === c.id ? "on" : ""}" style="--c:${c.fill}" aria-label=${c.label} @click=${() => this._saveSettings({ app: { accent: c.id } })}>${accent === c.id ? icon("check") : nothing}</button>`,
-              )}
-            </div>
-            <div class="hint" style="white-space:normal">Dentro de um bloco, vale a cor do bloco.</div>
-          </div>
-          <div class="row">
-            <div class="grow"><div class="label">Letra de mão</div><div class="hint" style="white-space:normal">Folhas escritas como num caderno de verdade</div></div>
-            ${sw(this._app("hand", true), "Letra de mão", (e) => this._saveSettings({ app: { hand: e.target.checked } }))}
-          </div>
+        ${this._renderHead("Mais", null)}
+        <div class="panel more-menu" role="navigation" aria-label="Mais">
+          <ul>
+            ${this._moreRows().map(
+              ([path, ic, title, text]) => html`<li>
+                <button class="more-row" @click=${() => this._openFromMenu(path)}>
+                  <span class="mais-ic" aria-hidden="true">${icon(ic)}</span>
+                  <span class="mb"><b>${title}</b><span>${text}</span></span>
+                  ${icon("chevron-right", "chev")}
+                </button>
+              </li>`,
+            )}
+          </ul>
         </div>
-
-        <div class="panel">
-          <div class="overline">Períodos do dia</div>
-          ${PERIODS.map(
-            (p) => html`<div class="row">
-              <span class="tile" style=${colorVars(this._accent(), this._dark)}>${icon(p.icon)}</span>
-              <div class="grow"><div class="label">${p.label}</div><div class="hint">começa às</div></div>
-              <input class="time-input" type="time" .value=${periods[p.id]} aria-label="Começo da ${p.label}" @change=${(e) => normTime(e.target.value) && this._saveSettings({ periods: { [p.id]: e.target.value } })} />
-            </div>`,
-          )}
-          <div class="row"><div class="hint" style="white-space:normal">Blocos ligados a um período abrem sozinhos a partir desse horário. Horários exatos (07:00, 22:00…) ficam em cada bloco ou folha.</div></div>
-        </div>
-
-        <div class="panel">
-          <div class="overline">Home Assistant</div>
-          <div class="row">
-            <div class="grow"><div class="label">Sensor “MemorIA agora”</div><div class="hint" style="white-space:normal"><code>sensor.memoria_agora</code> com o bloco e a folha do momento, para painéis e automações</div></div>
-            ${sw(this._app("sensor", true), "Sensor MemorIA agora", (e) => this._saveSettings({ app: { sensor: e.target.checked } }))}
-          </div>
-        </div>
-
-        ${this._renderAiPanel()} ${this._renderDataPanel()}
-
-        <div class="panel" role="navigation" aria-label="Sobre">
-          <button class="row go-row" @click=${() => this._openFromMore("/sobre")}>
-            <span class="tile" style=${colorVars(this._accent(), this._dark)}>${icon("info")}</span>
-            <div class="grow"><div class="label">Sobre</div><div class="hint" style="white-space:normal">CorrerIA Code, os apps e o GitHub.</div></div>
-            ${icon("chevron-right", "chev")}
-          </button>
-        </div>
-
-        <p class="foot"><b>MemorIA</b><br />v${this._version} · suas anotações ficam no Home Assistant<br />e entram no backup dele.</p>
+        ${this._renderFoot()}
       </section>
     `;
+  }
+
+  /**
+   * Mais › Configurações, in tabs at the top like the other apps: /config (Integrações), /config/dados,
+   * /config/aparencia, /config/opcoes. Switching tabs replaces the history entry, so Back goes to the menu.
+   */
+  _renderConfig() {
+    const tabs = this._configTabs();
+    const tab = this._configTab();
+    const go = (k) => {
+      if (k === tab) return;
+      this._haptic("light");
+      this._go(this._configPath(k), true, history.state && history.state.rvUp ? { rvUp: true } : null);
+    };
+    let body;
+    if (tab === "integracoes") body = html`${this._renderAiPanel()} ${this._renderSensorPanel()}`;
+    else if (tab === "dados") body = this._renderDataPanel();
+    else if (tab === "aparencia") body = this._renderAppearanceTab();
+    else body = this._renderOptionsTab();
+    return html`
+      <section class="page">
+        ${this._renderHead("Configurações", null, true)}
+        <div class="seg compact more-tabs" role="tablist" aria-label="Seções de Configurações">
+          ${tabs.map(([k, label, ic]) => html`<button class=${tab === k ? "on" : ""} role="tab" aria-selected=${tab === k ? "true" : "false"} @click=${() => go(k)}>${icon(ic)}<span>${label}</span></button>`)}
+        </div>
+        <div role="tabpanel" aria-label=${tabs.find((t) => t[0] === tab)[1]}>${body}</div>
+        ${this._renderFoot()}
+      </section>
+    `;
+  }
+
+  _switch(on, label, ev) {
+    return html`<label class="switch"><input type="checkbox" role="switch" .checked=${on} @change=${ev} aria-label=${label} /><span class="track"></span></label>`;
+  }
+
+  /** Mais › Configurações › Aparência: theme, color of the app and the handwriting. */
+  _renderAppearanceTab() {
+    const daily = this._accentDaily();
+    const accent = daily ? this._accent().id : this._app("accent", "lilas");
+    return html`
+      <div class="panel">
+        ${this._secHead("contrast", "Tema", "Cada aparelho guarda a sua escolha.")}
+        ${themePicker({ theme: this._theme, onTheme: (k) => this._setTheme(k), icon })}
+      </div>
+      <div class="panel">
+        ${this._secHead("palette", "Cor do app", "Em todos os aparelhos. Num bloco, vale a cor dele.")}
+        <div class="row switch-row daily-row">
+          <div class="grow"><div class="label">Cor do dia</div><div class="hint">Muda a cor do app todo dia.</div></div>
+          ${this._switch(daily, "Cor do dia", (e) => this._saveSettings({ app: { accent_daily: e.target.checked ? null : false } }))}
+        </div>
+        ${colorPicker({ palette: PALETTE, value: accent, onPick: (id) => this._saveSettings({ app: { accent: id, accent_daily: false } }) })}
+      </div>
+      <div class="panel">
+        ${this._secHead("pen-line", "Letra de mão")}
+        <div class="row switch-row">
+          <div class="grow"><div class="label">Folhas com letra de mão</div><div class="hint" style="white-space:normal">Como num caderno de verdade.</div></div>
+          ${this._switch(this._app("hand", true), "Letra de mão", (e) => this._saveSettings({ app: { hand: e.target.checked } }))}
+        </div>
+      </div>
+    `;
+  }
+
+  /** Mais › Configurações › Opções: when the periods of the day start. */
+  _renderOptionsTab() {
+    const periods = periodTimes(this._data);
+    return html`<div class="panel" id="periodos">
+      ${this._secHead("sun-moon", "Períodos do dia", "Blocos ligados a um período abrem sozinhos a partir desse horário. Horários exatos ficam em cada bloco ou folha.")}
+      ${PERIODS.map(
+        (p) => html`<div class="row">
+          <span class="tile" style=${colorVars(this._accent(), this._dark)}>${icon(p.icon)}</span>
+          <div class="grow"><div class="label">${p.label}</div><div class="hint">começa às</div></div>
+          <input class="time-input" type="time" .value=${periods[p.id]} aria-label="Começo da ${p.label}" @change=${(e) => normTime(e.target.value) && this._saveSettings({ periods: { [p.id]: e.target.value } })} />
+        </div>`,
+      )}
+    </div>`;
+  }
+
+  /** Mais › Configurações › Integrações › Sensor no Home Assistant. */
+  _renderSensorPanel() {
+    const on = this._app("sensor", true);
+    return html`<div class="panel" id="sensor">
+      ${this._secHead("activity", "Sensor no Home Assistant", "Para usar em painéis e automações do Home Assistant.")}
+      <div class="row switch-row">
+        <div class="grow"><div class="label">MemorIA agora</div><div class="hint" style="white-space:normal">${on ? html`<code>sensor.memoria_agora</code>, com o bloco e a folha do momento.` : "Desligado."}</div></div>
+        ${this._switch(on, "Sensor MemorIA agora", (e) => this._saveSettings({ app: { sensor: e.target.checked } }))}
+      </div>
+    </div>`;
   }
 
   /** Mais › Sobre: CorrerIA Code, the apps of the family and the GitHub (the same page as the other apps). */
@@ -1862,21 +2020,26 @@ class MemoriaApp extends LitElement {
     </section>`;
   }
 
+  /** Mais › Configurações › Dados: export, backup, import, versions and start over (like the other apps). */
   _renderDataPanel() {
     const b = this._backups;
     const size = (n) => (n > 1048576 ? `${(n / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
-    const exp = (fmt, label, ic) => html`<a class="btn outline sm" href=${this.api.exportUrl(fmt) || "#"} download @click=${(e) => this._export(fmt, e)}>${icon(ic)}${label}</a>`;
-    return html`<div class="panel" id="dados">
-      <div class="overline">Dados</div>
-      <div class="data-row">
-        <b>Exportar</b>
-        <p>Baixe para guardar ou levar para outro programa. Os arquivos são abertos e legíveis: o ZIP tem um arquivo de texto por bloco.</p>
-        <div class="btn-row">${exp("zip", "Tudo (ZIP)", "archive")} ${exp("csv", "Folhas (CSV)", "sheet")} ${exp("json", "JSON", "braces")}</div>
+    const exp = (fmt, title, text, label) => html`<li>
+      <div class="ot"><b>${title}</b><span>${text}</span></div>
+      <a class="btn outline sm" href=${this.api.exportUrl(fmt) || "#"} download @click=${(e) => this._export(fmt, e)}>${icon("download")}${label}</a>
+    </li>`;
+    return html`<div id="dados">
+      <div class="panel">
+        ${this._secHead("download", "Exportar")}
+        <ul class="opts">
+          ${exp("zip", "Tudo (ZIP)", "Um arquivo de texto por bloco, a planilha e os dados completos.", "Baixar ZIP")}
+          ${exp("csv", "Planilha (CSV)", "Abre no Excel e no Google Planilhas, com uma folha por linha.", "Baixar CSV")}
+          ${exp("json", "Dados completos (JSON)", "Todos os campos, para backup ou para outro sistema.", "Baixar JSON")}
+        </ul>
       </div>
-      <div class="data-row">
-        <b>Backup na pasta share</b>
-        <p>Cria uma cópia completa em <code>share/memoria</code>, que você acessa pela rede do Home Assistant. Os backups do próprio Home Assistant também incluem o MemorIA.</p>
-        <div class="btn-row">
+      <div class="panel">
+        ${this._secHead("archive", "Backup na pasta share", html`Cópia completa em <code>share/memoria</code>. Os backups do Home Assistant também incluem o MemorIA.`)}
+        <div class="btn-row sec-actions">
           <button class="btn primary sm" ?disabled=${this._busy === "backup" || (b && b.available === false)} @click=${() => this._createBackup()}>${icon("archive")}${this._busy === "backup" ? "Criando…" : "Criar backup"}</button>
         </div>
         ${b && b.available === false ? html`<p class="data-note">A pasta share não está disponível para o app.</p>` : nothing}
@@ -1889,20 +2052,17 @@ class MemoriaApp extends LitElement {
             </div>`
           : nothing}
       </div>
-      <div class="data-row">
-        <b>Importar backup ou JSON</b>
-        <p>Traz os blocos e folhas de um .zip ou .json exportado pelo app. Antes de importar, o app guarda uma cópia do que existe hoje.</p>
-        <div class="btn-row"><button class="btn outline sm" @click=${() => this._pickImport()}>${icon("upload")}Escolher arquivo</button></div>
+      <div class="panel">
+        ${this._secHead("upload", "Importar", "Um .zip ou .json exportado pelo MemorIA. Antes, o app guarda uma cópia do que existe hoje.")}
+        <div class="btn-row sec-actions"><button class="btn outline sm" @click=${() => this._pickImport()}>${icon("upload")}Escolher arquivo</button></div>
       </div>
-      <div class="data-row">
-        <b>Versões anteriores</b>
-        <p>O app guarda sozinho uma cópia a cada 10 minutos de uso. Se algo sair errado, volte para uma versão anterior.</p>
-        <div class="btn-row"><button class="btn outline sm" @click=${() => this._openVersions()}>${icon("archive-restore")}Ver versões</button></div>
+      <div class="panel">
+        ${this._secHead("archive-restore", "Versões anteriores", "Uma cópia a cada 10 minutos de uso e antes de importar, restaurar ou apagar.")}
+        <div class="btn-row sec-actions"><button class="btn outline sm" @click=${() => this._openVersions()}>${icon("archive-restore")}Ver versões</button></div>
       </div>
-      <div class="data-row">
-        <b>Começar do zero</b>
-        <p>Apaga todos os blocos e folhas. Os ajustes continuam.</p>
-        <div class="btn-row"><button class="btn danger sm wide" @click=${() => this._confirmErase()}>${icon("trash")}Apagar tudo</button></div>
+      <div class="panel">
+        ${this._secHead("trash", "Começar do zero", "Apaga todos os blocos e folhas. Os ajustes continuam.")}
+        <div class="btn-row sec-actions"><button class="btn danger sm" @click=${() => this._confirmErase()}>${icon("trash")}Apagar tudo</button></div>
       </div>
     </div>`;
   }
@@ -1920,8 +2080,7 @@ class MemoriaApp extends LitElement {
     }
     if (ai.reason) detail = `${detail} ${ai.reason}`.trim();
     return html`<div class="panel" id="leitura-ia">
-      <div class="overline">Leitura por IA</div>
-      <p class="panel-lead">Lê mensagens coladas, prints e fotos de anotações em papel para criar folhas. Usa a integração de IA configurada no Home Assistant (Anthropic Claude, OpenAI, Google Gemini ou um modelo local pelo Ollama); o app não guarda nenhuma chave.</p>
+      ${this._secHead("sparkles", "Leitura por IA", "Lê mensagens coladas, prints e fotos de anotações em papel para criar folhas, com a IA configurada no Home Assistant. O app não guarda nenhuma chave.")}
       <div class="ai-state ${tone}"><span class="dot"></span><div><b>${title}</b>${detail ? html`<span>${detail}</span>` : nothing}</div></div>
       ${ents.length || sel
         ? html`<label class="field" style="margin:14px 0 0">
@@ -2135,7 +2294,7 @@ class MemoriaApp extends LitElement {
         ${f.note ? html`<div class="imp-error soft">${icon("sparkles")}<span>${f.note}</span></div>` : nothing}
         <textarea class="review-text" .value=${f.result} aria-label="Texto da folha" @input=${(e) => this._setForm({ result: e.target.value })}></textarea>
         ${ai.images
-          ? html`<div class="more-row">
+          ? html`<div class="extra-row">
               <button class="pick" @click=${() => this._pickFiles("photos")}>${icon("images")}<span>Mais fotos</span></button>
               <button class="pick" @click=${() => this._openCamera()}>${icon("scan-text")}<span>Digitalizar mais</span></button>
             </div>`

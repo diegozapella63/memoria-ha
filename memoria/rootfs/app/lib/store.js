@@ -95,6 +95,7 @@ export function normalize(raw, current = {}) {
   const a = raw.app && typeof raw.app === "object" ? raw.app : {};
   const app = {};
   if (COLORS.includes(a.accent)) app.accent = a.accent;
+  if (a.accent_daily === false) app.accent_daily = false;
   if (typeof a.hand === "boolean") app.hand = a.hand;
   if (typeof a.sensor === "boolean") app.sensor = a.sensor;
   // The AI belongs to this Home Assistant, not to the file.
@@ -285,6 +286,8 @@ export class Store {
     if (app && typeof app === "object") {
       const next = { ...this.data.app };
       if ("accent" in app) next.accent = COLORS.includes(app.accent) ? app.accent : undefined;
+      // Cor do dia: on unless turned off
+      if ("accent_daily" in app) next.accent_daily = app.accent_daily === false ? false : undefined;
       if ("hand" in app) next.hand = Boolean(app.hand);
       if ("sensor" in app) next.sensor = Boolean(app.sensor);
       // "" = the AI Home Assistant prefers.

@@ -16,9 +16,12 @@
         overflow: hidden;
       }
       @media (prefers-color-scheme: light) {
-        body {
+        :root:not([data-theme="dark"]) body {
           background: #f8f6fb;
         }
+      }
+      :root[data-theme="light"] body {
+        background: #f8f6fb;
       }
     </style>
   </head>
