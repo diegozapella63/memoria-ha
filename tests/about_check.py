@@ -1,6 +1,6 @@
 # MemorIA 1.2.0 (1.4.0: Mais is a menu): Mais › Sobre, the last row of Mais, the same page as the other apps of the family
 # (frontend/src/about.js is the same file as in the ResolvIA and the CronologIA): CorrerIA Code and why
-# the name, the six apps with a line and their GitHub (this one marked with its version) and Meu GitHub.
+# the name, the seven apps with a line and their GitHub (this one marked with its version) and Meu GitHub.
 # 320 px to the computer, light and dark; Back of the phone, "‹ Mais" and Mais in the bar return to Mais.
 #
 # Uses the preview (no server): cd frontend && npm run build, then
@@ -15,7 +15,7 @@ SHOTS = Path(sys.argv[1] if len(sys.argv) > 1 else os.environ.get("MEMORIA_SHOTS
 SHOTS.mkdir(parents=True, exist_ok=True)
 
 GH = "https://github.com/diegozapella63"
-APPS = [("CronologIA", "cronologia-ha"), ("ResolvIA", "resolvia-ha"), ("GerencIA", "gerencia-ha"), ("InventarIA", "inventario-ha"), ("EconomIA", "economia-ha"), ("MemorIA", "memoria-ha")]
+APPS = [("CronologIA", "cronologia-ha"), ("ResolvIA", "resolvia-ha"), ("GerencIA", "gerencia-ha"), ("InventarIA", "inventario-ha"), ("EconomIA", "economia-ha"), ("MemorIA", "memoria-ha"), ("CorrerIA", "correria-ha")]
 WHY = "Porque eu sou um programador sem tempo: vivo na correria. Então eu uso a IA para rodar tudo isso aqui. Ela escreve, testa e publica; eu dou as ideias e reclamo dos botões tortos."
 VERSION = re.search(r'^version:\s*"?([\d.]+)', (REPO / "memoria" / "config.yaml").read_text(), re.M).group(1)
 
@@ -106,16 +106,16 @@ with sync_playwright() as p:
         apps = a.locator(".about-apps .ab-row")
         check(a.locator(".about .mais-head h2").nth(1).inner_text().strip() == "Os apps", f"{tag}: Os apps")
         hrefs = [apps.nth(i).get_attribute("href") for i in range(apps.count())]
-        check(hrefs == [f"{GH}/{r}" for _, r in APPS], f"{tag}: the six apps, in order, each to its GitHub ({hrefs})")
+        check(hrefs == [f"{GH}/{r}" for _, r in APPS], f"{tag}: the seven apps, in order, each to its GitHub ({hrefs})")
         wm = a.evaluate("(el) => [...el.renderRoot.querySelectorAll('.about-apps .ab-wm')].map((x) => [x.textContent, x.querySelector('span').textContent, getComputedStyle(x).color !== getComputedStyle(x.querySelector('span')).color])")
         check([x[0] for x in wm] == [n for n, _ in APPS], f"{tag}: the names, with no space inside ({[x[0] for x in wm]})")
         check(all(x[1] == "IA" and x[2] for x in wm), f"{tag}: the IA of each name in the accent color")
         lines = [" ".join(t.split()) for t in apps.locator(".mb > span").all_inner_texts()]
-        check(len(lines) == 6 and all(lines), f"{tag}: a line about each app")
+        check(len(lines) == 7 and all(lines), f"{tag}: a line about each app")
         here = a.locator(".ab-row.here")
         check(here.count() == 1 and here.get_attribute("href") == f"{GH}/memoria-ha" and here.locator(".ab-here").inner_text().strip() == f"Este app · v{VERSION}", f"{tag}: MemorIA marked Este app · v{VERSION}")
         targets = a.locator(".about a").evaluate_all("(xs) => xs.map((x) => x.target + ' ' + x.rel)")
-        check(len(targets) == 7 and all(t == "_blank noopener" for t in targets), f"{tag}: 7 links open outside ({targets})")
+        check(len(targets) == 8 and all(t == "_blank noopener" for t in targets), f"{tag}: 8 links open outside ({targets})")
         gh = a.locator("a.ab-github")
         gw = gh.evaluate("(x) => [x.getBoundingClientRect().width, x.parentElement.getBoundingClientRect().width]")
         check(gh.get_attribute("href") == GH and gh.inner_text().strip() == "Meu GitHub" and abs(gw[0] - gw[1]) < 1, f"{tag}: Meu GitHub, wide ({gw})")

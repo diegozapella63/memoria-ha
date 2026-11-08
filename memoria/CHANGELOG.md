@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.11.1
+
+- **Mais › Sobre**: a **CorrerIA** (o contato no WhatsApp) entra na lista dos apps.
+
 ## 1.11.0
 
 - **Mais › Configurações › Opções › Blocos**: **Usar categorias** e **Controle por pessoa**, ligados de início.
