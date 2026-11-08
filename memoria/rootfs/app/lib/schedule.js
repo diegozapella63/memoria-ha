@@ -69,7 +69,9 @@ const RANK = { page: 0, time: 1, period: 2 };
  */
 export function buildSchedule(data, { person = "" } = {}) {
   const periods = periodTimes(data);
-  const blocks = ((data && data.blocks) || []).filter((b) => opensFor(b, person));
+  // without Controle por pessoa (Mais › Configurações › Opções, 1.11.0), every block is everyone's
+  const who = data && data.app && data.app.owners_off === true ? "" : person;
+  const blocks = ((data && data.blocks) || []).filter((b) => opensFor(b, who));
   const order = new Map(blocks.map((b, i) => [b.id, b.order != null ? b.order : i]));
   const entries = [];
   for (const b of blocks) {

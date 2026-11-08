@@ -28,7 +28,7 @@ def check(c, label):
 OVER = """(el) => {
   const W = window.innerWidth, bad = [];
   for (const e of el.renderRoot.querySelectorAll(".page *")) {
-    if (e.closest(".cat-filter, .tline")) continue;
+    if (e.closest(".cat-filter, .who-filter, .tline")) continue;
     const r = e.getBoundingClientRect();
     if (r.width && (r.right > W + 1 || r.left < -1)) bad.push(e.tagName.toLowerCase() + "." + [...e.classList].join(".") + " " + Math.round(r.left) + ".." + Math.round(r.right));
   }

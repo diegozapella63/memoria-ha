@@ -43,7 +43,10 @@ Nos ajustes do bloco, **De quem é**: **Todos** (o padrão; os blocos de antes f
 
 O app sabe quem está usando pelo login do Home Assistant: a pessoa ligada àquele usuário. Um login que não é de nenhuma pessoa da casa (um tablet na parede, por exemplo) vê todos os blocos no **Agora**.
 
-No alto da tela **Blocos**, **De quem**: você (os seus blocos e os de **Todos**, como começa), cada pessoa da casa (os dela e os de todos) ou **Todos** (todos os blocos, de todo mundo, com "de Ana" na etiqueta da capa). A escolha fica guardada no aparelho, e a tela do bloco também diz de quem é. Se o Home Assistant não responder, dá para escrever o nome da pessoa.
+No alto da tela **Blocos**, **De quem**: você (os seus blocos e os de **Todos**, como começa), cada pessoa da casa (os dela e os de todos) ou **Todas as pessoas** (todos os blocos, de todo mundo, com "de Ana" na etiqueta da capa). A escolha fica guardada no aparelho, e a tela do bloco também diz de quem é. Se o Home Assistant não responder, dá para escrever o nome da pessoa.
+
+
+Sem usar o controle por pessoa, desligue **Controle por pessoa** em **Mais › Configurações › Opções**: some o **De quem é** dos blocos e o filtro **De quem**, e todo bloco abre no **Agora** de todos. Ligado de novo, cada bloco volta a ser de quem era.
 
 ## Arquivar um bloco
 
@@ -70,6 +73,9 @@ A tela **Agora** mostra o que vale no momento: o último horário que já começ
 Quando nada seu (nem de **Todos**) tem horário, o Agora não abre um bloco qualquer: ele diz **Nada com horário** e, se houver blocos com horário de outras pessoas, de quem são ("Treino é de Beto: só abre no Agora de Beto"). Na tela de um bloco, a linha **Abre sozinho** mostra os horários dele e as folhas com horário ("folha 3 às 18:00").
 
 Se você estiver escrevendo quando chega a hora de outro bloco, a troca espera o teclado fechar.
+
+
+Sem usar categorias, desligue **Usar categorias** em **Mais › Configurações › Opções**: somem a categoria do bloco, o filtro em **Blocos** e **Categorias** no **Mais**. Ligado de novo, cada bloco volta à sua categoria.
 
 ## Criar folhas de mensagens e fotos
 

@@ -140,6 +140,8 @@ export function normalize(raw, current = {}) {
   if (typeof a.hand === "boolean") app.hand = a.hand;
   if (typeof a.sensor === "boolean") app.sensor = a.sensor;
   if (a.ai_off === true) app.ai_off = true;
+  if (a.cats_off === true) app.cats_off = true;
+  if (a.owners_off === true) app.owners_off = true;
   // The AI and the speech-to-text belong to this Home Assistant, not to the file.
   if (current.ai_entity) app.ai_entity = current.ai_entity;
   if (current.voice_engine) app.voice_engine = current.voice_engine;
@@ -403,6 +405,9 @@ export class Store {
       if ("ai_entity" in app) next.ai_entity = /^ai_task\.[a-z0-9_]+$/.test(app.ai_entity || "") ? app.ai_entity : undefined;
       // Usar IA (on unless turned off): off, no reading by AI, no Falar, no Conversa
       if ("ai_off" in app) next.ai_off = app.ai_off === true ? true : undefined;
+      // Opções › Usar categorias and Controle por pessoa (1.11.0; on unless turned off)
+      if ("cats_off" in app) next.cats_off = app.cats_off === true ? true : undefined;
+      if ("owners_off" in app) next.owners_off = app.owners_off === true ? true : undefined;
       // Falar: the speech-to-text ("" = the one of the voice assistant)
       if ("voice_engine" in app) next.voice_engine = /^stt\.[a-z0-9_]+$/.test(app.voice_engine || "") ? app.voice_engine : undefined;
       // Integrações › CorrerIA (off unless turned on): the WhatsApp, the Claude and the Gemini read and change the blocks

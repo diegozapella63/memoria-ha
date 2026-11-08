@@ -62,7 +62,7 @@ def open_block(a, pg, name):
     a.locator("nav .tab", has_text="Blocos").click()
     pg.wait_for_timeout(400)
     # Blocos de quem (1.10.0) starts with Ana's: every block
-    who = a.locator(".who-filter .pick", has_text="Todos")
+    who = a.locator(".who-filter .pick", has_text="Todas as pessoas")
     if who.count() and who.get_attribute("aria-checked") != "true":
         who.click()
         pg.wait_for_timeout(300)

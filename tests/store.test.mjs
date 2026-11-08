@@ -236,6 +236,35 @@ test("the Agora (buildSchedule): never an archived block; with a person, theirs 
   assert.equal(ownerName(" Todos "), "");
 });
 
+test("1.11.0: without Controle por pessoa, every block opens for everyone (the owners stay)", () => {
+  const data = {
+    periods: { manha: "05:00", tarde: "12:00", noite: "18:00" },
+    app: { owners_off: true },
+    blocks: [
+      { id: "todos00001", name: "Casa", periods: ["manha"], times: [], order: 0 },
+      { id: "beto000001", name: "Treino do Beto", periods: [], times: ["07:00"], order: 1, owner: "Beto" },
+    ],
+    pages: [],
+  };
+  assert.deepEqual([...new Set(buildSchedule(data, { person: "Ana" }).map((e) => e.block))], ["todos00001", "beto000001"]);
+  assert.equal(data.blocks[1].owner, "Beto");
+});
+
+test("1.11.0: Usar categorias and Controle por pessoa: on unless turned off; null turns them on; kept in an import", () => {
+  const { store } = fresh();
+  let s = store.saveSettings({ app: { cats_off: true, owners_off: true } });
+  assert.equal(s.app.cats_off, true);
+  assert.equal(s.app.owners_off, true);
+  s = store.saveSettings({ app: { cats_off: null } });
+  assert.equal("cats_off" in s.app, false);
+  assert.equal(s.app.owners_off, true);
+  s = store.saveSettings({ app: { owners_off: "sim" } });
+  assert.equal("owners_off" in s.app, false, "only true turns it off");
+  assert.deepEqual(normalize({ blocks: [], pages: [], app: { cats_off: true, owners_off: true } }).app, { cats_off: true, owners_off: true });
+  assert.deepEqual(normalize({ blocks: [], pages: [], app: { cats_off: 1 } }).app, {});
+  store.flush();
+});
+
 test("sensor.memoria_agora: an archived block never is the block of the moment", () => {
   const { store } = fresh();
   const [diario, rascunhos] = store.data.blocks;

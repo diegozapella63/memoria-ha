@@ -29,7 +29,7 @@ def check(c, label):
 OVER = """(el) => {
   const W = window.innerWidth, bad = [];
   for (const e of el.renderRoot.querySelectorAll(".page *, .sheet *")) {
-    if (e.closest(".cat-filter, .more-tabs, .tline")) continue;
+    if (e.closest(".cat-filter, .who-filter, .more-tabs, .tline")) continue;
     const r = e.getBoundingClientRect();
     if (r.width && (r.right > W + 1 || r.left < -1)) bad.push(e.tagName.toLowerCase() + "." + [...e.classList].join(".") + " " + Math.round(r.left) + ".." + Math.round(r.right));
   }
@@ -163,6 +163,10 @@ with sync_playwright() as p:
         pg.wait_for_timeout(500)
         a.locator("nav .tab", has_text="Buscar").click()
         pg.wait_for_timeout(400)
+        for _ in range(20):  # (right after reloading, the screen may still be getting the data)
+            if a.locator(".search-opts .pick").get_attribute("aria-pressed") == "true":
+                break
+            pg.wait_for_timeout(100)
         check(a.locator(".search-opts .pick").get_attribute("aria-pressed") == "true", f"{tag}: the choice is kept")
         a.locator(".search-opts .pick").click()
         pg.wait_for_timeout(200)

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.11.0
+
+- **Mais › Configurações › Opções › Blocos**: **Usar categorias** e **Controle por pessoa**, ligados de início.
+  - **Usar categorias** desligado: some a categoria do bloco, o filtro em **Blocos** e **Categorias** no **Mais**.
+  - **Controle por pessoa** desligado: some o **De quem é** do bloco e o filtro **De quem** (em **Blocos** e no **Buscar**), e todo bloco abre no **Agora** de todos.
+  - Nada se perde: ligado de novo, as categorias e os donos voltam como estavam.
+- O filtro **De quem** mostra **Todas as pessoas** no lugar de **Todos**, para não confundir com o **Todos** das categorias.
+
 ## 1.10.1
 
 - **Agora**: quando nada seu tem horário, o Agora não abre mais um bloco qualquer como se fosse "o da tarde". Ele diz **Nada com horário**, como escolher um horário e, se for o caso, de quem são os blocos com horário (por exemplo "Treino é de Beto: só abre no Agora de Beto").

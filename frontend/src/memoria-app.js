@@ -294,7 +294,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     }
     for (const list of pages.values()) list.sort(byCreated);
     // the Agora of the person using this screen: their blocks and everyone's, never the archived ones
-    this._cache = { data: this._data, pages, schedule: buildSchedule(this._data, { person: this._me() }) };
+    this._cache = { data: this._data, pages, schedule: buildSchedule(this._data, { person: this._ownersOn() ? this._me() : "" }) };
   }
 
   /** Every block, archived too, in order. */
@@ -312,9 +312,27 @@ class MemoriaApp extends ChatMixin(LitElement) {
     return (this._user && this._user.person) || "";
   }
 
-  /** Whether a block opens in this person's Agora (theirs or everyone's, not archived). */
+  /** Whether a block opens in this person's Agora (theirs or everyone's, not archived; every one without Controle por pessoa). */
   _mine(b) {
-    return opensFor(b, this._me());
+    return opensFor(b, this._ownersOn() ? this._me() : "");
+  }
+
+  /** Mais › Configurações › Opções › Usar categorias (1.11.0; on unless turned off): off, no category anywhere. */
+  _catsOn() {
+    return this._app("cats_off", false) !== true;
+  }
+
+  /**
+   * Mais › Configurações › Opções › Controle por pessoa (1.11.0; on unless turned off): off, no De quem é, every block
+   * opens for everyone and no filter De quem (the owners stay saved, for when it is turned on again).
+   */
+  _ownersOn() {
+    return this._app("owners_off", false) !== true;
+  }
+
+  /** Whose a block is, as the screens show it ("" everyone's, and always without Controle por pessoa). */
+  _owner(b) {
+    return this._ownersOn() ? (b && b.owner) || "" : "";
   }
 
   _block(id) {
@@ -2327,6 +2345,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   /** The category chosen in Blocos (kept on this device): "" all, a category id or "sem". */
   _shelfCat() {
+    if (!this._catsOn()) return "";
     const v = local.get(SHELF_KEY, "") || "";
     if (v === "sem") return this._cats().length && this._allBlocks().some((b) => !this._cat(b.category)) ? "sem" : "";
     return this._cat(v) ? v : "";
@@ -2350,7 +2369,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   /** Whether the filter de quem shows: more than one person, or a block with an owner. */
   _whoOn() {
-    return this._whoNames().length > 1 || this._allBlocks().some((b) => b.owner);
+    return this._ownersOn() && (this._whoNames().length > 1 || this._allBlocks().some((b) => b.owner));
   }
 
   /** De quem (Blocos, Buscar): a name (their blocks and everyone's) or "*" (all); the person using it to begin with. */
@@ -2380,7 +2399,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     return html`<div class="chip-row who-filter" role="radiogroup" aria-label="De quem">
       ${[...this._whoNames(), "*"].map((n) => {
         const on = n === "*" ? who === "*" : who !== "*" && sameName(who, n);
-        return html`<button class="pick ${on ? "on" : ""}" role="radio" aria-checked=${on ? "true" : "false"} @click=${() => this._setShelfWho(n, key)}>${icon(n === "*" ? "users" : "user-round")}<span>${n === "*" ? "Todos" : clip(n, 18)}</span></button>`;
+        return html`<button class="pick ${on ? "on" : ""}" role="radio" aria-checked=${on ? "true" : "false"} @click=${() => this._setShelfWho(n, key)}>${icon(n === "*" ? "users" : "user-round")}<span>${n === "*" ? "Todas as pessoas" : clip(n, 18)}</span></button>`;
       })}
     </div>`;
   }
@@ -2399,7 +2418,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   _renderShelf() {
     const all = this._allBlocks();
-    const cats = this._cats();
+    const cats = this._catsOn() ? this._cats() : [];
     const fcat = this._shelfCat();
     const who = this._shelfWho();
     const inCat = (b) => this._ofWho(b, who) && (!fcat || (fcat === "sem" ? !this._cat(b.category) : b.category === fcat));
@@ -2407,7 +2426,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     // Arquivados: at the end of the shelf, folded (the last archived first)
     const archived = all.filter((b) => b.archived && inCat(b)).sort((a, b) => b.archived - a.archived);
     const pages = blocks.reduce((n, b) => n + this._pagesOf(b.id).length, 0);
-    const none = all.some((b) => !this._cat(b.category));
+    const none = cats.length > 0 && all.some((b) => !this._cat(b.category));
     const groups = timeline(this._schedule());
     const { cur } = this._slot();
     const chip = (v, label, c = null) => html`<button class="pick ${c ? "list" : ""} ${fcat === v ? "on" : ""}" style=${c ? colorVars(colorById(c.color) || PALETTE[9], this._dark) : ""} aria-pressed=${fcat === v ? "true" : "false"} @click=${() => this._setShelfCat(v)}>${c ? html`<span class="dot"></span>` : nothing}<span>${label}</span></button>`;
@@ -2430,7 +2449,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
               const n = this._pagesOf(b.id).length;
               const parts = this._whenParts(b);
               return html`<button class="cover" style=${this._cv(b)} @click=${() => this._openPage(b.id)} aria-label="Abrir ${b.name}">
-                <div class="sticker"><b>${b.name}</b><small>${plural(n, "folha", "folhas")}${b.owner ? html` · <span class="owner">de ${clip(b.owner, 16)}</span>` : nothing}</small></div>
+                <div class="sticker"><b>${b.name}</b><small>${plural(n, "folha", "folhas")}${this._owner(b) ? html` · <span class="owner">de ${clip(this._owner(b), 16)}</span>` : nothing}</small></div>
                 <div class="when">${parts.length ? parts.map((p) => html`<span>${icon(p.icon)}${p.label}</span>`) : html`<span>${icon("notebook")}Sem horário</span>`}</div>
               </button>`;
             },
@@ -2477,7 +2496,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         (b) => b.id,
         (b) => {
           const parts = this._whenParts(b);
-          const hint = [plural(this._pagesOf(b.id).length, "folha", "folhas"), b.owner ? `de ${b.owner}` : "", parts.length ? parts.map((p) => p.label).join(" · ") : "Sem horário"].filter(Boolean).join(" · ");
+          const hint = [plural(this._pagesOf(b.id).length, "folha", "folhas"), this._owner(b) ? `de ${this._owner(b)}` : "", parts.length ? parts.map((p) => p.label).join(" · ") : "Sem horário"].filter(Boolean).join(" · ");
           return html`<button class="row block-row" style=${this._cv(b)} @click=${() => this._openPage(b.id)} aria-label="Abrir ${b.name}">
             <span class="tile">${icon("notebook")}</span>
             <span class="grow"><span class="label">${b.name}</span><span class="hint">${hint}</span></span>
@@ -2511,7 +2530,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
             (b) => b.id,
             (b) => html`<button class="row arch-row" style=${this._cv(b)} @click=${() => this._openPage(b.id)} aria-label="Abrir ${b.name} (arquivado)">
               <span class="tile">${icon("notebook")}</span>
-              <span class="grow"><span class="label">${b.name}</span><span class="hint">${[plural(this._pagesOf(b.id).length, "folha", "folhas"), b.owner ? `de ${b.owner}` : "", `arquivado ${this._day(b.archived)}`].filter(Boolean).join(" · ")}</span></span>
+              <span class="grow"><span class="label">${b.name}</span><span class="hint">${[plural(this._pagesOf(b.id).length, "folha", "folhas"), this._owner(b) ? `de ${this._owner(b)}` : "", `arquivado ${this._day(b.archived)}`].filter(Boolean).join(" · ")}</span></span>
               ${icon("chevron-right", "chev")}
             </button>`,
           )
@@ -2552,7 +2571,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
             <button class="icon-btn" @click=${() => this._openBlockSheet(b)} aria-label="Ajustes do bloco">${icon("sliders-horizontal")}</button>
           </div>
           <div class="dh-text">
-            <div class="overline">${[this._cat(b.category) && this._cat(b.category).name, plural(n, "folha", "folhas"), b.owner ? `de ${b.owner}` : "", PAPER_LABEL[b.paper] || ""].filter(Boolean).join(" · ")}</div>
+            <div class="overline">${[this._catsOn() && this._cat(b.category) && this._cat(b.category).name, plural(n, "folha", "folhas"), this._owner(b) ? `de ${this._owner(b)}` : "", PAPER_LABEL[b.paper] || ""].filter(Boolean).join(" · ")}</div>
             <h1 class="display fit-title">${b.name}</h1>
           </div>
         </div>
@@ -2560,7 +2579,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           ? html`<div class="hint-card arch-card">${icon("archive")}<span>Arquivado ${this._day(b.archived)}. Não abre sozinho.</span><button class="text-btn" @click=${() => this._setArchived(b, false)}>Desarquivar</button></div>`
           : html`<button class="when-line" @click=${() => this._openBlockSheet(b)}>
           ${when.length
-            ? html`${icon("calendar-clock")}<span>Abre sozinho${b.owner && !this._mine(b) ? ` no Agora de ${b.owner}` : ""}: ${when.map((w, i) => html`${i ? " · " : ""}<b>${w}</b>`)}</span>`
+            ? html`${icon("calendar-clock")}<span>Abre sozinho${this._owner(b) && !this._mine(b) ? ` no Agora de ${this._owner(b)}` : ""}: ${when.map((w, i) => html`${i ? " · " : ""}<b>${w}</b>`)}</span>`
             : html`${icon("calendar-clock")}<span>Não abre sozinho. <b>Escolher horário</b></span>`}
         </button>`}
         ${this._renderPad({ tall: true })}
@@ -2682,7 +2701,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const cfg = `${words.slice(0, -1).join(", ")} e ${words[words.length - 1]}.`;
     const cats = this._cats();
     return [
-      ["/categorias", "tag", "Categorias", cats.length ? `${clip(cats.map((c) => c.name).join(", "), 44)}.` : "Para agrupar os blocos."],
+      // without Usar categorias, no Categorias
+      ...(this._catsOn() ? [["/categorias", "tag", "Categorias", cats.length ? `${clip(cats.map((c) => c.name).join(", "), 44)}.` : "Para agrupar os blocos."]] : []),
       ["relatorio", "clipboard-list", "Relatório", "Os blocos e as folhas, para imprimir ou salvar em PDF."],
       ["/config", "sliders-horizontal", "Configurações", cfg[0].toUpperCase() + cfg.slice(1)],
       ["/sobre", "info", "Sobre", "CorrerIA Code, os apps e o GitHub."],
@@ -2782,10 +2802,23 @@ class MemoriaApp extends ChatMixin(LitElement) {
     `;
   }
 
-  /** Mais › Configurações › Opções: when the periods of the day start. */
+  /** Mais › Configurações › Opções: categories and whose (1.11.0) and when the periods of the day start. */
   _renderOptionsTab() {
     const periods = periodTimes(this._data);
-    return html`<div class="panel" id="periodos">
+    const cats = this._catsOn();
+    const owners = this._ownersOn();
+    return html`<div class="panel" id="organizar">
+      ${this._secHead("library", "Blocos")}
+      <div class="row switch-row">
+        <div class="grow"><div class="label">Usar categorias</div><div class="hint" style="white-space:normal">${cats ? "A categoria de cada bloco e o filtro em Blocos." : "Desligado."}</div></div>
+        ${this._switch(cats, "Usar categorias", (e) => this._saveSettings({ app: { cats_off: e.target.checked ? null : true } }))}
+      </div>
+      <div class="row switch-row">
+        <div class="grow"><div class="label">Controle por pessoa</div><div class="hint" style="white-space:normal">${owners ? "De quem é cada bloco, o Agora de cada pessoa e o filtro De quem." : "Desligado: todo bloco é de todos."}</div></div>
+        ${this._switch(owners, "Controle por pessoa", (e) => this._saveSettings({ app: { owners_off: e.target.checked ? null : true } }))}
+      </div>
+    </div>
+    <div class="panel" id="periodos">
       ${this._secHead("sun-moon", "Períodos do dia", "Blocos ligados a um período abrem sozinhos a partir desse horário. Horários exatos ficam em cada bloco ou folha.")}
       ${PERIODS.map(
         (p) => html`<div class="row">
@@ -3035,7 +3068,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         <span class="flabel">Nome</span>
         <input type="text" maxlength="60" .value=${f.name} placeholder="Ex.: Diário, Treino, Trabalho" @input=${(e) => this._setForm({ name: e.target.value })} @keydown=${(e) => e.key === "Enter" && this._saveBlockSheet()} />
       </label>
-      <div class="field">
+      ${this._catsOn() ? html`<div class="field">
         <span class="flabel">Categoria</span>
         <div class="chip-row grid cat-pick">
           <button class="pick ${!f.category && f.newCat == null ? "on" : ""}" @click=${() => this._setForm({ category: "", newCat: null })}><span>Sem categoria</span></button>
@@ -3053,8 +3086,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
         ${f.newCat != null
           ? html`<label class="new-cat"><input type="text" maxlength="40" .value=${f.newCat} placeholder="Nome da nova categoria" aria-label="Nome da nova categoria" @input=${(e) => this._setForm({ newCat: e.target.value })} @keydown=${(e) => e.key === "Enter" && this._saveBlockSheet()} /></label>`
           : nothing}
-      </div>
-      ${this._renderOwnerPick(f)}
+      </div>` : nothing}
+      ${this._ownersOn() ? this._renderOwnerPick(f) : nothing}
       <div class="field">
         <span class="flabel">Cor da capa</span>
         <div class="swatches">

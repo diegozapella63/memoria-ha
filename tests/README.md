@@ -10,6 +10,7 @@
 | `tests/agora_check.py` | Agora: folha com horário de quem é dono, Nada com horário (sem bloco qualquer) e de quem são os blocos com horário; os botões das escolhas do mesmo tamanho; o nome do bloco com a largura toda, sem quebrar palavra |
 | `tests/arquivar_check.py` | Arquivar bloco: fora da estante, do Agora, da Nova e do Buscar (Incluir arquivados), Arquivados no fim de Blocos, Desfazer e Desarquivar |
 | `tests/dono_check.py` | De quem é: Todos ou uma pessoa da casa (ou o nome escrito, sem as pessoas), o Agora e o Seu dia de quem usa, "de Beto" na estante; o filtro De quem em Blocos e no Buscar |
+| `tests/opcoes_check.py` | Mais › Configurações › Opções › Blocos: Usar categorias e Controle por pessoa (ligados de início), o que some com cada um desligado e volta ao ligar |
 | `tests/vista_check.py` | Blocos em blocos ou em lista: a escolha rápida no alto, a lista, o filtro de categoria nela e a escolha guardada |
 | `tests/categorias_check.py` | Mais › Categorias, a categoria no bloco (com Nova ali mesmo) e o filtro em Blocos |
 | `tests/correria_check.py` | Mais › Configurações › Integrações › CorrerIA: desligado por padrão, sem depender do Usar IA, e quem usou por último |

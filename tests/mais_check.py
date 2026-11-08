@@ -113,7 +113,7 @@ with sync_playwright() as p:
         expect = {
             "Dados": ("config:dados", ["Exportar", "Backup na pasta share", "Importar", "Versões anteriores", "Começar do zero"]),
             "Aparência": ("config:aparencia", ["Tema", "Cor do app", "Letra de mão"]),
-            "Opções": ("config:opcoes", ["Períodos do dia"]),
+            "Opções": ("config:opcoes", ["Blocos", "Períodos do dia"]),
         }
         for t, (v, want) in expect.items():
             a.locator(".more-tabs button", has_text=t).click()
