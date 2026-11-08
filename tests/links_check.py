@@ -12,7 +12,8 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 REPO = Path(__file__).resolve().parent.parent
-PREVIEW = (REPO / "preview" / "memoria-preview.html").as_uri()
+# the preview over http (tests/visual.sh): Chromium does not always keep what a file:// page saves across a reload
+PREVIEW = os.environ.get("MEMORIA_PREVIEW_URL") or (REPO / "preview" / "memoria-preview.html").as_uri()
 SHOTS = Path(sys.argv[1] if len(sys.argv) > 1 else os.environ.get("MEMORIA_SHOTS", Path(tempfile.gettempdir()) / "memoria-shots"))
 SHOTS.mkdir(parents=True, exist_ok=True)
 
@@ -71,8 +72,8 @@ with sync_playwright() as p:
         pg.on("pageerror", lambda e: errs.append(str(e)))
         popups = []
         ctx.on("page", lambda np: popups.append(np))
-        # the sites of the example don't exist: a page stands for them
-        ctx.route(re.compile(r"^https?://"), lambda r: r.fulfill(status=200, content_type="text/html", body="<p>site</p>"))
+        # the sites of the example don't exist: a page stands for them (not for the preview itself, served by tests/visual.sh)
+        ctx.route(re.compile(r"^https?://(?!127\.0\.0\.1[:/])"), lambda r: r.fulfill(status=200, content_type="text/html", body="<p>site</p>"))
         pg.goto(PREVIEW)
         a = pg.locator("memoria-app")
         a.locator(".page-title").first.wait_for()

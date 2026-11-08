@@ -20,6 +20,8 @@
 | `tests/about_check.py` | Mais › Sobre (o mesmo dos outros apps) e a versão igual em todos os lugares |
 | `tests/selects_check.py` | as caixas de seleção no visual do app (`frontend/src/selectsheet.js`) |
 
-Cada uma aceita a pasta das capturas: `python3 tests/mais_check.py /tmp/capturas`. Todas: `tests/visual.sh [pasta]`.
+Cada uma aceita a pasta das capturas: `python3 tests/mais_check.py /tmp/capturas`. Todas: `tests/visual.sh [pasta]`, que
+serve a prévia por http numa porta livre (`MEMORIA_PREVIEW_URL`): aberta como arquivo (file://), o Chromium mais novo nem
+sempre guarda a escolha da tela (localStorage) depois de recarregar.
 
 Toda mudança ou correção vem com o teste dela. Dados de exemplo sempre inventados (Ana, Beto).
