@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.10.0
+
+- **Blocos em lista**: no alto da tela **Blocos**, à direita da contagem, a escolha rápida entre as capas e uma lista (uma linha por bloco, com a cor, o nome, as folhas, de quem é e quando abre). A escolha fica guardada no aparelho.
+- **De quem**, no alto de **Blocos**: você (os seus blocos e os de **Todos**), cada pessoa da casa (os dela e os de todos) ou **Todos** (todos os blocos). Começa nos seus.
+- **Buscar**: o mesmo **De quem** (com a sua escolha, começando nos seus) e **Incluir arquivados** sempre à vista.
+
 ## 1.9.0
 
 - **Arquivar bloco**, nos ajustes do bloco: o bloco sai da estante, do **Agora** (não abre mais sozinho), da **Nova**, do **Buscar** e da conversa com a IA, sem apagar nada. Ele fica em **Arquivados**, recolhido no fim da tela **Blocos**: toque para ver e abrir. Logo depois de arquivar, **Desfazer** traz de volta.

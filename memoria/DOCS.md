@@ -43,7 +43,7 @@ Nos ajustes do bloco, **De quem é**: **Todos** (o padrão; os blocos de antes f
 
 O app sabe quem está usando pelo login do Home Assistant: a pessoa ligada àquele usuário. Um login que não é de nenhuma pessoa da casa (um tablet na parede, por exemplo) vê todos os blocos no **Agora**.
 
-A tela **Blocos** continua mostrando todos os blocos, de todo mundo, com "de Ana" na etiqueta da capa; a tela do bloco também diz de quem é. Se o Home Assistant não responder, dá para escrever o nome da pessoa.
+No alto da tela **Blocos**, **De quem**: você (os seus blocos e os de **Todos**, como começa), cada pessoa da casa (os dela e os de todos) ou **Todos** (todos os blocos, de todo mundo, com "de Ana" na etiqueta da capa). A escolha fica guardada no aparelho, e a tela do bloco também diz de quem é. Se o Home Assistant não responder, dá para escrever o nome da pessoa.
 
 ## Arquivar um bloco
 
@@ -56,6 +56,8 @@ Os arquivados ficam em **Arquivados**, recolhido no fim da tela **Blocos**, com 
 Em **Mais › Categorias**, crie categorias para agrupar os blocos (por exemplo Trabalho, Casa e Estudos). Toque numa categoria para mudar o nome ou a cor, ou para apagá-la: os blocos dela ficam sem categoria, e as folhas não mudam. Não dá para ter duas com o mesmo nome.
 
 Nos ajustes do bloco, escolha **Sem categoria**, uma das categorias ou **Nova** (escreva o nome ali mesmo; ela é criada ao salvar o bloco).
+
+À direita da contagem, a escolha rápida entre ver os blocos **em blocos** (as capas) ou **em lista** (uma linha por bloco: a cor, o nome, as folhas, de quem é e quando abre; **Novo bloco** no fim). A escolha fica guardada no aparelho.
 
 Com categorias, a tela **Blocos** mostra etiquetas no alto: **Todos**, cada categoria e **Sem categoria** (quando algum bloco não tem). A escolha fica guardada no aparelho (vale também para os **Arquivados**), e um bloco novo criado com uma categoria escolhida já entra nela. O **Seu dia** continua mostrando todos os horários.
 
@@ -115,9 +117,9 @@ Em **Mais › Configurações › Integrações**:
 
 ## Buscar
 
-Em **Buscar**, procure qualquer palavra em todas as folhas de todos os blocos, sem se importar com acentos. Cada resultado mostra o trecho com a palavra marcada, o bloco e quando foi escrito; toque para abrir a folha.
+Em **Buscar**, procure qualquer palavra nas folhas dos blocos, sem se importar com acentos. Logo abaixo da caixa, **De quem** escolhe os blocos (os seus e os de **Todos**, para começar; os de outra pessoa; ou todos), como em **Blocos**, mas com a escolha própria. Cada resultado mostra o trecho com a palavra marcada, o bloco e quando foi escrito; toque para abrir a folha.
 
-Os blocos arquivados ficam de fora. Para procurar neles também, toque em **Incluir arquivados**, logo abaixo da caixa (só aparece quando há algum); a escolha fica guardada no aparelho.
+Os blocos arquivados ficam de fora. Para procurar neles também, toque em **Incluir arquivados**; as escolhas ficam guardadas no aparelho.
 
 ## Sensor para painéis e automações
 

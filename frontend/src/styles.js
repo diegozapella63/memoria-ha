@@ -1917,20 +1917,88 @@ export const styles = css`
   }
 
   /* Blocos: the categories, in a row that scrolls sideways (the chosen one is kept on this device) */
-  .chip-row.cat-filter {
+  .chip-row.cat-filter,
+  .chip-row.who-filter {
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
     margin: -4px -18px 16px;
     padding: 2px 18px;
   }
-  .chip-row.cat-filter::-webkit-scrollbar {
+  /* Blocos de quem (1.10.0): above the categories */
+  .chip-row.who-filter {
+    margin-bottom: 10px;
+  }
+  .chip-row.who-filter .pick {
+    flex: none;
+  }
+  .chip-row.who-filter .pick .i {
+    width: 17px;
+    height: 17px;
+  }
+  .chip-row.cat-filter::-webkit-scrollbar,
+  .chip-row.who-filter::-webkit-scrollbar {
     display: none;
   }
   .chip-row.cat-filter .pick {
     flex: none;
   }
   /* Blocos › Arquivados (N): folded at the end of the shelf, like the inactive lists of the ResolvIA */
+  /* Blocos: em blocos ou em lista (1.10.0), at the right of the count */
+  .view-toggle {
+    display: inline-flex;
+    gap: 2px;
+    margin-left: auto;
+    padding: 3px;
+    border-radius: 12px;
+    background: var(--rv-surface-2);
+  }
+  .view-toggle button {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 34px;
+    border-radius: 9px;
+    color: var(--rv-muted);
+  }
+  .view-toggle button .i {
+    width: 19px;
+    height: 19px;
+  }
+  .view-toggle button.on {
+    background: var(--rv-accent);
+    color: var(--rv-on-accent, #fff);
+  }
+  .shelf-list {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+  .block-row .label,
+  .block-row .hint {
+    display: block;
+  }
+  .block-row .label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .block-row .chev {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    color: var(--rv-muted);
+  }
+  .block-row.add .tile {
+    background: transparent;
+    border: 1.5px dashed var(--rv-line-strong, var(--rv-line));
+    color: var(--rv-muted);
+  }
+  .block-row.add .label {
+    color: var(--rv-muted);
+  }
+  .block-row:active {
+    opacity: 0.7;
+  }
   .arch-panel {
     padding-top: 2px;
     padding-bottom: 2px;

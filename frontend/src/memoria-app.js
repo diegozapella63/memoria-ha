@@ -22,6 +22,12 @@ const RINGS = Array.from({ length: 14 }, () => html`<i></i>`);
 // The screens of Mais (a menu, like the other apps): each one goes over the menu, and Back returns to it.
 const IN_MORE = ["categorias", "config", "sobre"];
 const SHELF_KEY = "memoria.blocos.categoria";
+// Blocos em lista (1.10.0): "lista", or "" for the covers (kept on this device)
+const VIEW_KEY = "memoria.blocos.vista";
+// Blocos and Buscar de quem (1.10.0): "" the person using it (theirs and everyone's), a name, or "*" every block
+// (on this device, one for each screen)
+const WHO_KEY = "memoria.blocos.pessoa";
+const SEARCH_WHO_KEY = "memoria.buscar.pessoa";
 const REPORT_KEY = "memoria.relatorio";
 const SEARCH_ARCH_KEY = "memoria.buscar.arquivados";
 
@@ -2295,11 +2301,71 @@ class MemoriaApp extends ChatMixin(LitElement) {
     this.requestUpdate();
   }
 
+  /** The people to filter Blocos by: the person using it first, the others of the house, then names written on blocks. */
+  _whoNames() {
+    const out = [];
+    const add = (n) => n && !out.some((x) => sameName(x, n)) && out.push(n);
+    add(this._me());
+    for (const n of this._people || []) add(n);
+    for (const b of this._allBlocks()) add(ownerName(b.owner || ""));
+    return out;
+  }
+
+  /** Whether the filter de quem shows: more than one person, or a block with an owner. */
+  _whoOn() {
+    return this._whoNames().length > 1 || this._allBlocks().some((b) => b.owner);
+  }
+
+  /** De quem (Blocos, Buscar): a name (their blocks and everyone's) or "*" (all); the person using it to begin with. */
+  _shelfWho(key = WHO_KEY) {
+    if (!this._whoOn()) return "*";
+    const v = local.get(key, "") || "";
+    if (v === "*") return "*";
+    const n = v && this._whoNames().find((x) => sameName(x, v));
+    if (n) return n;
+    return this._me() || "*";
+  }
+
+  _setShelfWho(v, key = WHO_KEY) {
+    this._haptic("light");
+    local.set(key, v === this._me() ? "" : v);
+    this.requestUpdate();
+  }
+
+  /** A block of that filter: someone's blocks come with everyone's (the ones without an owner). */
+  _ofWho(b, who) {
+    return who === "*" || !b.owner || sameName(b.owner, who);
+  }
+
+  /** The chips de quem: each person (the one using it first), then Todos. */
+  _renderWhoChips(who, key) {
+    if (!this._whoOn()) return nothing;
+    return html`<div class="chip-row who-filter" role="radiogroup" aria-label="De quem">
+      ${[...this._whoNames(), "*"].map((n) => {
+        const on = n === "*" ? who === "*" : who !== "*" && sameName(who, n);
+        return html`<button class="pick ${on ? "on" : ""}" role="radio" aria-checked=${on ? "true" : "false"} @click=${() => this._setShelfWho(n, key)}>${icon(n === "*" ? "users" : "user-round")}<span>${n === "*" ? "Todos" : clip(n, 18)}</span></button>`;
+      })}
+    </div>`;
+  }
+
+  /** Blocos in a list instead of the covers (the quick choice at the top, kept on this device). */
+  _shelfList() {
+    return local.get(VIEW_KEY, "") === "lista";
+  }
+
+  _setShelfView(list) {
+    if (list === this._shelfList()) return;
+    this._haptic("light");
+    local.set(VIEW_KEY, list ? "lista" : "");
+    this.requestUpdate();
+  }
+
   _renderShelf() {
     const all = this._allBlocks();
     const cats = this._cats();
     const fcat = this._shelfCat();
-    const inCat = (b) => !fcat || (fcat === "sem" ? !this._cat(b.category) : b.category === fcat);
+    const who = this._shelfWho();
+    const inCat = (b) => this._ofWho(b, who) && (!fcat || (fcat === "sem" ? !this._cat(b.category) : b.category === fcat));
     const blocks = this._blocks().filter(inCat);
     // Arquivados: at the end of the shelf, folded (the last archived first)
     const archived = all.filter((b) => b.archived && inCat(b)).sort((a, b) => b.archived - a.archived);
@@ -2310,13 +2376,16 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const chip = (v, label, c = null) => html`<button class="pick ${c ? "list" : ""} ${fcat === v ? "on" : ""}" style=${c ? colorVars(colorById(c.color) || PALETTE[9], this._dark) : ""} aria-pressed=${fcat === v ? "true" : "false"} @click=${() => this._setShelfCat(v)}>${c ? html`<span class="dot"></span>` : nothing}<span>${label}</span></button>`;
     return html`
       <section class="page">
-        ${this._renderHead("Blocos", { text: `${plural(blocks.length, "bloco", "blocos")} · ${plural(pages, "folha", "folhas")}` })}
+        ${this._renderHead("Blocos", { text: `${plural(blocks.length, "bloco", "blocos")} · ${plural(pages, "folha", "folhas")}`, extra: this._renderViewToggle() })}
+        ${this._renderWhoChips(who, WHO_KEY)}
         ${cats.length
           ? html`<div class="chip-row cat-filter" role="group" aria-label="Categoria">
               ${chip("", "Todos")} ${cats.map((c) => chip(c.id, clip(c.name, 22), c))} ${none ? chip("sem", "Sem categoria") : nothing}
             </div>`
           : nothing}
-        <div class="shelf">
+        ${this._shelfList()
+          ? this._renderShelfList(blocks)
+          : html`<div class="shelf">
           ${repeat(
             blocks,
             (b) => b.id,
@@ -2330,7 +2399,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
             },
           )}
           <button class="cover add" @click=${() => this._openBlockSheet(null)}>${icon("plus")}<span>Novo bloco</span></button>
-        </div>
+        </div>`}
         ${archived.length ? this._renderArchived(archived) : nothing}
         ${groups.length
           ? html`<div class="panel">
@@ -2352,6 +2421,38 @@ class MemoriaApp extends ChatMixin(LitElement) {
           : nothing}
       </section>
     `;
+  }
+
+  /** Blocos: the quick choice between the covers and a list, at the right of the count. */
+  _renderViewToggle() {
+    const list = this._shelfList();
+    return html`<span class="view-toggle" role="group" aria-label="Ver os blocos">
+      <button class=${list ? "" : "on"} aria-pressed=${list ? "false" : "true"} aria-label="Em blocos" title="Em blocos" @click=${() => this._setShelfView(false)}>${icon("layout-grid")}</button>
+      <button class=${list ? "on" : ""} aria-pressed=${list ? "true" : "false"} aria-label="Em lista" title="Em lista" @click=${() => this._setShelfView(true)}>${icon("list")}</button>
+    </span>`;
+  }
+
+  /** Blocos em lista: one line each (the color, the name, the folhas, whose and when it opens), then Novo bloco. */
+  _renderShelfList(blocks) {
+    return html`<div class="panel shelf-list">
+      ${repeat(
+        blocks,
+        (b) => b.id,
+        (b) => {
+          const parts = this._whenParts(b);
+          const hint = [plural(this._pagesOf(b.id).length, "folha", "folhas"), b.owner ? `de ${b.owner}` : "", parts.length ? parts.map((p) => p.label).join(" · ") : "Sem horário"].filter(Boolean).join(" · ");
+          return html`<button class="row block-row" style=${this._cv(b)} @click=${() => this._openPage(b.id)} aria-label="Abrir ${b.name}">
+            <span class="tile">${icon("notebook")}</span>
+            <span class="grow"><span class="label">${b.name}</span><span class="hint">${hint}</span></span>
+            ${icon("chevron-right", "chev")}
+          </button>`;
+        },
+      )}
+      <button class="row block-row add" @click=${() => this._openBlockSheet(null)}>
+        <span class="tile">${icon("plus")}</span>
+        <span class="grow"><span class="label">Novo bloco</span></span>
+      </button>
+    </div>`;
   }
 
   /** Blocos › Arquivados (N): folded at the end of the shelf; tap to see them, tap one to open it. */
@@ -2426,12 +2527,13 @@ class MemoriaApp extends ChatMixin(LitElement) {
   _renderSearch() {
     const q = this._query.trim();
     const needle = fold(q);
-    // the archived blocks only with Incluir arquivados (kept on this device)
-    const hasArch = this._data.blocks.some((b) => b.archived);
-    const withArch = hasArch && local.get(SEARCH_ARCH_KEY, false) === true;
+    // the archived blocks only with Incluir arquivados; the blocks of the person using it and everyone's, or of
+    // another person, or all (both kept on this device)
+    const withArch = local.get(SEARCH_ARCH_KEY, false) === true;
+    const who = this._shelfWho(SEARCH_WHO_KEY);
     const pool = this._data.pages.filter((p) => {
       const b = this._block(p.block);
-      return b && (withArch || !b.archived);
+      return b && (withArch || !b.archived) && this._ofWho(b, who);
     });
     let results = [];
     if (needle) {
@@ -2445,16 +2547,15 @@ class MemoriaApp extends ChatMixin(LitElement) {
         ${this._renderHead("Buscar", { text: `Em ${plural(pool.length, "folha", "folhas")} · acentos não importam` })}
         <label class="search-box">
           ${icon("search")}
-          <input type="search" placeholder="Buscar em todos os blocos" .value=${this._query} @input=${(e) => (this._query = e.target.value)} enterkeyhint="search" aria-label="Buscar" />
+          <input type="search" placeholder="Buscar nos blocos" .value=${this._query} @input=${(e) => (this._query = e.target.value)} enterkeyhint="search" aria-label="Buscar" />
           ${this._query ? html`<button class="icon-btn" style="width:40px;height:40px" @click=${() => (this._query = "")} aria-label="Limpar">${icon("x")}</button>` : nothing}
         </label>
-        ${hasArch
-          ? html`<div class="chip-row search-opts"><button class="pick ${withArch ? "on" : ""}" aria-pressed=${withArch ? "true" : "false"} @click=${() => {
-              this._haptic("light");
-              local.set(SEARCH_ARCH_KEY, !withArch);
-              this.requestUpdate();
-            }}>${icon("archive")}<span>Incluir arquivados</span></button></div>`
-          : nothing}
+        ${this._renderWhoChips(who, SEARCH_WHO_KEY)}
+        <div class="chip-row search-opts"><button class="pick ${withArch ? "on" : ""}" aria-pressed=${withArch ? "true" : "false"} @click=${() => {
+          this._haptic("light");
+          local.set(SEARCH_ARCH_KEY, !withArch);
+          this.requestUpdate();
+        }}>${icon("archive")}<span>Incluir arquivados</span></button></div>
         ${!needle
           ? html`<p class="page-sub" style="margin-top:0">Procure qualquer palavra em todas as folhas.</p>`
           : results.length

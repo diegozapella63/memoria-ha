@@ -56,6 +56,8 @@ with sync_playwright() as p:
         pg = ctx.new_page()
         errs = []
         pg.on("pageerror", lambda e: errs.append(str(e)))
+        # 1.10.0: Blocos and Buscar start on the blocks of the person using it (Ana) and everyone's: here, every block
+        ctx.add_init_script("localStorage.setItem('memoria.blocos.pessoa', '\"*\"'); localStorage.setItem('memoria.buscar.pessoa', '\"*\"')")
         pg.goto(PREVIEW)
         a = pg.locator("memoria-app")
         a.locator(".page-title").first.wait_for()
