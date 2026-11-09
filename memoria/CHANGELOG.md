@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.11.3
+
+- O filtro **De quem**, em **Blocos** e no **Buscar**, volta a dizer **Todos**, no fim da fileira, à direita.
+
 ## 1.11.2
 
 - **Mais › Sobre**: a CorrerIA agora é descrita como o chat com todos os apps (pergunte e peça, também pelo WhatsApp).

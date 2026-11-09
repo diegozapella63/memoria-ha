@@ -2399,7 +2399,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     return html`<div class="chip-row who-filter" role="radiogroup" aria-label="De quem">
       ${[...this._whoNames(), "*"].map((n) => {
         const on = n === "*" ? who === "*" : who !== "*" && sameName(who, n);
-        return html`<button class="pick ${on ? "on" : ""}" role="radio" aria-checked=${on ? "true" : "false"} @click=${() => this._setShelfWho(n, key)}>${icon(n === "*" ? "users" : "user-round")}<span>${n === "*" ? "Todas as pessoas" : clip(n, 18)}</span></button>`;
+        return html`<button class="pick ${on ? "on" : ""}" role="radio" aria-checked=${on ? "true" : "false"} @click=${() => this._setShelfWho(n, key)}>${icon(n === "*" ? "users" : "user-round")}<span>${n === "*" ? "Todos" : clip(n, 18)}</span></button>`;
       })}
     </div>`;
   }

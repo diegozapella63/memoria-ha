@@ -43,7 +43,7 @@ Nos ajustes do bloco, **De quem é**: **Todos** (o padrão; os blocos de antes f
 
 O app sabe quem está usando pelo login do Home Assistant: a pessoa ligada àquele usuário. Um login que não é de nenhuma pessoa da casa (um tablet na parede, por exemplo) vê todos os blocos no **Agora**.
 
-No alto da tela **Blocos**, **De quem**: você (os seus blocos e os de **Todos**, como começa), cada pessoa da casa (os dela e os de todos) ou **Todas as pessoas** (todos os blocos, de todo mundo, com "de Ana" na etiqueta da capa). A escolha fica guardada no aparelho, e a tela do bloco também diz de quem é. Se o Home Assistant não responder, dá para escrever o nome da pessoa.
+No alto da tela **Blocos**, **De quem**: você (os seus blocos e os de **Todos**, como começa), cada pessoa da casa (os dela e os de todos) ou **Todos**, no fim, à direita (todos os blocos, de todo mundo, com "de Ana" na etiqueta da capa). A escolha fica guardada no aparelho, e a tela do bloco também diz de quem é. Se o Home Assistant não responder, dá para escrever o nome da pessoa.
 
 
 Sem usar o controle por pessoa, desligue **Controle por pessoa** em **Mais › Configurações › Opções**: some o **De quem é** dos blocos e o filtro **De quem**, e todo bloco abre no **Agora** de todos. Ligado de novo, cada bloco volta a ser de quem era.
