@@ -59,7 +59,7 @@ repository.yaml          repositório de apps
 memoria/                 o app (config, Dockerfile, servidor Node.js)
 frontend/                código-fonte da interface (Lit)
 preview/                 prévia da interface com blocos de exemplo
-docs/                    telas de exemplo do README
+docs/                    telas de exemplo do README (tools/prints_readme.py refaz pela prévia)
 dev/fake-ha.mjs          Home Assistant falso para desenvolver sem o HA
 ```
 
