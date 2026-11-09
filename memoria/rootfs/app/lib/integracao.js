@@ -13,6 +13,20 @@ export const ROUTE = "/api/integracao/agora";
 export const MAX_TEXT_OUT = 1500;
 const byCreated = (a, b) => a.created - b.created || (a.id < b.id ? -1 : 1);
 const KIND = { page: "trecho", period: "periodo", time: "horario" };
+const PAPERS = new Set(["pautado", "quadriculado", "pontilhado", "liso"]);
+
+/**
+ * The clock of whoever is looking (1.15.1), so the other app shows what their Agora here shows: hora "HH:MM" and
+ * dia "YYYY-MM-DD" of their phone (the server may be in another time zone, or the person traveling). Missing or
+ * wrong: the clock of the server.
+ */
+export function clockOf(hora, dia, fallback = new Date()) {
+  const h = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(hora || ""));
+  const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dia || ""));
+  if (!h || !d) return fallback;
+  const at = new Date(+d[1], +d[2] - 1, +d[3], +h[1], +h[2]);
+  return at.getMonth() === +d[2] - 1 && at.getDate() === +d[3] ? at : fallback;
+}
 
 /** The address of this app in Home Assistant (/app/<slug> since 2026.2): hostname a1b2c3d4-memoria -> a1b2c3d4_memoria. */
 export function panelOf(h = os.hostname()) {
@@ -38,6 +52,7 @@ function withMarks(text, lines) {
  * stops, when it has a Fica no Agora; past it, none holds) and the next start times, past midnight too, three in all.
  * A sheet with a time is that sheet; a block with a period or a time, its last sheet (the one the Agora opens; none
  * yet: folha_id null and no text). The text of the one of now has the boxes ticked in the Agora for this time.
+ * papel and letra (1.15.1): the paper of the block and the letters of the sheets (Letra de mão), to draw it the same way.
  */
 export function trechos(data, { person = "", now = new Date() } = {}) {
   const min = minutesOf(now);
@@ -63,6 +78,8 @@ export function trechos(data, { person = "", now = new Date() } = {}) {
       titulo: firstLine(text).slice(0, 200),
       texto: text.length > MAX_TEXT_OUT ? `${text.slice(0, MAX_TEXT_OUT - 1).trimEnd()}…` : text,
       tipo: KIND[e.kind] || "horario",
+      papel: PAPERS.has(b.paper) ? b.paper : "pautado",
+      letra: data.app && data.app.hand === false ? "normal" : "mao",
     };
     if (g.now && g.end != null) out.fim = fmtMin(g.end);
     if (e.kind === "period") out.periodo = (PERIODS.find((p) => p.id === e.period) || {}).label || "";

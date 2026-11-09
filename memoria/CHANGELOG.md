@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.15.1
+
+- **CronologIA**: a folha de agora que ele mostra é a mesma do **Agora** daqui, pelo relógio do celular de quem olha (antes valia o relógio do Home Assistant, e em outro fuso podia dizer "nada agora"). Ele também recebe o papel do bloco e se a folha é em letra de mão, para desenhar a folha igual.
+
 ## 1.15.0
 
 - **Buscar** já mostra os blocos antes de escrever, com a categoria de cada um. Escrevendo, ficam os do nome procurado, e as folhas vêm embaixo.

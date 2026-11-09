@@ -368,6 +368,13 @@ test("1.13.0: the trechos of now for the CronologIA, with the key of share/memor
   assert.equal(r.body.pessoa, "");
   assert.deepEqual(r.body.trechos.map((t) => t.inicio).sort(), ["05:00", "09:00", "19:30"]);
   assert.deepEqual(r.body.trechos.map((t) => t.agora), [true, false, false], "now first");
+  // 1.15.1: at the clock of the phone (hora, dia): at 06:00 the Mercado of 05:00 holds, whatever the clock of the server
+  const today = new Date();
+  const dia = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  r = await get(`?hora=06:00&dia=${dia}`);
+  assert.deepEqual([r.body.trechos[0].inicio, r.body.trechos[0].agora, r.body.trechos[0].papel, r.body.trechos[0].letra], ["05:00", true, "pautado", "mao"]);
+  r = await get(`?hora=20:00&dia=${dia}`);
+  assert.deepEqual([r.body.trechos[0].inicio, r.body.trechos[0].agora], ["19:30", true]);
   // Inglês becomes Beto's: Beto (by his login or his person) sees it, Ana doesn't; someone else: every block
   const a = await screen();
   await a.call("memoria/block/save", { block: { id: "ingles00001", owner: "Beto" } });

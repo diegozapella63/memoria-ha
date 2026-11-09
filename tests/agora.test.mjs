@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildSchedule, ahead } from "../memoria/rootfs/app/lib/schedule.js";
-import { trechos, panelOf, MAX_TEXT_OUT } from "../memoria/rootfs/app/lib/integracao.js";
+import { trechos, panelOf, MAX_TEXT_OUT, clockOf } from "../memoria/rootfs/app/lib/integracao.js";
 import { casa } from "./fixtures/casa.mjs";
 
 const at = (h, m = 0) => h * 60 + m;
@@ -64,6 +64,8 @@ test("trechos: the sheet of now and of the next two times, for the other apps", 
     titulo: "Churrasco do Beto",
     texto: "Churrasco do Beto\n\nCarvão, sal grosso, linguiça e pão de alho.",
     tipo: "trecho",
+    papel: "pautado",
+    letra: "mao",
     outros: 0,
   });
   // a block with a time: its last sheet, the one the Agora opens
@@ -198,4 +200,24 @@ test("trechos for the CronologIA: fim with Fica no Agora, none now past it, and 
   assert.equal(trechos(d, { now: when(10) })[0].texto, "Churrasco do Beto\n☐ Carvão\n☐ Sal grosso", "yesterday's marks: clean");
   out = trechos(d, { now: when(13) });
   assert.deepEqual(out.map((t) => [t.inicio, t.agora]), [["19:30", false], ["05:00", false], ["09:00", false]], "past 12:00: none now, the next three");
+});
+
+test("1.15.1: the clock of whoever is looking (their phone), the paper of the block and the letters of the sheets", () => {
+  const fallback = new Date(2026, 10, 9, 14, 9);
+  const c = clockOf("12:09", "2026-11-09", fallback);
+  assert.deepEqual([c.getFullYear(), c.getMonth(), c.getDate(), c.getHours(), c.getMinutes()], [2026, 10, 9, 12, 9]);
+  for (const [h, d] of [["", "2026-11-09"], ["12:09", ""], ["24:00", "2026-11-09"], ["12:9", "2026-11-09"], ["12:09", "2026-02-30"], ["12:09", "09/11/2026"]]) {
+    assert.equal(clockOf(h, d, fallback), fallback, `${h} ${d}: the server's`);
+  }
+  // the server is ahead (another time zone): at its 20:00 the last one holds; at the phone's 13:30, the sheet of 09:00
+  const data = casa();
+  assert.equal(trechos(data, { now: when(20) })[0].inicio, "19:30");
+  const t = trechos(data, { now: clockOf("13:30", "2026-11-08", when(20)) });
+  assert.deepEqual([t[0].inicio, t[0].agora], ["09:00", true]);
+  assert.deepEqual([t[0].papel, t[0].letra], ["pautado", "mao"]);
+  data.blocks.forEach((b) => (b.paper = "quadriculado"));
+  data.app = { ...(data.app || {}), hand: false };
+  assert.deepEqual([trechos(data, { now: when(13, 30) })[0].papel, trechos(data, { now: when(13, 30) })[0].letra], ["quadriculado", "normal"]);
+  data.blocks.forEach((b) => (b.paper = "<script>"));
+  assert.equal(trechos(data, { now: when(13, 30) })[0].papel, "pautado", "an unknown paper: the default");
 });

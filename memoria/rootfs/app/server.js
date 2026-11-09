@@ -23,11 +23,11 @@ import { Sensor } from "./lib/sensor.js";
 import { Backups, backupZip, toCSV, parseImport, listVersions, readVersion, fileStamp } from "./lib/data.js";
 import { anotacoes, reportHtml, reportPdf, pdfName } from "./lib/report.js";
 import { Correria, ROUTE as TOOLS_ROUTE } from "./lib/correria.js";
-import { Integracao, ROUTE as NOW_ROUTE, trechos } from "./lib/integracao.js";
+import { Integracao, ROUTE as NOW_ROUTE, trechos, clockOf } from "./lib/integracao.js";
 import { listTools, callTool, ToolError, UnknownTool } from "./lib/ferramentas.js";
 import { sameName } from "./lib/schedule.js";
 
-const VERSION = "1.15.0";
+const VERSION = "1.15.1";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WWW = path.join(HERE, "www");
 const DEV = process.env.MEMORIA_DEV === "1";
@@ -410,9 +410,10 @@ async function handleTools(req, res) {
 }
 
 /**
- * GET /api/integracao/agora?usuario=<user id of Home Assistant>&pessoa=<person.x or name>: the CronologIA, with the key of
- * share/memoria/integracao.json -> {versao, pessoa, trechos} (lib/integracao.js): the sheet of now and of the next two
- * times for that person, like their Agora here (theirs and everyone's; nobody of the house: every block).
+ * GET /api/integracao/agora?usuario=<user id of Home Assistant>&pessoa=<person.x or name>&hora=HH:MM&dia=YYYY-MM-DD: the
+ * CronologIA, with the key of share/memoria/integracao.json -> {versao, pessoa, trechos} (lib/integracao.js): the sheet of
+ * now and of the next two times for that person, like their Agora here (theirs and everyone's; nobody of the house: every
+ * block), at the clock of their phone (hora and dia, 1.15.1; without them, the server's).
  */
 async function handleNow(req, res) {
   if (!integracao.authorized(req.headers)) return sendJson(res, 401, { erro: "Chave inválida." });
@@ -427,7 +428,7 @@ async function handleNow(req, res) {
     // not a person of the house: every block, like the Agora of a shared tablet (no Home Assistant now: the name as it came)
     who = p ? p.name : house && house.length ? "" : /^person\./.test(pessoa) ? "" : pessoa;
   }
-  sendJson(res, 200, { versao: VERSION, pessoa: who, trechos: trechos(store.data, { person: who, now: new Date() }) });
+  sendJson(res, 200, { versao: VERSION, pessoa: who, trechos: trechos(store.data, { person: who, now: clockOf(q.get("hora"), q.get("dia")) }) });
 }
 
 function download(res, body, type, name) {
