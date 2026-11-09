@@ -30,7 +30,7 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **Virar a página com um toque**: borda direita vai para a próxima folha (ou uma nova, pronta para escrever); borda esquerda volta. Arrastar também vira.
 - **Abre sozinho**: cada bloco pode ter períodos (manhã, tarde, noite, com horários de início ajustáveis) e horários exatos.
 - **Trechos com horário**: uma folha específica pode aparecer às 10h, por exemplo a pauta de uma reunião.
-- **Tela Agora** com o horário de agora e os dois próximos: toque num deles para espiar o que vem depois.
+- **Tela Agora** com o horário de agora e os dois próximos: toque num deles para espiar o que vem depois. Cada horário fica no Agora até o próximo ou pelo tempo escolhido (**Fica no Agora**), e as caixas marcadas ali valem só para aquela vez.
 - **Estante de blocos** com o **Seu dia**: os horários de hoje, com o de agora marcado.
 - **Categorias** para agrupar os blocos (Trabalho, Casa, Estudos…), com filtro na estante.
 - **De quem é**: um bloco de uma pessoa da casa só abre sozinho no Agora dela; os de Todos, para todo mundo.

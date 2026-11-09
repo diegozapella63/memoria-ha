@@ -6,7 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { DEFAULT_PERIODS, PAPERS, PERIODS, normTime, ownerName } from "./schedule.js";
+import { DEFAULT_PERIODS, PAPERS, PERIODS, DURATIONS, normTime, ownerName } from "./schedule.js";
 
 export const COLORS = ["vermelho", "coral", "rosa", "framboesa", "laranja", "ouro", "lilas", "azul", "menta", "grafite"];
 const PERIOD_IDS = PERIODS.map((p) => p.id);
@@ -44,6 +44,24 @@ const times = (list) => {
 
 const looseTimes = (list) => (Array.isArray(list) ? [...new Set(list.map(normTime).filter(Boolean))].sort().slice(0, 24) : []);
 const when = (v, fallback) => (Number.isFinite(v) && v > 0 ? v : fallback);
+// Fica no Agora (1.14.0): how long a block or a sheet with a time holds, in minutes; 0 (until the next start) isn't kept
+const durIn = (v) => (DURATIONS.includes(v) && v > 0 ? { dur: v } : {});
+// The marks of the Agora (1.14.0): ticked only for that time of the sheet ({at: "AAAA-MM-DDTHH:MM", lines}), apart
+// from the text; another time of the sheet starts clean. Old ones (over 3 days) and those of sheets gone are dropped.
+const OCC_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+const MAX_MARKS = 200;
+const occTime = (at) => new Date(`${at}:00`).getTime();
+function cleanMarks(raw, pageIds, now = Date.now()) {
+  const out = {};
+  if (!raw || typeof raw !== "object") return out;
+  for (const [id, m] of Object.entries(raw)) {
+    if (!pageIds.has(id) || !m || !OCC_RE.test(m.at) || !Array.isArray(m.lines)) continue;
+    if (!(now - occTime(m.at) < 3 * 864e5)) continue;
+    const lines = [...new Set(m.lines.filter((l) => typeof l === "string").map((l) => l.replace(/\s+/g, " ").trim().slice(0, 200)).filter(Boolean))].slice(0, MAX_MARKS);
+    if (lines.length) out[id] = { at: m.at, lines };
+  }
+  return out;
+}
 
 const catKey = (name) =>
   name
@@ -102,6 +120,7 @@ export function normalize(raw, current = {}) {
       paper: PAPERS.includes(b.paper) ? b.paper : "pautado",
       periods: [...new Set((Array.isArray(b.periods) ? b.periods : []).filter((p) => PERIOD_IDS.includes(p)))],
       times: looseTimes(b.times),
+      ...durIn(b.dur),
       ...(catIds.has(b.category) ? { category: b.category } : {}),
       ...(ownerName(b.owner) ? { owner: ownerName(b.owner) } : {}),
       // Arquivar bloco: when (old files: not archived)
@@ -124,6 +143,7 @@ export function normalize(raw, current = {}) {
       block: p.block,
       text: typeof p.text === "string" ? p.text.slice(0, MAX_TEXT) : "",
       times: looseTimes(p.times),
+      ...durIn(p.dur),
       created,
       updated: when(p.updated, created),
     });
@@ -147,7 +167,7 @@ export function normalize(raw, current = {}) {
   if (current.voice_engine) app.voice_engine = current.voice_engine;
   // So does the connection with the CorrerIA (its key is in /data, not in the file).
   if (current.correria === true) app.correria = true;
-  return { version: 1, periods, app, categories, blocks, pages };
+  return { version: 1, periods, app, categories, blocks, pages, marks: cleanMarks(raw.marks, pageIds, now) };
 }
 
 function sample(now) {
@@ -189,6 +209,7 @@ export class Store {
       blocks: (raw && Array.isArray(raw.blocks) && raw.blocks) || seed.blocks,
       pages: (raw && Array.isArray(raw.pages) && raw.pages) || (seed ? seed.pages : []),
     };
+    this.data.marks = cleanMarks(raw && raw.marks, new Set(this.data.pages.map((p) => p.id)), now);
     if (first) this.save();
   }
 
@@ -264,6 +285,11 @@ export class Store {
       b.periods = [...new Set(ps)];
     }
     if ("times" in input || !existing) b.times = times(input.times);
+    if ("dur" in input) {
+      if (input.dur && !DURATIONS.includes(input.dur)) fail("tempo inválido");
+      if (input.dur) b.dur = input.dur;
+      else delete b.dur;
+    }
     if ("category" in input) {
       // "" or null = sem categoria
       if (input.category && !this.category(input.category)) fail("categoria não existe");
@@ -284,7 +310,7 @@ export class Store {
     if ("order" in input && Number.isInteger(input.order)) b.order = input.order;
     b.updated = now;
     if (existing) {
-      for (const k of ["category", "owner", "archived"]) if (!(k in b)) delete existing[k];
+      for (const k of ["category", "owner", "archived", "dur"]) if (!(k in b)) delete existing[k];
       Object.assign(existing, b);
     } else this.data.blocks.push(b);
     this.save();
@@ -341,6 +367,7 @@ export class Store {
     if (this.data.blocks.length === before) fail("bloco não existe");
     const removed = this.data.pages.filter((p) => p.block === id).map((p) => p.id);
     this.data.pages = this.data.pages.filter((p) => p.block !== id);
+    if (this.data.marks) for (const pid of removed) delete this.data.marks[pid];
     this.save();
     return removed;
   }
@@ -360,6 +387,11 @@ export class Store {
     p.block = blockId;
     if ("text" in input) p.text = str(input.text, MAX_TEXT, "texto");
     if ("times" in input) p.times = times(input.times);
+    if ("dur" in input) {
+      if (input.dur && !DURATIONS.includes(input.dur)) fail("tempo inválido");
+      if (input.dur) p.dur = input.dur;
+      else delete p.dur;
+    }
     // Last write wins, but never let an older edit overwrite a newer one.
     if (existing && Number.isFinite(input.base) && input.base < existing.updated && "text" in input && input.text !== existing.text) {
       const err = new Error("Esta página mudou em outro aparelho");
@@ -368,16 +400,36 @@ export class Store {
       throw err;
     }
     p.updated = now;
-    if (existing) Object.assign(existing, p);
-    else this.data.pages.push(p);
+    if (existing) {
+      if (!("dur" in p)) delete existing.dur;
+      Object.assign(existing, p);
+    } else this.data.pages.push(p);
     this.save();
     return existing || p;
+  }
+
+  /**
+   * Marcar no Agora: the ticked lines (their text, without the box) of a sheet for one time of it ("AAAA-MM-DDTHH:MM").
+   * Another time replaces it; no lines: none. The text of the sheet doesn't change.
+   */
+  saveMarks(pageId, at, lines) {
+    if (!this.page(pageId)) fail("página não existe");
+    if (!OCC_RE.test(String(at || ""))) fail("horário inválido");
+    if (!Array.isArray(lines)) fail("linhas inválidas");
+    const clean = [...new Set(lines.filter((l) => typeof l === "string").map((l) => l.replace(/\s+/g, " ").trim().slice(0, 200)).filter(Boolean))].slice(0, MAX_MARKS);
+    const all = cleanMarks(this.data.marks, new Set(this.data.pages.map((p) => p.id)));
+    delete all[pageId];
+    if (clean.length) all[pageId] = { at, lines: clean };
+    this.data.marks = all;
+    this.save();
+    return all[pageId] || null;
   }
 
   deletePage(id) {
     const before = this.data.pages.length;
     this.data.pages = this.data.pages.filter((p) => p.id !== id);
     if (this.data.pages.length === before) return false;
+    if (this.data.marks) delete this.data.marks[id];
     this.save();
     return true;
   }

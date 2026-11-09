@@ -385,3 +385,21 @@ test("1.13.0: the trechos of now for the CronologIA, with the key of share/memor
   await a.call("memoria/block/save", { block: { id: "ingles00001", owner: "" } });
   a.ws.close();
 });
+
+test("1.14.0: Fica no Agora saved on the sheet, and the marks of the Agora reach the other screens (the text stays)", async () => {
+  const a = await screen();
+  const b = await screen();
+  await b.call("memoria/subscribe");
+  const page = await a.call("memoria/page/save", { page: { block: "mercado0001", text: "Feira\n☐ Banana\n☐ Alface", times: ["08:00"], dur: 120 } });
+  assert.equal(page.dur, 120);
+  const marks = await a.call("memoria/marks/save", { page_id: page.id, at: "2026-11-09T08:00", lines: ["Banana"] });
+  assert.deepEqual(marks, { at: "2026-11-09T08:00", lines: ["Banana"] });
+  assert.ok(await waitFor(() => b.events.some((e) => e.kind === "marks" && e.id === page.id && e.marks && e.marks.lines[0] === "Banana")));
+  const boot = await b.call("memoria/bootstrap");
+  assert.equal(boot.data.pages.find((p) => p.id === page.id).text, "Feira\n☐ Banana\n☐ Alface", "the text of the sheet doesn't change");
+  await assert.rejects(a.call("memoria/marks/save", { page_id: page.id, at: "amanhã", lines: [] }), /horário inválido/);
+  assert.equal(await a.call("memoria/marks/save", { page_id: page.id, at: "2026-11-09T08:00", lines: [] }), null);
+  await a.call("memoria/page/delete", { page_id: page.id });
+  a.ws.close();
+  b.ws.close();
+});

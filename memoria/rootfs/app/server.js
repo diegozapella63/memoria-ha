@@ -27,7 +27,7 @@ import { Integracao, ROUTE as NOW_ROUTE, trechos } from "./lib/integracao.js";
 import { listTools, callTool, ToolError, UnknownTool } from "./lib/ferramentas.js";
 import { sameName } from "./lib/schedule.js";
 
-const VERSION = "1.13.0";
+const VERSION = "1.14.0";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WWW = path.join(HERE, "www");
 const DEV = process.env.MEMORIA_DEV === "1";
@@ -204,6 +204,14 @@ class Session {
         const pageId = String(msg.page_id || "");
         if (store.deletePage(pageId)) broadcast({ kind: "page_deleted", id: pageId });
         return this.result(id);
+      }
+
+      // Marcar no Agora: the ticked lines of a sheet for one time of it (the text doesn't change)
+      case "memoria/marks/save": {
+        const pageId = String(msg.page_id || "");
+        const marks = store.saveMarks(pageId, msg.at, msg.lines);
+        this.result(id, marks);
+        return broadcast({ kind: "marks", id: pageId, marks });
       }
 
       case "memoria/block/save": {

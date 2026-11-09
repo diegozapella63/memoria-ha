@@ -1,6 +1,6 @@
 // In-memory stand-in for the MemorIA server, used by the preview page.
 // Mirrors the server's rules (ids, times, conflicts) closely enough for the UI.
-import { DEFAULT_PERIODS, PAPERS, PERIODS, normTime, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
+import { DEFAULT_PERIODS, PAPERS, PERIODS, DURATIONS, normTime, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
 
 const COLORS = ["vermelho", "coral", "rosa", "framboesa", "laranja", "ouro", "lilas", "azul", "menta", "grafite"];
 const id = () => Math.random().toString(16).slice(2, 14).padEnd(12, "0");
@@ -54,7 +54,7 @@ export class MockApi {
 
   async bootstrap() {
     await wait(60);
-    return { version: "1.13.0", user: { name: "Ana Souza", person: "Ana" }, people: ["Ana", "Beto"], ai: await this.aiStatus(), data: clone(this.data), correria: { ultimo: null } };
+    return { version: "1.14.0", user: { name: "Ana Souza", person: "Ana" }, people: ["Ana", "Beto"], ai: await this.aiStatus(), data: clone(this.data), correria: { ultimo: null } };
   }
 
   // De quem é: the people of the house (Ana uses the preview)
@@ -104,9 +104,25 @@ export class MockApi {
     p.block = block;
     if ("text" in input) p.text = String(input.text).slice(0, 50000);
     if ("times" in input) p.times = times(input.times);
+    if ("dur" in input) {
+      if (DURATIONS.includes(input.dur) && input.dur) p.dur = input.dur;
+      else delete p.dur;
+    }
     p.updated = now;
     this.emit({ kind: "page", page: p });
     return clone(p);
+  }
+
+  async saveMarks(pid, at, lines) {
+    await wait(30);
+    const d = this.data;
+    if (!d.pages.some((p) => p.id === pid)) throw Object.assign(new Error("página não existe"), { code: "invalid_format" });
+    d.marks = { ...(d.marks || {}) };
+    const clean = [...new Set((lines || []).map((l) => String(l).replace(/\s+/g, " ").trim()).filter(Boolean))];
+    if (clean.length) d.marks[pid] = { at, lines: clean };
+    else delete d.marks[pid];
+    this.emit({ kind: "marks", id: pid, marks: d.marks[pid] || null });
+    return clone(d.marks[pid] || null);
   }
 
   async deletePage(pid) {
@@ -132,6 +148,10 @@ export class MockApi {
     if ("paper" in input || isNew) b.paper = PAPERS.includes(input.paper) ? input.paper : "pautado";
     if ("periods" in input || isNew) b.periods = (input.periods || []).filter((p) => PERIODS.some((x) => x.id === p));
     if ("times" in input || isNew) b.times = times(input.times);
+    if ("dur" in input) {
+      if (DURATIONS.includes(input.dur) && input.dur) b.dur = input.dur;
+      else delete b.dur;
+    }
     if ("owner" in input) {
       const owner = ownerName(input.owner);
       if (owner) b.owner = owner;

@@ -1,6 +1,6 @@
 # https://developers.home-assistant.io/docs/apps/configuration
 name: MemorIA
-version: "1.13.0"
+version: "1.14.0"
 slug: memoria
 description: Blocos de anotações em forma de caderno, que se abrem sozinhos conforme o período e o horário do dia.
 url: "https://github.com/diegozapella63/memoria-ha/tree/main/memoria"

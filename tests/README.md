@@ -1,6 +1,6 @@
 # Testes do MemorIA
 
-- `npm test` (na raiz): o servidor (`memoria/rootfs/app/lib`: dados, categorias, de quem é e arquivados, o Agora e o sensor, relatório e PDF, exportação, as ferramentas do CorrerIA em `tests/ferramentas.test.mjs`; as caixas de marcar e o texto delas no PDF em `tests/caixas.test.mjs`; o Agora de agora em diante e os trechos para o CronologIA em `tests/agora.test.mjs`) e, em `tests/server.test.mjs`, o servidor de verdade com o Home Assistant simulado (também a rota `/api/integracao/ferramentas`, o arquivo `share/memoria/correria.json`, a rota `/api/integracao/agora` com o `share/memoria/integracao.json` e as pessoas da casa, Ana e Beto, com a pessoa de cada login), com `node:test`, sem instalar nada. Nunca dependem do relógio real.
+- `npm test` (na raiz): o servidor (`memoria/rootfs/app/lib`: dados, categorias, de quem é e arquivados, o Agora e o sensor, relatório e PDF, exportação, as ferramentas do CorrerIA em `tests/ferramentas.test.mjs`; as caixas de marcar e o texto delas no PDF em `tests/caixas.test.mjs`; o Agora de agora em diante, o Fica no Agora, as marcas do Agora e os trechos para o CronologIA em `tests/agora.test.mjs`) e, em `tests/server.test.mjs`, o servidor de verdade com o Home Assistant simulado (também a rota `/api/integracao/ferramentas`, o arquivo `share/memoria/correria.json`, a rota `/api/integracao/agora` com o `share/memoria/integracao.json` e as pessoas da casa, Ana e Beto, com a pessoa de cada login), com `node:test`, sem instalar nada. Nunca dependem do relógio real.
 - Conferências visuais na prévia (`preview/memoria-preview.html`, sem servidor), em Python + Playwright
   (`pip install playwright && playwright install chromium`). Gere a prévia antes (`cd frontend && npm run build`):
 
@@ -8,6 +8,7 @@
 |---|---|
 | `tests/mais_check.py` | Mais em menu, Configurações em abas, Voltar, ‹ Mais e arrastar; tema automático e Cor do dia |
 | `tests/agora_check.py` | Agora: folha com horário de quem é dono, Nada com horário (sem bloco qualquer) e de quem são os blocos com horário; os botões das escolhas do mesmo tamanho; o nome do bloco com a largura toda, sem quebrar palavra |
+| `tests/tempo_check.py` | Fica no Agora (1 h no ⋯ da folha: até quando no alto, depois Nada agora com os próximos para espiar, e não a janta até a manhã) e as caixas marcadas no Agora só para aquela vez (a folha não muda, em Blocos aparece como está, no dia seguinte começa limpa) |
 | `tests/ordem_check.py` | A fileira do alto do Agora: o horário de agora primeiro e os dois próximos (depois da meia-noite também), com o relógio da página acertado pelo teste; espiar não muda a ordem; o dia inteiro em Blocos › Seu dia |
 | `tests/arquivar_check.py` | Arquivar bloco: fora da estante, do Agora, da Nova e do Buscar (Incluir arquivados), Arquivados no fim de Blocos, Desfazer e Desarquivar |
 | `tests/dono_check.py` | De quem é: Todos ou uma pessoa da casa (ou o nome escrito, sem as pessoas), o Agora e o Seu dia de quem usa, "de Beto" na estante; o filtro De quem em Blocos e no Buscar |

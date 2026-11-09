@@ -25,6 +25,7 @@ No alto da folha, ao lado do número, ficam **Caixa de marcar** e **Emojis**. Us
 - **Caixa de marcar** transforma a linha onde está o cursor num item com caixa (☐); tocar de novo tira a caixa. Fora da escrita, ela põe um item novo no fim da folha.
 - Num item, o **Enter** já faz outro item embaixo. Enter num item vazio acaba a lista.
 - Fora da escrita, cada item mostra uma caixa: um toque marca como feito (o texto fica riscado), outro toque desmarca. Tocar no texto abre a escrita, como sempre.
+- No **Agora**, marcar vale só para aquela vez do trecho: a folha não muda (em **Blocos** ela aparece como está) e, na próxima vez que o trecho aparecer, as caixas voltam desmarcadas. Serve para listas de todo dia, como as refeições ou os remédios. Fora do Agora, em **Blocos**, marcar grava na folha.
 - **Emojis** abre uma fileira de emojis sobre a folha. Cada um entra onde está o cursor; tocar em Emojis de novo fecha a fileira.
 - Na folha, a caixa fica guardada como ☐ (a fazer) e ☑ (feito); listas escritas como `[ ]` e `[x]` também viram caixas. No PDF do Relatório, aparecem como [ ] e [x], e os emojis ficam de fora.
 
@@ -46,6 +47,8 @@ Em **Blocos**, abra um bloco e toque na linha **Abre sozinho** (ou no ícone de 
 - **Horários exatos**: por exemplo Treino às 07:00 e Diário às 22:00.
 
 No alto do **Agora** aparece primeiro o que vale agora e, em seguida, os dois próximos horários (depois da meia-noite, os de amanhã). Um toque espia outro horário; **Voltar para agora** volta. O dia inteiro fica em **Blocos › Seu dia**.
+
+**Fica no Agora** diz por quanto tempo um horário vale: **Até o próximo** (o padrão: até começar o próximo horário) ou 1, 2, 3, 4, 6 ou 8 horas. Fica nos ajustes do bloco (embaixo de **Quando abrir sozinho**) e no ⋯ de uma folha com horário. Passado esse tempo, o Agora mostra **Nada agora** até o próximo horário, com os próximos no alto para espiar: a janta das 18:00 com 4 horas some às 22:00, em vez de ficar até a manhã. Enquanto vale, o alto diz até quando ("desde 18:00 até 22:00").
 
 Nos mesmos ajustes ficam o nome, a **categoria**, **de quem é**, a **cor da capa**, o tipo de **folha** (pautada, quadriculada, pontilhada ou lisa), **Arquivar bloco** e o botão de excluir o bloco (as folhas dele vão junto). Para criar outro, toque em **Novo bloco**, no fim da estante.
 
@@ -74,7 +77,7 @@ Nos ajustes do bloco, escolha **Sem categoria**, uma das categorias ou **Nova** 
 
 À direita da contagem, a escolha rápida entre ver os blocos **em blocos** (as capas) ou **em lista** (uma linha por bloco: a cor, o nome, as folhas, de quem é e quando abre; **Novo bloco** no fim). A escolha fica guardada no aparelho.
 
-Com categorias, a tela **Blocos** mostra etiquetas no alto: **Todos**, cada categoria e **Sem categoria** (quando algum bloco não tem). A escolha fica guardada no aparelho (vale também para os **Arquivados**), e um bloco novo criado com uma categoria escolhida já entra nela. O **Seu dia** continua mostrando todos os horários.
+Com categorias, a tela **Blocos** mostra etiquetas no alto: **Todos**, cada categoria e **Sem categoria** (quando algum bloco não tem), todas do mesmo tamanho, alinhadas com as de **De quem** (com muitas, a fileira rola para o lado). A escolha fica guardada no aparelho (vale também para os **Arquivados**), e um bloco novo criado com uma categoria escolhida já entra nela. O **Seu dia** continua mostrando todos os horários.
 
 No fim de **Blocos**, o quadro **Seu dia** lista os horários de hoje, com o de agora marcado. Toque num deles para abrir o bloco (ou o trecho).
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.14.0
+
+- **Fica no Agora**: escolha por quanto tempo um horário vale (**Até o próximo**, como antes, ou 1, 2, 3, 4, 6 ou 8 horas), nos ajustes do bloco e no ⋯ da folha com horário. Passado o tempo, o Agora mostra **Nada agora** até o próximo horário. A janta das 18:00 não fica mais até de manhã.
+- **Marcar no Agora**: as caixas marcadas no Agora valem só para aquela vez do trecho. A folha não muda e, na próxima vez que o trecho aparecer, as caixas voltam desmarcadas. Em **Blocos**, marcar continua gravando na folha.
+- **Blocos**: os botões de **De quem** e das categorias, no alto, ficam todos do mesmo tamanho e alinhados.
+- **CronologIA**: o cartão do MemorIA mostra as caixas marcadas no Agora e some quando o tempo do trecho acaba.
+
 ## 1.13.0
 
 - **Agora**: a fileira de horários do alto começa pelo que vale agora; depois vêm os dois próximos (passando da meia-noite, os de amanhã). Os horários que já passaram hoje não aparecem mais antes. O dia inteiro continua em **Blocos › Seu dia**.

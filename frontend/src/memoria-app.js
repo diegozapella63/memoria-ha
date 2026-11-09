@@ -12,7 +12,7 @@ import { PALETTE, colorById, colorVars, hexToRgba, fold, foldKeepLength, plural,
 import { parentHass, detectDark } from "./api.js";
 import { parseLinks, hasLinks, linksToText, normalizeUrl } from "../../memoria/rootfs/app/lib/links.js";
 import { appendLink, freeColor, checkOf, hasChecks, toggleCheck, CHECK_TODO } from "../../memoria/rootfs/app/lib/writing.js";
-import { PERIODS, PAPERS, buildSchedule, currentAt, nextAfter, timeline, ahead, minutesOf, fmtMin, periodAt, periodTimes, normTime, opensFor, sameName, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
+import { PERIODS, PAPERS, DURATIONS, buildSchedule, currentAt, nextAfter, timeline, ahead, occurrence, minutesOf, fmtMin, periodAt, periodTimes, normTime, opensFor, sameName, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
 
 const THEME_KEY = "memoria.theme";
 const SAVE_DELAY = 600;
@@ -430,6 +430,11 @@ class MemoriaApp extends ChatMixin(LitElement) {
       this._putPage(p);
     } else if (ev.kind === "page_deleted") {
       this._dropPageLocally(ev.id);
+    } else if (ev.kind === "marks") {
+      const marks = { ...(this._data.marks || {}) };
+      if (ev.marks) marks[ev.id] = ev.marks;
+      else delete marks[ev.id];
+      this._data = { ...this._data, marks };
     } else if (ev.kind === "block") {
       this._putBlock(ev.block);
       // archived or someone else's now: Agora goes to what is on for this person (and an empty Agora takes one back)
@@ -1451,6 +1456,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       paper: b ? b.paper : "pautado",
       periods: b ? [...(b.periods || [])] : [],
       times: b ? [...(b.times || [])] : [],
+      dur: b ? b.dur || 0 : 0,
       // a new block from Blocos filtered by a category goes into it
       category: b ? b.category || "" : this._shelfCat() && this._shelfCat() !== "sem" ? this._shelfCat() : "",
       newCat: null,
@@ -1493,6 +1499,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       paper: f.paper,
       periods: f.periods,
       times: f.times,
+      dur: f.periods.length || f.times.length ? f.dur || 0 : 0,
       category: f.category || "",
       owner: ownerName(f.owner || ""),
       ...extra,
@@ -1664,6 +1671,24 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const page = pad && pad.page !== "new" ? this._page(pad.page) : null;
     if (!page) return;
     this._openSheet("pagemenu", { page: page.id });
+  }
+
+  async _setPageDur(id, dur) {
+    await this._savePageMeta(id, { dur });
+    this._tick();
+  }
+
+  /**
+   * Fica no Agora: how long the block or the sheet holds after its time (Até o próximo: until the next one starts).
+   * Past it, Agora has nothing until the next time.
+   */
+  _durPick(value, onPick) {
+    return html`<div class="field">
+      <span class="flabel" id="dur-l">Fica no Agora</span>
+      <div class="chip-row grid dur-pick" role="radiogroup" aria-labelledby="dur-l">
+        ${DURATIONS.map((d) => html`<button class="pick ${value === d ? "on" : ""}" role="radio" aria-checked=${value === d ? "true" : "false"} @click=${() => onPick(d)}><span>${d ? `${d / 60} h` : "Até o próximo"}</span></button>`)}
+      </div>
+    </div>`;
   }
 
   async _setPageTimes(id, times) {
@@ -2135,6 +2160,16 @@ class MemoriaApp extends ChatMixin(LitElement) {
       if (!this._blocks().some((x) => this._mine(x))) {
         return this._renderNowEmpty({ text: "Nenhum bloco aqui", tone: "off" }, "Nada para agora", html`<p>Os blocos arquivados e os de outras pessoas ficam em Blocos.</p>`);
       }
+      // something has a time, but its Fica no Agora is over: nothing until the next one (tap a time to peek)
+      if (entries.length && !cur) {
+        const period = periodOf(periodAt(min, periodTimes(this._data)));
+        const nb = next ? this._block(next.main.block) : null;
+        return html`<section class="page">
+          ${this._renderHead("Agora", { text: `${period.label} · nada agora${nb ? ` · depois ${clip(nb.name, 18)} às ${fmtMin(next.min)}` : ""}`, tone: "off" })}
+          ${this._renderTline(ahead(entries, min), null)}
+          <div class="panel now-empty now-idle"><div class="empty"><div class="em-icon">${icon("calendar-clock")}</div><h3>Nada agora</h3><p>Toque num horário para espiar.</p></div></div>
+        </section>`;
+      }
       // blocks of this person (or everyone's), none with a time: no block pretends to be the one of the moment
       const period = periodOf(periodAt(min, periodTimes(this._data)));
       const others = this._othersTimed();
@@ -2163,28 +2198,15 @@ class MemoriaApp extends ChatMixin(LitElement) {
       };
     } else if (cur) {
       const nb = next ? this._block(next.main.block) : null;
-      // what started before midnight still holds: "desde ontem às 18:00"
-      status = { text: `${period.label} · desde ${cur.min > min ? "ontem às " : ""}${fmtMin(cur.min)}${nb ? ` · depois ${clip(nb.name, 18)} às ${fmtMin(next.min)}` : ""}` };
+      // what started before midnight still holds: "desde ontem às 18:00"; with Fica no Agora, until when
+      status = { text: `${period.label} · desde ${cur.min > min ? "ontem às " : ""}${fmtMin(cur.min)}${cur.end != null ? ` até ${fmtMin(cur.end)}` : ""}${nb ? ` · depois ${clip(nb.name, 18)} às ${fmtMin(next.min)}` : ""}` };
     } else {
       status = { text: period.label, tone: "off" };
     }
     return html`
       <section class="page">
         ${this._renderHead(b.name, status, false, true)}
-        ${groups.length
-          ? html`<div class="tline" role="list" aria-label="Agora e a seguir">
-              ${groups.map((g) => {
-                const gb = this._block(g.main.block);
-                if (!gb) return nothing;
-                const on = cur && g.min === cur.min && !this._peek;
-                const peek = this._peek && this._peek.min === g.min;
-                const kind = g.main.kind === "page" ? "pin" : g.main.kind === "period" ? periodOf(g.main.period).icon : "clock";
-                return html`<button class="tchip ${on ? "on" : ""} ${peek ? "peek" : ""}" role="listitem" style=${this._cv(gb)} @click=${() => this._peekAt(g)} aria-label="${fmtMin(g.min)} ${gb.name}">
-                  ${icon(kind)}<b>${fmtMin(g.min)}</b><span class="dot"></span><span>${clip(gb.name, 18)}${g.entries.length > 1 ? ` +${g.entries.length - 1}` : ""}</span>
-                </button>`;
-              })}
-            </div>`
-          : nothing}
+        ${this._renderTline(groups, cur)}
         ${active && active.entries.length > 1
           ? html`<div class="switcher">
               ${active.entries.map((e) => {
@@ -2198,6 +2220,23 @@ class MemoriaApp extends ChatMixin(LitElement) {
         ${this._renderPad()}
       </section>
     `;
+  }
+
+  /** The line at the top of Agora: what holds now (on), then the next times; the one peeked at, marked. */
+  _renderTline(groups, cur) {
+    if (!groups.length) return nothing;
+    return html`<div class="tline" role="list" aria-label="Agora e a seguir">
+      ${groups.map((g) => {
+        const gb = this._block(g.main.block);
+        if (!gb) return nothing;
+        const on = cur && g.min === cur.min && !this._peek;
+        const peek = this._peek && this._peek.min === g.min;
+        const kind = g.main.kind === "page" ? "pin" : g.main.kind === "period" ? periodOf(g.main.period).icon : "clock";
+        return html`<button class="tchip ${on ? "on" : ""} ${peek ? "peek" : ""}" role="listitem" style=${this._cv(gb)} @click=${() => this._peekAt(g)} aria-label="${fmtMin(g.min)} ${gb.name}">
+          ${icon(kind)}<b>${fmtMin(g.min)}</b><span class="dot"></span><span>${clip(gb.name, 18)}${g.entries.length > 1 ? ` +${g.entries.length - 1}` : ""}</span>
+        </button>`;
+      })}
+    </div>`;
   }
 
   // ---------- the notepad itself
@@ -2261,7 +2300,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   /** The text of a sheet with each link as a chip (the name, or the site and a bit of the address) and each box to tick
    * (onCheck(n): the line n was ticked). */
-  _inkParts(text, live = false, onCheck = null) {
+  _inkParts(text, live = false, onCheck = null, flips = null) {
     if (!hasLinks(text) && !hasChecks(text)) return text;
     // no spaces between the parts: the text keeps its line breaks (pre-wrap)
     const parts = (s, base) =>
@@ -2278,11 +2317,13 @@ class MemoriaApp extends ChatMixin(LitElement) {
       if (!c) out.push(parts(line, at));
       else {
         const rest = line.slice(c.len);
+        // ticked in the Agora for this time: the other way round from the text
+        const done = flips && flips.has(rest.replace(/\s+/g, " ").trim()) ? !c.done : c.done;
         const tick = (e) => {
           e.stopPropagation();
           if (onCheck) onCheck(n);
         };
-        out.push(html`<span class="chk-line ${c.done ? "done" : ""}"><span data-o=${at}>${c.indent}</span><button class="chk" role="checkbox" aria-checked=${c.done ? "true" : "false"} aria-label=${`${c.done ? "Desmarcar" : "Marcar como feito"}: ${rest.trim() || "item"}`} tabindex=${live ? "0" : "-1"} @click=${tick}>${icon("check")}</button>${parts(rest, at + c.len)}</span>`);
+        out.push(html`<span class="chk-line ${done ? "done" : ""}"><span data-o=${at}>${c.indent}</span><button class="chk" role="checkbox" aria-checked=${done ? "true" : "false"} aria-label=${`${done ? "Desmarcar" : "Marcar como feito"}: ${rest.trim() || "item"}`} tabindex=${live ? "0" : "-1"} @click=${tick}>${icon("check")}</button>${parts(rest, at + c.len)}</span>`);
       }
       if (n < lines.length - 1) out.push(html`<span data-o=${at + line.length}>\n</span>`);
       at += line.length + 1;
@@ -2292,7 +2333,50 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   /** The sheet with its links as chips; a tap on the text opens the editor there (with the real text). */
   _renderInkView(page, hand, label) {
-    return html`<div class="ink ink-view ${hand ? "" : "normal"}" role="textbox" aria-readonly="true" aria-label=${label} tabindex="0" @click=${(e) => this._editFromView(e, page)} @keydown=${(e) => e.key === "Enter" && !e.target.closest("a, .chk") && this._editFromView(e, page)}>${this._inkParts(page.text, true, (n) => this._tickLine(page.id, n))}</div>`;
+    // in the Agora, ticking is only for this time of the sheet (the text stays as it is); in Blocos, it writes the box
+    const agora = this._view().name === "now";
+    const onCheck = agora ? (n) => this._markLine(page, n) : (n) => this._tickLine(page.id, n);
+    return html`<div class="ink ink-view ${hand ? "" : "normal"}" role="textbox" aria-readonly="true" aria-label=${label} tabindex="0" @click=${(e) => this._editFromView(e, page)} @keydown=${(e) => e.key === "Enter" && !e.target.closest("a, .chk") && this._editFromView(e, page)}>${this._inkParts(page.text, true, onCheck, agora ? this._marksOf(page.id) : null)}</div>`;
+  }
+
+  /** The time of the Agora on screen ("AAAA-MM-DDTHH:MM"): the one holding now, or the next time of one peeked at. */
+  _occ() {
+    const { cur } = this._slot();
+    const g = this._peek || cur;
+    if (!g) return "";
+    return occurrence(g.min, new Date(this._now), !!cur && g.min === cur.min);
+  }
+
+  /** The lines ticked in the Agora for this time of the sheet (another time: none). */
+  _marksOf(id) {
+    const m = (this._data.marks || {})[id];
+    const at = this._occ();
+    return new Set(at && m && m.at === at ? m.lines : []);
+  }
+
+  /** Marcar no Agora: ticks (or unticks) a line only for this time of the sheet; next time it comes, it starts clean. */
+  async _markLine(page, n) {
+    const line = String(page.text || "").split("\n")[n] || "";
+    const c = checkOf(line);
+    const key = c ? line.slice(c.len).replace(/\s+/g, " ").trim() : "";
+    const at = this._occ();
+    if (!key || !at) return;
+    const set = this._marksOf(page.id);
+    if (set.has(key)) set.delete(key);
+    else set.add(key);
+    const lines = [...set];
+    this._haptic("light");
+    const before = this._data.marks || {};
+    const marks = { ...before };
+    if (lines.length) marks[page.id] = { at, lines };
+    else delete marks[page.id];
+    this._data = { ...this._data, marks };
+    try {
+      await this.api.saveMarks(page.id, at, lines);
+    } catch (err) {
+      this._data = { ...this._data, marks: before };
+      this._showToast(`Não consegui marcar: ${err.message}`);
+    }
   }
 
   _openLink(e, url) {
@@ -2523,12 +2607,12 @@ class MemoriaApp extends ChatMixin(LitElement) {
   /** The chips de quem: each person (the one using it first), then Todos. */
   _renderWhoChips(who, key) {
     if (!this._whoOn()) return nothing;
-    return html`<div class="chip-row who-filter" role="radiogroup" aria-label="De quem">
+    return html`<div class="chip-row who-filter" role="radiogroup" aria-label="De quem"><div class="chip-track">
       ${[...this._whoNames(), "*"].map((n) => {
         const on = n === "*" ? who === "*" : who !== "*" && sameName(who, n);
         return html`<button class="pick ${on ? "on" : ""}" role="radio" aria-checked=${on ? "true" : "false"} @click=${() => this._setShelfWho(n, key)}>${icon(n === "*" ? "users" : "user-round")}<span>${n === "*" ? "Todos" : clip(n, 18)}</span></button>`;
       })}
-    </div>`;
+    </div></div>`;
   }
 
   /** Blocos in a list instead of the covers (the quick choice at the top, kept on this device). */
@@ -2562,9 +2646,9 @@ class MemoriaApp extends ChatMixin(LitElement) {
         ${this._renderHead("Blocos", { text: `${plural(blocks.length, "bloco", "blocos")} · ${plural(pages, "folha", "folhas")}`, extra: this._renderViewToggle() })}
         ${this._renderWhoChips(who, WHO_KEY)}
         ${cats.length
-          ? html`<div class="chip-row cat-filter" role="group" aria-label="Categoria">
+          ? html`<div class="chip-row cat-filter" role="group" aria-label="Categoria"><div class="chip-track">
               ${chip("", "Todos")} ${cats.map((c) => chip(c.id, clip(c.name, 22), c))} ${none ? chip("sem", "Sem categoria") : nothing}
-            </div>`
+            </div></div>`
           : nothing}
         ${this._shelfList()
           ? this._renderShelfList(blocks)
@@ -3242,6 +3326,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         </div>
         <div class="field-hint">${icon("clock")}<span>${f.periods.length || f.times.length ? "Nesses momentos a tela Agora abre este bloco. Folhas com horário próprio têm prioridade." : "Sem horário, o bloco só abre quando você escolher."}</span></div>
       </div>
+      ${f.periods.length || f.times.length ? this._durPick(f.dur || 0, (d) => this._setForm({ dur: d })) : nothing}
       ${f.id
         ? (() => {
             const arch = !!(this._block(f.id) || {}).archived;
@@ -3324,6 +3409,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         </div>
         <div class="field-hint">${icon("pin")}<span>${times.length ? `Às ${times.join(", ")} a tela Agora abre direto nesta folha.` : "Um trecho com horário: ex.: às 10h esta folha aparece sozinha."}</span></div>
       </div>
+      ${times.length ? this._durPick(page.dur || 0, (d) => this._setPageDur(page.id, d)) : nothing}
       ${blocks.length > 1
         ? html`<div class="field">
             <span class="flabel">Bloco</span>

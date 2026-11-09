@@ -92,6 +92,17 @@ with sync_playwright() as p:
         stickers = texts(a.locator(".shelf .cover:not(.add) .sticker small"))
         check(stickers == ["2 folhas", "2 folhas · de Ana", "2 folhas"], f"{tag}: Ana's and everyone's, not Beto's Treino ({stickers})")
         check(a.locator(".page .status").first.inner_text().strip() == "3 blocos · 6 folhas", f"{tag}: the count of the filter")
+        # 1.14.0: the buttons of each row at the top the same size (the categories too), filling the row when they fit
+        rows = a.evaluate("""(el) => ['.who-filter', '.cat-filter'].map((s) => { const row = el.renderRoot.querySelector(s); if (!row) return null;
+          const bs = [...row.querySelectorAll('.pick')].map((b) => b.getBoundingClientRect()); const r = row.getBoundingClientRect();
+          return { w: [...new Set(bs.map((b) => Math.round(b.width)))], h: [...new Set(bs.map((b) => Math.round(b.height)))], top: [...new Set(bs.map((b) => Math.round(b.top)))],
+            cut: [...row.querySelectorAll('.pick span')].filter((x) => x.scrollWidth > x.clientWidth + 1).length,
+            fill: Math.round(bs[bs.length - 1].right - bs[0].left), room: Math.round(row.clientWidth - 36), scroll: row.scrollWidth > row.clientWidth + 1 }; })""")
+        for name, r in zip(("de quem", "categorias"), rows):
+            if r:
+                check(len(r["w"]) == 1 and len(r["h"]) == 1 and len(r["top"]) == 1 and r["cut"] == 0, f"{tag}: {name}: the buttons the same size, in one line, nothing cut ({r})")
+                check(r["scroll"] or abs(r["fill"] - r["room"]) <= 2, f"{tag}: {name}: fitting, they fill the row ({r})")
+        check(rows[0] and rows[1] and rows[0]["h"] == rows[1]["h"], f"{tag}: both rows the same height")
         who.nth(1).click()
         pg.wait_for_timeout(300)
         names = texts(a.locator(".shelf .cover:not(.add) .sticker b"))

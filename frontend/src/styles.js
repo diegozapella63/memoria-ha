@@ -1946,14 +1946,26 @@ export const styles = css`
   .chip-row.who-filter .pick {
     flex: none;
   }
-  /* De quem (1.12.0): os botões do mesmo tamanho, lado a lado (com muita gente, a fileira rola para o lado) */
-  .chip-row.who-filter {
+  /* De quem and the categories (1.14.0): every button of the row the same size, the one of the longest name and at least
+     a third of the row, filling it when they fit (more than fits: the row scrolls to the side, still the same size) */
+  .chip-row.who-filter,
+  .chip-row.cat-filter {
+    display: block;
+    container-type: inline-size;
+  }
+  .chip-track {
     display: grid;
     grid-auto-flow: column;
-    grid-auto-columns: minmax(max-content, 1fr);
+    grid-auto-columns: 1fr;
+    gap: 8px;
+    width: max-content;
+    min-width: 100%;
   }
-  .chip-row.who-filter .pick {
+  /* at least a third of the row: the two rows line up (3 to a row), a longer name widens all the buttons of its row */
+  .chip-track .pick {
     justify-content: center;
+    min-width: calc((100cqi - 16px) / 3);
+    padding-inline: 10px;
   }
   /* Buscar: Incluir arquivados embaixo, com a largura toda (alinhado com o De quem) */
   .chip-row.search-opts .pick {

@@ -218,6 +218,11 @@ export class Api {
     return this.call("memoria/block/save", { block });
   }
 
+  /** Marcar no Agora: the ticked lines of a sheet for one time of it ("AAAA-MM-DDTHH:MM"). */
+  saveMarks(id, at, lines) {
+    return this.call("memoria/marks/save", { page_id: id, at, lines });
+  }
+
   deleteBlock(id) {
     return this.call("memoria/block/delete", { block_id: id });
   }

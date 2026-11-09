@@ -101,3 +101,101 @@ test("the address of the app in Home Assistant", () => {
   assert.equal(panelOf("local-memoria"), "/app/local_memoria");
   assert.equal(panelOf("meu-computador"), null);
 });
+
+// ---------- 1.14.0: Fica no Agora (how long a time holds) and the marks of the Agora (only for that time of the sheet)
+import { currentAt, nextAfter, occurrence } from "../memoria/rootfs/app/lib/schedule.js";
+import { Store } from "../memoria/rootfs/app/lib/store.js";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
+test("Fica no Agora: past its time, nothing holds until the next start", () => {
+  const d = casa();
+  d.blocks[2].dur = 120; // Inglês 19:30 for 2 h: until 21:30
+  const entries = buildSchedule(d);
+  let cur = currentAt(entries, at(20));
+  assert.deepEqual([cur.min, cur.end], [at(19, 30), at(21, 30)]);
+  assert.equal(currentAt(entries, at(21, 30)), null, "21:30: over");
+  assert.equal(currentAt(entries, at(23)), null);
+  assert.equal(currentAt(entries, at(4)), null, "after midnight too: not the one of yesterday");
+  assert.equal(currentAt(entries, at(5)).min, at(5), "the next one starts as always");
+  assert.equal(currentAt(entries, at(10)).end, null, "Até o próximo: no end");
+  // nothing now: the next ones, none of them now
+  const g = ahead(entries, at(23));
+  assert.deepEqual(times(g), ["05:00", "09:00", "19:30"]);
+  assert.deepEqual(g.map((x) => [x.now, x.tomorrow]), [[false, true], [false, true], [false, true]]);
+  assert.deepEqual(times(ahead(entries, at(4))), ["05:00", "09:00", "19:30"]);
+  assert.equal(nextAfter(entries, at(23)).min, at(5));
+  // a sheet with a time and the block of the same time: the longest holds (one until the next: until the next)
+  d.blocks[1].times = ["19:30"];
+  assert.equal(currentAt(buildSchedule(d), at(23)).min, at(19, 30), "Reforma até o próximo keeps 19:30 on");
+  d.blocks[1].dur = 240;
+  assert.equal(currentAt(buildSchedule(d), at(23)).end, at(23, 30));
+  // only one time a day, over: the next is it, tomorrow
+  const one = { blocks: [{ id: "b1", name: "Janta", times: ["18:00"], dur: 240 }], pages: [] };
+  assert.equal(currentAt(buildSchedule(one), at(23)), null);
+  assert.deepEqual([nextAfter(buildSchedule(one), at(23)).min, nextAfter(buildSchedule(one), at(23)).tomorrow], [at(18), true]);
+  assert.equal(nextAfter(buildSchedule(one), at(19)), null, "on: it is the one of all day");
+  // a duration that isn't a choice counts as Até o próximo
+  assert.equal(currentAt(buildSchedule({ blocks: [{ id: "b1", name: "X", times: ["18:00"], dur: 7 }], pages: [] }), at(3)).min, at(18));
+});
+
+test("the time a start comes: the one of now started today or yesterday; one peeked at, its next time", () => {
+  const now = new Date(2026, 10, 9, 6, 52);
+  assert.equal(occurrence(at(18), now, true), "2026-11-08T18:00", "18:00 still on at 06:52: since yesterday");
+  assert.equal(occurrence(at(6), now, true), "2026-11-09T06:00");
+  assert.equal(occurrence(at(7), now, false), "2026-11-09T07:00", "the next 07:00 is today");
+  assert.equal(occurrence(at(6), now, false), "2026-11-10T06:00", "the next 06:00 is tomorrow");
+  assert.equal(occurrence(at(23, 30), new Date(2026, 11, 31, 23, 45), false), "2027-01-01T23:30", "across the year");
+});
+
+test("the store: Fica no Agora on blocks and sheets, and the marks apart from the text", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "memoria-tempo-"));
+  const s = new Store(dir, { warn() {}, info() {} });
+  const b = s.saveBlock({ name: "Janta", times: ["18:00"], dur: 240 });
+  assert.equal(b.dur, 240);
+  assert.throws(() => s.saveBlock({ id: b.id, dur: 45 }), /tempo inválido/);
+  assert.equal(s.saveBlock({ id: b.id, dur: 0 }).dur, undefined, "Até o próximo: not kept");
+  const p = s.savePage({ block: b.id, text: "Janta\n☐ Arroz\n☐ Feijão", times: ["18:00"], dur: 120 });
+  assert.equal(p.dur, 120);
+  assert.equal(s.savePage({ id: p.id, dur: 0 }).dur, undefined);
+  const at1 = occurrence(at(18), new Date(), true);
+  assert.deepEqual(s.saveMarks(p.id, at1, ["Arroz", " Arroz ", "", 3]), { at: at1, lines: ["Arroz"] });
+  assert.equal(s.page(p.id).text, "Janta\n☐ Arroz\n☐ Feijão", "the text doesn't change");
+  assert.equal(s.saveMarks(p.id, at1, []), null, "nothing ticked: no marks");
+  assert.equal(s.data.marks[p.id], undefined);
+  s.saveMarks(p.id, at1, ["Feijão"]);
+  assert.throws(() => s.saveMarks(p.id, "ontem", ["Arroz"]), /horário inválido/);
+  assert.throws(() => s.saveMarks("nao-existe", at1, ["Arroz"]), /página não existe/);
+  // a restore keeps them while they are fresh; old ones (over 3 days) and those of sheets gone are dropped
+  const raw = JSON.parse(JSON.stringify(s.data));
+  raw.marks.velha00001 = { at: at1, lines: ["X"] };
+  raw.marks[p.id + "x"] = { at: "2020-01-01T18:00", lines: ["X"] };
+  s.replaceAll(raw, "teste");
+  assert.deepEqual(s.data.marks, { [p.id]: { at: at1, lines: ["Feijão"] } });
+  assert.deepEqual(Object.keys(s.replaceAll({ ...raw, marks: { [p.id]: { at: "2020-01-01T18:00", lines: ["Arroz"] } } }, "teste").marks), []);
+  s.saveMarks(p.id, at1, ["Arroz"]);
+  s.deletePage(p.id);
+  assert.deepEqual(s.data.marks, {}, "the sheet gone: its marks too");
+  const p2 = s.savePage({ block: b.id, text: "☐ Suco" });
+  s.saveMarks(p2.id, at1, ["Suco"]);
+  s.deleteBlock(b.id);
+  assert.deepEqual(s.data.marks, {}, "the block gone: the marks of its sheets too");
+  clearTimeout(s.timer);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("trechos for the CronologIA: fim with Fica no Agora, none now past it, and the boxes ticked in the Agora", () => {
+  const d = casa();
+  d.pages[1].text = "Churrasco do Beto\n☐ Carvão\n☐ Sal grosso";
+  d.pages[1].dur = 180; // 09:00 for 3 h
+  let out = trechos(d, { now: when(10) });
+  assert.deepEqual([out[0].inicio, out[0].agora, out[0].fim], ["09:00", true, "12:00"]);
+  assert.equal(out[1].fim, undefined, "only the one of now");
+  d.marks = { [d.pages[1].id]: { at: "2026-11-08T09:00", lines: ["Carvão"] } };
+  assert.equal(trechos(d, { now: when(10) })[0].texto, "Churrasco do Beto\n☑ Carvão\n☐ Sal grosso", "ticked in the Agora at 09:00 today");
+  d.marks[d.pages[1].id].at = "2026-11-07T09:00";
+  assert.equal(trechos(d, { now: when(10) })[0].texto, "Churrasco do Beto\n☐ Carvão\n☐ Sal grosso", "yesterday's marks: clean");
+  out = trechos(d, { now: when(13) });
+  assert.deepEqual(out.map((t) => [t.inicio, t.agora]), [["19:30", false], ["05:00", false], ["09:00", false]], "past 12:00: none now, the next three");
+});
