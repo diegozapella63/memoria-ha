@@ -100,6 +100,7 @@ No botão **Nova**:
 - **Colar mensagem**: cole uma mensagem do WhatsApp, e-mail ou anotação. A IA tira horários, nomes e saudações e deixa como uma anotação limpa. Também dá para usar **Como está**.
 - **Escolher fotos**: prints ou fotos da galeria, até 6. No app Android do Home Assistant é uma foto por vez (limitação da versão atual do app); use **Mais fotos** na revisão para juntar outras.
 - **Digitalizar com IA**: abre a câmera dentro do MemorIA para fotografar uma anotação em papel, mesmo escrita à mão. Dá para tirar várias páginas e usar a lanterna. Sem https, abre a câmera do próprio celular, uma foto por vez.
+- **Novo bloco**: um caderno novo, com nome, cor, papel e horário (o mesmo do **Novo bloco** da tela **Blocos**).
 
 Você revisa e corrige o texto antes de criar a folha.
 
@@ -143,6 +144,10 @@ Em **Mais › Configurações › Integrações**:
 Em **Buscar**, procure qualquer palavra nas folhas dos blocos, sem se importar com acentos. Logo abaixo da caixa, **De quem** escolhe os blocos (os seus e os de **Todos**, para começar; os de outra pessoa; ou todos), como em **Blocos**, mas com a escolha própria. Cada resultado mostra o trecho com a palavra marcada, o bloco e quando foi escrito; toque para abrir a folha.
 
 Os blocos arquivados ficam de fora. Para procurar neles também, toque em **Incluir arquivados**; as escolhas ficam guardadas no aparelho.
+
+Antes de escrever, o **Buscar** já mostra os blocos (os de **De quem**, com a categoria de cada um); escrevendo, ficam os do nome procurado, e as folhas encontradas vêm embaixo. Toque num bloco para abrir.
+
+Para mudar vários blocos de uma vez, como no ResolvIA: toque em **Selecionar** (ou segure o dedo num bloco, que já vem marcado), marque os blocos (**Todos** marca a lista; de novo, **Nenhum**) e toque em **Alterar**, embaixo. A janela tem **Categoria** e **De quem é** (com o controle por pessoa ligado), cada um começando em **Manter**: mude um ou os dois e toque em **Aplicar**. O aviso tem **Desfazer**. O **X** ou o Voltar do celular saem do Selecionar.
 
 ## Sensor para painéis e automações
 

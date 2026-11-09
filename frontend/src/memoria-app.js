@@ -67,6 +67,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     _bootError: { state: true },
     _online: { state: true },
     _path: { state: true },
+    _sel: { state: true },
     _sheet: { state: true },
     _form: { state: true },
     _toast: { state: true },
@@ -696,6 +697,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
   _enterView() {
     if (!this._data) return;
     const v = this._view();
+    if (v.name !== "search") this._sel = null;
     if (v.name === "block") {
       if (!this._block(v.id)) return;
       const want = this._openAt && this._openAt.block === v.id ? this._openAt.page : null;
@@ -1032,6 +1034,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
       this._sheet = null;
       this._form = null;
     }
+    // Buscar › Selecionar: Back leaves it
+    if (this._sel && !(history.state && history.state.rvSel) && !this._sheet) this._sel = null;
     const path = (history.state && history.state.rvPath) || "";
     if (path !== this._path) {
       this._path = path;
@@ -2818,6 +2822,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
         .sort((a, b) => b.updated - a.updated)
         .slice(0, 80);
     }
+    // the blocks come already (1.15.0), the ones of the name searched with a word, to open or to select and change
+    const blocks = this._allBlocks().filter((b) => (withArch || !b.archived) && this._ofWho(b, who) && (!needle || fold(b.name).includes(needle)));
     return html`
       <section class="page">
         ${this._renderHead("Buscar", { text: `Em ${plural(pool.length, "folha", "folhas")} · acentos não importam` })}
@@ -2832,9 +2838,14 @@ class MemoriaApp extends ChatMixin(LitElement) {
           local.set(SEARCH_ARCH_KEY, !withArch);
           this.requestUpdate();
         }}>${icon("archive")}<span>Incluir arquivados</span></button></div>
+        ${blocks.length ? this._renderSearchBlocks(blocks, q) : nothing}
         ${!needle
-          ? html`<p class="page-sub" style="margin-top:0">Procure qualquer palavra em todas as folhas.</p>`
-          : results.length
+          ? blocks.length
+            ? nothing
+            : html`<p class="page-sub" style="margin-top:0">Procure qualquer palavra em todas as folhas.</p>`
+          : this._sel
+            ? nothing
+            : results.length
             ? html`<p class="page-sub" style="margin-top:0">${plural(results.length, "folha encontrada", "folhas encontradas")}</p>
                 <div class="panel">
                   ${results.map((p) => {
@@ -2852,9 +2863,162 @@ class MemoriaApp extends ChatMixin(LitElement) {
                     </button>`;
                   })}
                 </div>`
-            : html`<div class="panel"><div class="empty"><div class="em-icon">${icon("search")}</div><h3>Nada encontrado</h3><p>Nenhuma folha com “${clip(q, 30)}”.</p></div></div>`}
+            : blocks.length
+              ? nothing
+              : html`<div class="panel"><div class="empty"><div class="em-icon">${icon("search")}</div><h3>Nada encontrado</h3><p>Nenhuma folha com “${clip(q, 30)}”.</p></div></div>`}
+        ${this._sel ? this._renderSelBar(blocks) : nothing}
       </section>
     `;
+  }
+
+  /**
+   * Buscar › os blocos (1.15.0): each one opens; Selecionar (or holding a finger on one) marks several to change the
+   * category and whose they are at once, like the ResolvIA (Alterar, each field starting on Manter).
+   */
+  _renderSearchBlocks(blocks, q) {
+    const sel = this._sel;
+    const can = this._cats().length > 0 || this._ownersOn();
+    const n = sel ? blocks.filter((b) => sel.has(b.id)).length : 0;
+    const all = n > 0 && n === blocks.length;
+    const head = sel
+      ? html`<div class="sel-head on">
+          <button class="icon-btn" @click=${() => this._selEnd()} aria-label="Cancelar seleção">${icon("x")}</button>
+          <span class="sel-n">${n ? plural(n, "selecionado", "selecionados") : "Selecionar"}</span>
+          <button class="text-btn" data-sel-all @click=${() => this._selAll(blocks, all)}>${all ? "Nenhum" : "Todos"}</button>
+        </div>`
+      : html`<div class="sel-head">
+          <span class="sel-n">${plural(blocks.length, "bloco", "blocos")}</span>
+          ${can ? html`<button class="text-btn" data-sel-start @click=${() => this._selStart()}>${icon("list-checks")}Selecionar</button>` : nothing}
+        </div>`;
+    return html`${head}
+      <div class="panel shelf-list search-blocks">
+        ${repeat(
+          blocks,
+          (b) => b.id,
+          (b) => {
+            const cat = this._cat(b.category);
+            const hint = [cat ? cat.name : "", plural(this._pagesOf(b.id).length, "folha", "folhas"), this._owner(b) ? `de ${this._owner(b)}` : "", b.archived ? "arquivado" : ""].filter(Boolean).join(" · ");
+            const on = sel && sel.has(b.id);
+            return sel
+              ? html`<button class="row block-row selr ${on ? "on" : ""}" style=${this._cv(b)} aria-pressed=${on ? "true" : "false"} @click=${() => this._selToggle(b.id)}>
+                  <span class="tile">${on ? icon("check") : icon("notebook")}</span>
+                  <span class="grow"><span class="label">${this._highlight(b.name, q)}</span><span class="hint">${hint}</span></span>
+                </button>`
+              : html`<button class="row block-row" style=${this._cv(b)} @click=${() => this._openPage(b.id)} @contextmenu=${(e) => {
+                  if (!can) return;
+                  e.preventDefault(); // holding a finger: starts Selecionar with this one, like the ResolvIA
+                  this._selStart(b.id);
+                }} aria-label="Abrir ${b.name}">
+                  <span class="tile">${icon("notebook")}</span>
+                  <span class="grow"><span class="label">${this._highlight(b.name, q)}</span><span class="hint">${hint}</span></span>
+                  ${icon("chevron-right", "chev")}
+                </button>`;
+          },
+        )}
+      </div>`;
+  }
+
+  _renderSelBar(blocks) {
+    const n = blocks.filter((b) => this._sel.has(b.id)).length;
+    return html`<div class="sel-bar"><button class="btn primary" data-sel-change ?disabled=${!n} @click=${() => this._openBulk(blocks)}>${icon("pencil")}${n ? `Alterar ${plural(n, "bloco", "blocos")}` : "Alterar"}</button></div>`;
+  }
+
+  _selStart(first = null) {
+    this._haptic("light");
+    if (this._sel) return; // already selecting: a tap marks
+    this._sel = new Set(first ? [first] : []);
+    try {
+      history.pushState({ ...(history.state || {}), rvSel: true }, "");
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  _selEnd() {
+    if (history.state && history.state.rvSel) history.back(); // the popstate leaves it
+    else this._sel = null;
+  }
+
+  _selToggle(id) {
+    this._haptic("light");
+    const s = new Set(this._sel);
+    if (s.has(id)) s.delete(id);
+    else s.add(id);
+    this._sel = s;
+  }
+
+  _selAll(blocks, all) {
+    this._haptic("light");
+    this._sel = new Set(all ? [] : blocks.map((b) => b.id));
+  }
+
+  /** Alterar N blocos: Categoria and De quem é, each starting on Manter (nothing changes until something is chosen). */
+  _openBulk(blocks) {
+    const ids = blocks.filter((b) => this._sel.has(b.id)).map((b) => b.id);
+    if (!ids.length) return;
+    this._openSheet("bulk", { ids, category: null, owner: null });
+  }
+
+  _renderBulkSheet() {
+    const f = this._form;
+    const n = plural(f.ids.length, "bloco", "blocos");
+    const cats = this._cats();
+    const people = this._ownersOn() ? this._whoNames() : [];
+    const pick = (key, value, label, ic = null, style = null) => {
+      const on = f[key] === value;
+      return html`<button class="pick ${style ? "list" : ""} ${on ? "on" : ""}" role="radio" aria-checked=${on ? "true" : "false"} style=${style || nothing} @click=${() => this._setForm({ [key]: value })}>${ic ? icon(ic) : style ? html`<span class="dot"></span>` : nothing}<span>${label}</span></button>`;
+    };
+    const changed = f.category !== null || f.owner !== null;
+    return html`
+      ${this._sheetHead(`Alterar ${n}`)}
+      ${cats.length
+        ? html`<div class="field">
+            <span class="flabel" id="bk-cat">Categoria</span>
+            <div class="chip-row grid bulk-pick" role="radiogroup" aria-labelledby="bk-cat">
+              ${pick("category", null, "Manter")}${cats.map((c) => pick("category", c.id, clip(c.name, 22), null, this._cv(c)))}${pick("category", "", "Sem categoria")}
+            </div>
+          </div>`
+        : nothing}
+      ${this._ownersOn()
+        ? html`<div class="field">
+            <span class="flabel" id="bk-owner">De quem é</span>
+            <div class="chip-row grid bulk-pick" role="radiogroup" aria-labelledby="bk-owner">
+              ${pick("owner", null, "Manter")}${pick("owner", "", "Todos", "users")}${people.map((p) => pick("owner", p, clip(p, 18), "user-round"))}
+            </div>
+          </div>`
+        : nothing}
+      <div class="sheet-actions">
+        <button class="btn primary" data-bulk-ok ?disabled=${!changed} @click=${() => this._applyBulk()}>Aplicar</button>
+      </div>
+    `;
+  }
+
+  async _applyBulk() {
+    const f = this._form;
+    const todo = [];
+    for (const id of f.ids) {
+      const b = this._block(id);
+      if (!b) continue;
+      const c = {};
+      if (f.category !== null && (b.category || "") !== f.category) c.category = f.category;
+      if (f.owner !== null && !sameName(b.owner || "", f.owner) && (b.owner || f.owner)) c.owner = f.owner;
+      if (Object.keys(c).length) todo.push({ id, change: c, before: { category: b.category || "", owner: b.owner || "" } });
+    }
+    await this._closeSheet();
+    if (!todo.length) return this._showToast("Nada mudou.");
+    const run = async (list) => {
+      for (const t of list) this._putBlock(await this.api.saveBlock({ id: t.id, ...t.change }));
+    };
+    try {
+      await run(todo);
+    } catch (err) {
+      return this._showToast(`Não consegui alterar: ${err.message}`);
+    }
+    this._selEnd();
+    this._showToast(plural(todo.length, "bloco alterado", "blocos alterados"), {
+      label: "Desfazer",
+      run: () => run(todo.map((t) => ({ id: t.id, change: Object.fromEntries(Object.keys(t.change).map((k) => [k, t.before[k]])) }))).catch((err) => this._showToast(`Não consegui desfazer: ${err.message}`)),
+    });
   }
 
   _snippet(text, title, needle) {
@@ -3229,6 +3393,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     else if (this._sheet === "new") body = this._renderNewSheet();
     else if (this._sheet === "confirm") body = this._renderConfirm();
     else if (this._sheet === "versions") body = this._renderVersions();
+    else if (this._sheet === "bulk") body = this._renderBulkSheet();
     const f = this._form || {};
     const b = this._sheet === "block" || this._sheet === "category" ? { color: f.color } : this._block(f.target || (f.page && this._page(f.page) && this._page(f.page).block));
     const c = b ? colorById(b.color) : null;
@@ -3532,6 +3697,11 @@ class MemoriaApp extends ChatMixin(LitElement) {
                 <span class="imp-tx"><b>Digitalizar com IA</b><small>Fotografe uma anotação em papel</small></span>
                 ${icon("chevron-right")}
               </button>`}
+        <button class="imp-opt" data-new-block @click=${() => this._openBlockSheet(null)}>
+          <span class="imp-ic">${icon("notebook")}</span>
+          <span class="imp-tx"><b>Novo bloco</b><small>Um caderno novo, com cor e horário</small></span>
+          ${icon("chevron-right")}
+        </button>
       </div>
       ${!ai.images && !ai.off
         ? html`<div class="imp-error soft">${icon("sparkles")}<span>${ai.reason || "Para ler fotos, o Home Assistant precisa de uma integração de IA com tarefa de IA que entenda imagens."}

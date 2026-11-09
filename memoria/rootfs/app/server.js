@@ -27,7 +27,7 @@ import { Integracao, ROUTE as NOW_ROUTE, trechos } from "./lib/integracao.js";
 import { listTools, callTool, ToolError, UnknownTool } from "./lib/ferramentas.js";
 import { sameName } from "./lib/schedule.js";
 
-const VERSION = "1.14.0";
+const VERSION = "1.15.0";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WWW = path.join(HERE, "www");
 const DEV = process.env.MEMORIA_DEV === "1";

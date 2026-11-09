@@ -2028,6 +2028,78 @@ export const styles = css`
     flex: none;
     color: var(--rv-muted);
   }
+  /* Buscar › os blocos e Selecionar (1.15.0), como no ResolvIA: X, quantos, Todos/Nenhum; embaixo, Alterar */
+  .sel-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    margin: 2px 0 6px;
+  }
+  .sel-head .sel-n {
+    flex: 1;
+    min-width: 0;
+    color: var(--rv-muted);
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sel-head.on .sel-n {
+    color: var(--rv-text);
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .sel-head .text-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 6px;
+  }
+  .sel-head .text-btn .i {
+    width: 18px;
+    height: 18px;
+  }
+  .sel-head .icon-btn {
+    margin-left: -8px;
+  }
+  .search-blocks {
+    margin-bottom: 16px;
+  }
+  .block-row.selr {
+    margin: 0 -10px;
+    padding-inline: 10px;
+    width: calc(100% + 20px);
+    border-radius: 14px;
+  }
+  .block-row.selr.on {
+    background: var(--rv-accent-soft);
+    border-top-color: transparent;
+  }
+  .block-row.selr.on + .block-row {
+    border-top-color: transparent;
+  }
+  .block-row.selr.on .tile {
+    background: var(--rv-accent);
+    color: var(--rv-on-accent);
+  }
+  .sel-bar {
+    position: sticky;
+    bottom: 12px;
+    z-index: 5;
+    display: grid;
+    margin-top: 12px;
+  }
+  .sel-bar .btn {
+    width: 100%;
+    box-shadow: var(--rv-shadow);
+  }
+  .sel-bar .btn:disabled {
+    opacity: 1;
+    background: var(--rv-surface-2);
+    color: var(--rv-muted);
+  }
   .block-row.add .tile {
     background: transparent;
     border: 1.5px dashed var(--rv-line-strong, var(--rv-line));

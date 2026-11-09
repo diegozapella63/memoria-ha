@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.15.0
+
+- **Buscar** já mostra os blocos antes de escrever, com a categoria de cada um. Escrevendo, ficam os do nome procurado, e as folhas vêm embaixo.
+- **Selecionar** no Buscar, como no ResolvIA: toque em **Selecionar** (ou segure o dedo num bloco), marque vários e toque em **Alterar**. Dá para mudar a **Categoria** e **De quem é** de todos de uma vez; cada campo começa em **Manter**. O aviso tem **Desfazer**.
+- **Nova** (+) tem **Novo bloco**.
+
 ## 1.14.0
 
 - **Fica no Agora**: escolha por quanto tempo um horário vale (**Até o próximo**, como antes, ou 1, 2, 3, 4, 6 ou 8 horas), nos ajustes do bloco e no ⋯ da folha com horário. Passado o tempo, o Agora mostra **Nada agora** até o próximo horário. A janta das 18:00 não fica mais até de manhã.

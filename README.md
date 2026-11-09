@@ -41,7 +41,7 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **Links que abrem com um toque**: endereços na folha viram etiquetas curtas (o nome, ou o site), sem aquele texto comprido.
 - **Nova folha de mensagem ou foto**: cole uma mensagem do WhatsApp, escolha fotos ou digitalize uma anotação em papel; a IA configurada no Home Assistant (Claude, OpenAI, Gemini ou Ollama) transcreve e você revisa. Escolha qual em **Mais → Configurações → Integrações**.
 - **Falar e Conversar com a IA**, no alto das telas: diga uma anotação (a fala para texto do Home Assistant transcreve e a IA organiza) ou converse sobre os blocos; o que a IA propõe escrever só acontece depois do seu toque.
-- **Buscar** em todas as folhas, sem se importar com acentos.
+- **Buscar** em todas as folhas, sem se importar com acentos, com os blocos já na tela: **Selecionar** vários para mudar a categoria e de quem é de uma vez.
 - **Sensor** `sensor.memoria_agora` com o bloco e a folha do momento, para painéis e automações.
 - **No CronologIA**: o trecho de agora e os dois próximos aparecem no Agora do CronologIA (ligue lá, em Integrações).
 - **CorrerIA**: com o app CorrerIA, o WhatsApp, o Claude e o Gemini leem e mudam os blocos (buscar, ler, criar e editar folhas, links, blocos e categorias). Ligue em **Mais → Configurações → Integrações**.

@@ -169,7 +169,7 @@ with sync_playwright() as p:
         a.locator("nav .tab.fab").click()
         pg.wait_for_timeout(500)
         opts = [t.split("\n")[0].strip() for t in sheet.locator(".imp-opt b").all_inner_texts()]
-        check(opts == ["Colar mensagem"], f"{tag}: off: Nova only pastes ({opts})")
+        check(opts == ["Colar mensagem", "Novo bloco"], f"{tag}: off: Nova only pastes (and Novo bloco) ({opts})")
         check(sheet.locator(".imp-error").count() == 0, f"{tag}: off: no notice about the AI")
         pg.go_back()
         pg.wait_for_timeout(400)
