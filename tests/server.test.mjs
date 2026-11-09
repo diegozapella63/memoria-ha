@@ -351,3 +351,37 @@ test("CorrerIA: the summary's block of the moment is the one of the person who a
   await a.call("memoria/settings/save", { app: { correria: null } });
   a.ws.close();
 });
+
+test("1.13.0: the trechos of now for the CronologIA, with the key of share/memoria/integracao.json, for each person", async () => {
+  const info = JSON.parse(fs.readFileSync(path.join(dir, "share", "integracao.json"), "utf8"));
+  assert.equal(info.app, "memoria");
+  assert.equal(info.agora, "/api/integracao/agora");
+  assert.ok(info.url && info.chave.length >= 32 && info.versao, "address, key and version");
+  assert.equal(info.painel, null, "not in Home Assistant: no address of the panel");
+  assert.equal(fs.statSync(path.join(dir, "share", "integracao.json")).mode & 0o777, 0o600);
+  assert.notEqual(info.chave, fs.existsSync(path.join(dir, "share", "correria.json")) ? JSON.parse(fs.readFileSync(path.join(dir, "share", "correria.json"), "utf8")).chave : "", "a key of its own");
+  const get = (q, key = info.chave) => fetch(`${base}/api/integracao/agora${q}`, { headers: key ? { authorization: `Bearer ${key}`, "x-app": "CronologIA" } : {} }).then(async (r) => ({ status: r.status, body: await r.json() }));
+  assert.equal((await get("", "")).status, 401);
+  assert.equal((await get("", "outra-chave-qualquer-com-mais-de-32-letras")).status, 401);
+  let r = await get("");
+  assert.equal(r.status, 200);
+  assert.equal(r.body.pessoa, "");
+  assert.deepEqual(r.body.trechos.map((t) => t.inicio).sort(), ["05:00", "09:00", "19:30"]);
+  assert.deepEqual(r.body.trechos.map((t) => t.agora), [true, false, false], "now first");
+  // Inglês becomes Beto's: Beto (by his login or his person) sees it, Ana doesn't; someone else: every block
+  const a = await screen();
+  await a.call("memoria/block/save", { block: { id: "ingles00001", owner: "Beto" } });
+  r = await get("?usuario=u-beto");
+  assert.equal(r.body.pessoa, "Beto");
+  assert.ok(r.body.trechos.some((t) => t.bloco === "Inglês"));
+  r = await get("?pessoa=person.beto");
+  assert.equal(r.body.pessoa, "Beto");
+  r = await get(`?usuario=u-ana&pessoa=${encodeURIComponent("beto")}`);
+  assert.equal(r.body.pessoa, "Ana", "the login first");
+  assert.ok(!r.body.trechos.some((t) => t.bloco === "Inglês"));
+  r = await get("?usuario=u-tablet&pessoa=Visita");
+  assert.equal(r.body.pessoa, "");
+  assert.ok(r.body.trechos.some((t) => t.bloco === "Inglês"));
+  await a.call("memoria/block/save", { block: { id: "ingles00001", owner: "" } });
+  a.ws.close();
+});

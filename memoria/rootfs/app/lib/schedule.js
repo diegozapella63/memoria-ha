@@ -133,3 +133,21 @@ export function timeline(entries) {
   }
   return out;
 }
+
+/**
+ * From now on: the group that holds at minute `min` first, then the next start times, wrapping past midnight (at most
+ * n groups, none twice). The first has now (and yesterday, when it started before midnight); the others, tomorrow when
+ * their time already passed today.
+ */
+export function ahead(entries, min, n = 3) {
+  const groups = timeline(entries);
+  const cur = currentAt(entries, min);
+  if (!cur) return [];
+  const at = groups.findIndex((g) => g.min === cur.min);
+  const out = [];
+  for (let k = 0; k < Math.min(n, groups.length); k++) {
+    const g = groups[(at + k) % groups.length];
+    out.push(k === 0 ? { ...g, now: true, yesterday: g.min > min, tomorrow: false } : { ...g, now: false, yesterday: false, tomorrow: g.min <= min });
+  }
+  return out;
+}

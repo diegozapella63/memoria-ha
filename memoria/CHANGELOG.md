@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.13.0
+
+- **Agora**: a fileira de horários do alto começa pelo que vale agora; depois vêm os dois próximos (passando da meia-noite, os de amanhã). Os horários que já passaram hoje não aparecem mais antes. O dia inteiro continua em **Blocos › Seu dia**.
+- **CronologIA**: com o CronologIA atualizado e a opção ligada lá (**Mais › Configurações › Integrações › MemorIA**), o **Agora** dele mostra o trecho do MemorIA que vale agora e os dois próximos.
+
 ## 1.12.0
 
 - **Caixa de marcar**, no alto da folha: transforma a linha do cursor num item com caixa (☐). Num item, o Enter já faz o próximo; Enter num item vazio acaba a lista. Fora da escrita, um toque na caixa marca como feito (o texto fica riscado) e outro toque desmarca.

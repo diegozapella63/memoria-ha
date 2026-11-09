@@ -45,6 +45,8 @@ Em **Blocos**, abra um bloco e toque na linha **Abre sozinho** (ou no ícone de 
 - **Períodos**: Manhã, Tarde e Noite. O começo de cada um fica em **Mais › Configurações › Opções** (padrão 05:00, 12:00 e 18:00).
 - **Horários exatos**: por exemplo Treino às 07:00 e Diário às 22:00.
 
+No alto do **Agora** aparece primeiro o que vale agora e, em seguida, os dois próximos horários (depois da meia-noite, os de amanhã). Um toque espia outro horário; **Voltar para agora** volta. O dia inteiro fica em **Blocos › Seu dia**.
+
 Nos mesmos ajustes ficam o nome, a **categoria**, **de quem é**, a **cor da capa**, o tipo de **folha** (pautada, quadriculada, pontilhada ou lisa), **Arquivar bloco** e o botão de excluir o bloco (as folhas dele vão junto). Para criar outro, toque em **Novo bloco**, no fim da estante.
 
 ## De quem é
@@ -169,6 +171,10 @@ O que eles podem fazer: ver o resumo (os blocos, de quem é cada um, as últimas
 Os blocos arquivados ficam fora do resumo e da busca, a não ser que eles peçam, e dá para ler um arquivado pelo nome. As folhas de um bloco arquivado não mudam até ele ser desarquivado.
 
 Ligado, o cartão mostra quem usou por último e quando ("Claude usou hoje às 09:41"). Desligado, o acesso deixa de valer na hora. O CorrerIA acha o MemorIA pelo arquivo `share/memoria/correria.json`, com uma chave de acesso própria, que só existe enquanto a chave está ligada.
+
+## CronologIA
+
+O **CronologIA** (o calendário da família) pode mostrar no **Agora** dele o trecho do MemorIA que vale agora e os dois próximos, de quem está usando, como no **Agora** daqui. Ligue lá, em **Mais › Configurações › Integrações › MemorIA**. Aqui não há nada para ligar: o CronologIA acha o MemorIA pelo arquivo `share/memoria/integracao.json`, com uma chave de acesso própria, e só lê.
 
 ## Relatório
 

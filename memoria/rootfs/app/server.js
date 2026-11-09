@@ -23,10 +23,11 @@ import { Sensor } from "./lib/sensor.js";
 import { Backups, backupZip, toCSV, parseImport, listVersions, readVersion, fileStamp } from "./lib/data.js";
 import { anotacoes, reportHtml, reportPdf, pdfName } from "./lib/report.js";
 import { Correria, ROUTE as TOOLS_ROUTE } from "./lib/correria.js";
+import { Integracao, ROUTE as NOW_ROUTE, trechos } from "./lib/integracao.js";
 import { listTools, callTool, ToolError, UnknownTool } from "./lib/ferramentas.js";
 import { sameName } from "./lib/schedule.js";
 
-const VERSION = "1.12.0";
+const VERSION = "1.13.0";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WWW = path.join(HERE, "www");
 const DEV = process.env.MEMORIA_DEV === "1";
@@ -61,6 +62,8 @@ const backups = new Backups({ dir: SHARE_DIR });
 // the Claude's or the Gemini's)
 const correria = new Correria({ dataDir: DATA_DIR, shareDir: SHARE_DIR, port: PORT, version: VERSION, log });
 const correriaOn = () => store.data.app.correria === true;
+// the other apps of the family (the CronologIA): what holds now, always on, with the key of share/memoria/integracao.json
+const integracao = new Integracao({ dataDir: DATA_DIR, shareDir: SHARE_DIR, port: PORT, version: VERSION, log });
 const watchers = new Set(); // {session, id}
 
 // De quem é: the people of the house (person.* in Home Assistant), [{id, name, user_id}] by name, kept for a minute
@@ -398,6 +401,27 @@ async function handleTools(req, res) {
   broadcast({ kind: "correria", ultimo: correria.used(cliente) });
 }
 
+/**
+ * GET /api/integracao/agora?usuario=<user id of Home Assistant>&pessoa=<person.x or name>: the CronologIA, with the key of
+ * share/memoria/integracao.json -> {versao, pessoa, trechos} (lib/integracao.js): the sheet of now and of the next two
+ * times for that person, like their Agora here (theirs and everyone's; nobody of the house: every block).
+ */
+async function handleNow(req, res) {
+  if (!integracao.authorized(req.headers)) return sendJson(res, 401, { erro: "Chave inválida." });
+  if (req.method !== "GET") return sendJson(res, 405, { erro: "Use GET." });
+  const q = new URL(req.url, "http://x").searchParams;
+  const usuario = String(q.get("usuario") || "").slice(0, 80);
+  const pessoa = String(q.get("pessoa") || "").replace(/\s+/g, " ").trim().slice(0, 80);
+  let who = "";
+  if (store.data.app.owners_off !== true && (usuario || pessoa)) {
+    const house = await peopleSafe();
+    const p = house && ((usuario && house.find((x) => x.user_id === usuario)) || (pessoa && house.find((x) => x.id === pessoa || sameName(x.name, pessoa))));
+    // not a person of the house: every block, like the Agora of a shared tablet (no Home Assistant now: the name as it came)
+    who = p ? p.name : house && house.length ? "" : /^person\./.test(pessoa) ? "" : pessoa;
+  }
+  sendJson(res, 200, { versao: VERSION, pessoa: who, trechos: trechos(store.data, { person: who, now: new Date() }) });
+}
+
 function download(res, body, type, name) {
   res.writeHead(200, {
     "Content-Type": type,
@@ -470,6 +494,13 @@ function handleReport(url, res, pdf) {
 
 const server = http.createServer((req, res) => {
   // the other apps of Home Assistant (the CorrerIA) come through the internal network, with the key
+  if (req.url.split("?")[0] === NOW_ROUTE) {
+    handleNow(req, res).catch((err) => {
+      log.warn(`Integração: ${err.message}`);
+      if (!res.headersSent) sendJson(res, 500, { erro: "Não deu certo." });
+    });
+    return;
+  }
   if (req.url.split("?")[0] === TOOLS_ROUTE) {
     handleTools(req, res).catch((err) => {
       log.warn(`CorrerIA: ${err.message}`);
@@ -538,6 +569,8 @@ server.on("upgrade", (req, socket, head) => {
 server.listen(PORT, () => log.info(`MemorIA ${VERSION} ouvindo na porta ${PORT}${DEV ? " (modo dev)" : ""}`));
 // the file of the CorrerIA with this version and address (or none, when off)
 correria.publish(correriaOn());
+// the file of the other apps (the CronologIA), always
+integracao.publish();
 ha.start();
 sensor.start();
 

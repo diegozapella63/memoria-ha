@@ -12,7 +12,7 @@ import { PALETTE, colorById, colorVars, hexToRgba, fold, foldKeepLength, plural,
 import { parentHass, detectDark } from "./api.js";
 import { parseLinks, hasLinks, linksToText, normalizeUrl } from "../../memoria/rootfs/app/lib/links.js";
 import { appendLink, freeColor, checkOf, hasChecks, toggleCheck, CHECK_TODO } from "../../memoria/rootfs/app/lib/writing.js";
-import { PERIODS, PAPERS, buildSchedule, currentAt, nextAfter, timeline, minutesOf, fmtMin, periodAt, periodTimes, normTime, opensFor, sameName, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
+import { PERIODS, PAPERS, buildSchedule, currentAt, nextAfter, timeline, ahead, minutesOf, fmtMin, periodAt, periodTimes, normTime, opensFor, sameName, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
 
 const THEME_KEY = "memoria.theme";
 const SAVE_DELAY = 600;
@@ -2151,7 +2151,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
       );
     }
     const period = periodOf(periodAt(min, periodTimes(this._data)));
-    const groups = timeline(entries);
+    // what holds now first, then the next two times (past midnight too); the whole day is in Blocos › Seu dia
+    const groups = ahead(entries, min);
     const active = this._peek || cur;
     let status;
     if (this._peek) {
@@ -2171,7 +2172,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       <section class="page">
         ${this._renderHead(b.name, status, false, true)}
         ${groups.length
-          ? html`<div class="tline" role="list" aria-label="Seu dia">
+          ? html`<div class="tline" role="list" aria-label="Agora e a seguir">
               ${groups.map((g) => {
                 const gb = this._block(g.main.block);
                 if (!gb) return nothing;

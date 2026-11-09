@@ -30,7 +30,7 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **Virar a página com um toque**: borda direita vai para a próxima folha (ou uma nova, pronta para escrever); borda esquerda volta. Arrastar também vira.
 - **Abre sozinho**: cada bloco pode ter períodos (manhã, tarde, noite, com horários de início ajustáveis) e horários exatos.
 - **Trechos com horário**: uma folha específica pode aparecer às 10h, por exemplo a pauta de uma reunião.
-- **Tela Agora** com a linha do tempo do dia: toque num horário para espiar o que vem depois.
+- **Tela Agora** com o horário de agora e os dois próximos: toque num deles para espiar o que vem depois.
 - **Estante de blocos** com o **Seu dia**: os horários de hoje, com o de agora marcado.
 - **Categorias** para agrupar os blocos (Trabalho, Casa, Estudos…), com filtro na estante.
 - **De quem é**: um bloco de uma pessoa da casa só abre sozinho no Agora dela; os de Todos, para todo mundo.
@@ -43,6 +43,7 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **Falar e Conversar com a IA**, no alto das telas: diga uma anotação (a fala para texto do Home Assistant transcreve e a IA organiza) ou converse sobre os blocos; o que a IA propõe escrever só acontece depois do seu toque.
 - **Buscar** em todas as folhas, sem se importar com acentos.
 - **Sensor** `sensor.memoria_agora` com o bloco e a folha do momento, para painéis e automações.
+- **No CronologIA**: o trecho de agora e os dois próximos aparecem no Agora do CronologIA (ligue lá, em Integrações).
 - **CorrerIA**: com o app CorrerIA, o WhatsApp, o Claude e o Gemini leem e mudam os blocos (buscar, ler, criar e editar folhas, links, blocos e categorias). Ligue em **Mais → Configurações → Integrações**.
 - **Salvo no Home Assistant**: sincroniza na hora entre aparelhos e entra no backup.
 - **Dados**: exportar (ZIP com um arquivo de texto por bloco, CSV e JSON), backup na pasta `share/memoria`, importar, versões anteriores automáticas e começar do zero.

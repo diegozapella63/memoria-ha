@@ -14,15 +14,52 @@ const ABOUT = { app: "memoria", nome: "MemorIA", assunto: "anotações em blocos
 
 const pad = (n) => String(n).padStart(2, "0");
 /** Local time without the zone, like the other apps of the family ("2026-11-08T09:41:00"). */
-const localIso = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+export const localIso = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
 /** Writes a file only the owner reads (600), all at once (tmp + rename). */
-function writePrivate(file, text) {
+export function writePrivate(file, text) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = `${file}.tmp`;
   fs.writeFileSync(tmp, text, { mode: 0o600 });
   fs.chmodSync(tmp, 0o600);
   fs.renameSync(tmp, file);
+}
+
+/** How the other apps reach this one on the internal network of Home Assistant: the name and, as a spare, the IP. */
+export function addressOf(port, internalUrl = "") {
+  if (internalUrl) return { url: internalUrl.replace(/\/+$/, ""), ip_url: null };
+  let ip = null;
+  for (const list of Object.values(os.networkInterfaces())) {
+    const a = (list || []).find((x) => x.family === "IPv4" && !x.internal);
+    if (a) {
+      ip = a.address;
+      break;
+    }
+  }
+  return { url: `http://${os.hostname()}:${port}`, ip_url: ip ? `http://${ip}:${port}` : null };
+}
+
+/** The key of a connection (32 random bytes, urlsafe), made once and kept in a file only the owner reads. */
+export function keyIn(file) {
+  let k = "";
+  try {
+    k = fs.readFileSync(file, "utf8").trim();
+  } catch (e) {
+    /* first time */
+  }
+  if (k.length < 32) {
+    k = crypto.randomBytes(32).toString("base64url");
+    writePrivate(file, k);
+  }
+  return k;
+}
+
+/** Whether the request brings the key (compared in constant time). */
+export function bearerIs(headers, key) {
+  const h = String((headers && headers.authorization) || "");
+  if (!h.startsWith("Bearer ")) return false;
+  const digest = (s) => crypto.createHash("sha256").update(s).digest();
+  return crypto.timingSafeEqual(digest(h.slice(7).trim()), digest(key));
 }
 
 export class Correria {
@@ -46,33 +83,13 @@ export class Correria {
 
   /** The key of this connection (32 random bytes, urlsafe), made once and kept in /data/correria.key (600). */
   key() {
-    if (this._key) return this._key;
-    let k = "";
-    try {
-      k = fs.readFileSync(this.keyFile, "utf8").trim();
-    } catch (e) {
-      /* first time */
-    }
-    if (k.length < 32) {
-      k = crypto.randomBytes(32).toString("base64url");
-      writePrivate(this.keyFile, k);
-    }
-    this._key = k;
-    return k;
+    if (!this._key) this._key = keyIn(this.keyFile);
+    return this._key;
   }
 
   /** How the other apps reach this one on the internal network of Home Assistant: the name and, as a spare, the IP. */
   address() {
-    if (this.internalUrl) return { url: this.internalUrl.replace(/\/+$/, ""), ip_url: null };
-    let ip = null;
-    for (const list of Object.values(os.networkInterfaces())) {
-      const a = (list || []).find((x) => x.family === "IPv4" && !x.internal);
-      if (a) {
-        ip = a.address;
-        break;
-      }
-    }
-    return { url: `http://${os.hostname()}:${this.port}`, ip_url: ip ? `http://${ip}:${this.port}` : null };
+    return addressOf(this.port, this.internalUrl);
   }
 
   /** Writes (on) or deletes (off) share/memoria/correria.json. */
@@ -91,10 +108,7 @@ export class Correria {
 
   /** Whether the request brings the key (compared in constant time). */
   authorized(headers) {
-    const h = String((headers && headers.authorization) || "");
-    if (!h.startsWith("Bearer ")) return false;
-    const digest = (s) => crypto.createHash("sha256").update(s).digest();
-    return crypto.timingSafeEqual(digest(h.slice(7).trim()), digest(this.key()));
+    return bearerIs(headers, this.key());
   }
 
   /** A tool was called: who (the Claude, the Gemini, the WhatsApp…) and when, for the screen. */

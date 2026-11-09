@@ -54,7 +54,7 @@ export class MockApi {
 
   async bootstrap() {
     await wait(60);
-    return { version: "1.12.0", user: { name: "Ana Souza", person: "Ana" }, people: ["Ana", "Beto"], ai: await this.aiStatus(), data: clone(this.data), correria: { ultimo: null } };
+    return { version: "1.13.0", user: { name: "Ana Souza", person: "Ana" }, people: ["Ana", "Beto"], ai: await this.aiStatus(), data: clone(this.data), correria: { ultimo: null } };
   }
 
   // De quem é: the people of the house (Ana uses the preview)
