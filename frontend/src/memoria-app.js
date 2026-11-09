@@ -11,13 +11,15 @@ import { Recorder, micError, VOICE_RATE, VOICE_MAX_S } from "./voice.js";
 import { PALETTE, colorById, colorVars, hexToRgba, fold, foldKeepLength, plural, clip, writtenAt, hm, newId, firstLine, prepareImage } from "./util.js";
 import { parentHass, detectDark } from "./api.js";
 import { parseLinks, hasLinks, linksToText, normalizeUrl } from "../../memoria/rootfs/app/lib/links.js";
-import { appendLink, freeColor } from "../../memoria/rootfs/app/lib/writing.js";
+import { appendLink, freeColor, checkOf, hasChecks, toggleCheck, CHECK_TODO } from "../../memoria/rootfs/app/lib/writing.js";
 import { PERIODS, PAPERS, buildSchedule, currentAt, nextAfter, timeline, minutesOf, fmtMin, periodAt, periodTimes, normTime, opensFor, sameName, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
 
 const THEME_KEY = "memoria.theme";
 const SAVE_DELAY = 600;
 const TURN_MS = 600;
 const PAPER_LABEL = { pautado: "Pautado", quadriculado: "Quadriculado", pontilhado: "Pontilhado", liso: "Liso" };
+// Emojis for a sheet (the row over it): the ones of lists, the house, food, health and the day
+const EMOJIS = ["✅", "❌", "⭐", "❤️", "👍", "🙏", "😊", "😂", "🎉", "🔥", "💡", "📌", "📅", "⏰", "⚠️", "❗", "❓", "📝", "🛒", "💊", "🍎", "🥗", "🍽️", "☕", "🏠", "🧹", "🧺", "🚗", "💰", "📞", "✈️", "🎂", "🎁", "📚", "💪", "🏃", "😴", "🌱", "🐶", "🐱"];
 const RINGS = Array.from({ length: 14 }, () => html`<i></i>`);
 // The screens of Mais (a menu, like the other apps): each one goes over the menu, and Back returns to it.
 const IN_MORE = ["categorias", "config", "sobre"];
@@ -78,6 +80,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
     _now: { state: true },
     _dark: { state: true },
     _editing: { state: true },
+    // Emojis: the row of emojis open over the sheet being written
+    _emoji: { state: true },
     _correria: { state: true },
   };
 
@@ -515,6 +519,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       page = { id: newId(), block: pad.block, text, times: [], created: now, updated: now };
       this._putPage(page);
       this._pad = { ...pad, page: page.id };
+      if (this._editing === "new") this._editing = page.id; // still writing it: the editor stays (not the view of its boxes)
     } else {
       this._putPage({ ...page, text });
     }
@@ -2207,14 +2212,15 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const hand = this._app("hand", true);
     const last = page && idx === list.length - 1;
     const canNext = page && !(last && !page.text.trim());
-    // a sheet with links, not being written: the links as short chips (tap the text to write)
-    const viewing = !!page && this._editing !== page.id && hasLinks(page.text);
+    // a sheet with links or boxes, not being written: the links as short chips and the boxes to tick (tap the text to write)
+    const viewing = !!page && this._editing !== page.id && (hasLinks(page.text) || hasChecks(page.text));
     return html`
       <div class="pad ${opts.tall ? "tall" : ""}" style=${this._cv(b)} @touchstart=${(e) => this._touchStart(e)} @touchend=${(e) => this._touchEnd(e)}>
         <div class="pad-cover"></div>
         <div class="pad-stack"></div>
         <div class="leaf ${b.paper}">
-          ${this._renderLeafTop({ created: page ? page.created : null, times: page ? page.times : [], num: idx + 1, total }, !!page)}
+          ${this._renderLeafTop({ created: page ? page.created : null, times: page ? page.times : [], num: idx + 1, total }, !!page, true)}
+          ${this._emoji ? this._renderEmojis() : nothing}
           ${viewing ? this._renderInkView(page, hand, `Folha ${idx + 1} de ${total} do bloco ${b.name}`) : nothing}
           <textarea
             class="ink ${hand ? "" : "normal"} ${viewing ? "behind" : ""}"
@@ -2223,9 +2229,11 @@ class MemoriaApp extends ChatMixin(LitElement) {
             spellcheck="true"
             aria-label="Folha ${idx + 1} de ${total} do bloco ${b.name}"
             @input=${(e) => this._onInk(e)}
+            @beforeinput=${(e) => this._onBeforeInk(e)}
             @focus=${() => (this._editing = pad.page)}
             @blur=${() => {
               this._editing = null;
+              this._emoji = false;
               if (page && this._saving.has(page.id)) this._flushSave(page.id);
               setTimeout(() => this._tick(), 400);
             }}
@@ -2250,20 +2258,40 @@ class MemoriaApp extends ChatMixin(LitElement) {
     `;
   }
 
-  /** The text of a sheet with each link as a chip (the name, or the site and a bit of the address). */
-  _inkParts(text, live = false) {
-    if (!hasLinks(text)) return text;
+  /** The text of a sheet with each link as a chip (the name, or the site and a bit of the address) and each box to tick
+   * (onCheck(n): the line n was ticked). */
+  _inkParts(text, live = false, onCheck = null) {
+    if (!hasLinks(text) && !hasChecks(text)) return text;
     // no spaces between the parts: the text keeps its line breaks (pre-wrap)
-    return parseLinks(text).map((p) =>
-      p.type === "link"
-        ? html`<a class="lnk" href=${p.url} target="_blank" rel="noopener noreferrer" title=${p.url} tabindex=${live ? "0" : "-1"} @click=${(e) => this._openLink(e, p.url)}>${icon("link")}<span>${p.label}</span></a>`
-        : html`<span data-o=${p.start}>${p.text}</span>`,
-    );
+    const parts = (s, base) =>
+      parseLinks(s).map((p) =>
+        p.type === "link"
+          ? html`<a class="lnk" href=${p.url} target="_blank" rel="noopener noreferrer" title=${p.url} tabindex=${live ? "0" : "-1"} @click=${(e) => this._openLink(e, p.url)}>${icon("link")}<span>${p.label}</span></a>`
+          : html`<span data-o=${base + p.start}>${p.text}</span>`,
+      );
+    const out = [];
+    let at = 0;
+    const lines = String(text).split("\n");
+    lines.forEach((line, n) => {
+      const c = checkOf(line);
+      if (!c) out.push(parts(line, at));
+      else {
+        const rest = line.slice(c.len);
+        const tick = (e) => {
+          e.stopPropagation();
+          if (onCheck) onCheck(n);
+        };
+        out.push(html`<span class="chk-line ${c.done ? "done" : ""}"><span data-o=${at}>${c.indent}</span><button class="chk" role="checkbox" aria-checked=${c.done ? "true" : "false"} aria-label=${`${c.done ? "Desmarcar" : "Marcar como feito"}: ${rest.trim() || "item"}`} tabindex=${live ? "0" : "-1"} @click=${tick}>${icon("check")}</button>${parts(rest, at + c.len)}</span>`);
+      }
+      if (n < lines.length - 1) out.push(html`<span data-o=${at + line.length}>\n</span>`);
+      at += line.length + 1;
+    });
+    return out;
   }
 
   /** The sheet with its links as chips; a tap on the text opens the editor there (with the real text). */
   _renderInkView(page, hand, label) {
-    return html`<div class="ink ink-view ${hand ? "" : "normal"}" role="textbox" aria-readonly="true" aria-label=${label} tabindex="0" @click=${(e) => this._editFromView(e, page)} @keydown=${(e) => e.key === "Enter" && !e.target.closest("a") && this._editFromView(e, page)}>${this._inkParts(page.text, true)}</div>`;
+    return html`<div class="ink ink-view ${hand ? "" : "normal"}" role="textbox" aria-readonly="true" aria-label=${label} tabindex="0" @click=${(e) => this._editFromView(e, page)} @keydown=${(e) => e.key === "Enter" && !e.target.closest("a, .chk") && this._editFromView(e, page)}>${this._inkParts(page.text, true, (n) => this._tickLine(page.id, n))}</div>`;
   }
 
   _openLink(e, url) {
@@ -2301,8 +2329,101 @@ class MemoriaApp extends ChatMixin(LitElement) {
     return page.text.length;
   }
 
+  /** Ticks (or unticks) the box of a line, out of the editor. */
+  _tickLine(id, n) {
+    const page = this._page(id);
+    if (!page) return;
+    this._haptic("light");
+    this._putPage({ ...page, text: toggleCheck(page.text, n) });
+    this._queueSave(id, 300);
+  }
+
+  // ---------- writing: a box (Caixa de marcar) and the emojis, from the top of the sheet
+
+  /** The editor ready to take something: with the focus (inside the tap, so the phone opens the keyboard) and the cursor
+   * at the end when it had no focus. */
+  _inkReady() {
+    const ta = this.renderRoot.querySelector("textarea.ink");
+    if (!ta) return null;
+    if (this.renderRoot.activeElement !== ta) {
+      ta.focus({ preventScroll: true });
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }
+    return ta;
+  }
+
+  /** The new text in the editor, as if typed (it is saved like the rest), with the cursor at `caret`. */
+  _inkSet(ta, text, caret) {
+    ta.value = text;
+    ta.setSelectionRange(caret, caret);
+    ta.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+    this.updateComplete.then(() => this._scrollToCaret(ta, caret));
+  }
+
+  /** Caixa de marcar: the line of the cursor becomes a box (or stops being one); out of the editor, a new box at the end. */
+  _inkCheck() {
+    const focused = this.renderRoot.activeElement === this.renderRoot.querySelector("textarea.ink");
+    const ta = this._inkReady();
+    if (!ta) return;
+    this._haptic("light");
+    const v = ta.value;
+    if (!focused && v.trim() && !/\n[ \t]*$/.test(v)) {
+      const add = `${/\n$/.test(v) || !v ? "" : "\n"}${CHECK_TODO} `;
+      return this._inkSet(ta, v + add, v.length + add.length);
+    }
+    const pos = ta.selectionStart;
+    const start = v.lastIndexOf("\n", pos - 1) + 1;
+    const c = checkOf(v.slice(start));
+    if (c) return this._inkSet(ta, v.slice(0, start) + c.indent + v.slice(start + c.len), Math.max(start + c.indent.length, pos - (c.len - c.indent.length)));
+    const indent = /^[ \t]*/.exec(v.slice(start))[0];
+    const at = start + indent.length;
+    this._inkSet(ta, `${v.slice(0, at)}${CHECK_TODO} ${v.slice(at)}`, pos + 2);
+  }
+
+  /** Enter on a box makes another box below; Enter on an empty box ends the list (the box goes away). */
+  _onBeforeInk(e) {
+    if (e.inputType !== "insertLineBreak" && e.inputType !== "insertParagraph" && !(e.inputType === "insertText" && e.data === "\n")) return;
+    const ta = e.target;
+    const v = ta.value;
+    const pos = ta.selectionStart;
+    if (pos !== ta.selectionEnd) return;
+    const start = v.lastIndexOf("\n", pos - 1) + 1;
+    const c = checkOf(v.slice(start));
+    if (!c || pos < start + c.len) return;
+    let end = v.indexOf("\n", pos);
+    if (end < 0) end = v.length;
+    e.preventDefault();
+    if (!v.slice(start + c.len, end).trim()) return this._inkSet(ta, v.slice(0, start) + c.indent + v.slice(end), start + c.indent.length);
+    const add = `\n${c.indent}${CHECK_TODO} `;
+    this._inkSet(ta, v.slice(0, pos) + add + v.slice(pos), pos + add.length);
+  }
+
+  /** Emojis: the row opens (and closes) over the sheet; each one goes where the cursor is. */
+  _toggleEmoji() {
+    this._inkReady();
+    this._haptic("light");
+    this._emoji = !this._emoji;
+  }
+
+  _insertEmoji(em) {
+    const ta = this._inkReady();
+    if (!ta) return;
+    const { selectionStart: a, selectionEnd: z, value: v } = ta;
+    this._inkSet(ta, v.slice(0, a) + em + v.slice(z), a + em.length);
+  }
+
+  _renderEmojis() {
+    // a tap here never takes the focus from the sheet (the keyboard stays open)
+    const keep = (e) => e.preventDefault();
+    // rolar a fileira para o lado não vira a folha nem troca de tela
+    const stay = (e) => e.stopPropagation();
+    return html`<div class="emoji-row" role="toolbar" aria-label="Emojis" data-noswipe @pointerdown=${keep} @mousedown=${keep} @touchstart=${stay} @touchend=${stay}>
+      ${EMOJIS.map((em) => html`<button type="button" class="emoji" aria-label=${em} @click=${() => this._insertEmoji(em)}>${em}</button>`)}
+    </div>`;
+  }
+
   _editFromView(e, page) {
-    if (e.target.closest && e.target.closest("a")) return;
+    if (e.target.closest && e.target.closest("a, .chk")) return;
     const at = this._offsetAt(e, page);
     const ta = this.renderRoot.querySelector("textarea.ink");
     if (!ta) return;
@@ -2332,10 +2453,15 @@ class MemoriaApp extends ChatMixin(LitElement) {
     if (y < ta.scrollTop || y > ta.scrollTop + ta.clientHeight - 40) ta.scrollTop = Math.max(0, y - ta.clientHeight / 3);
   }
 
-  _renderLeafTop(s, menu) {
+  _renderLeafTop(s, menu, tools = false) {
+    // the tools never take the focus from the sheet (the keyboard stays open while writing)
+    const keep = (e) => e.preventDefault();
     return html`<div class="leaf-top">
       <span class="when">${s.created ? writtenAt(s.created, new Date(this._now)) : "folha nova"}</span>
       ${(s.times || []).length ? html`<span class="pin">${icon("clock")}${s.times.join(" · ")}</span>` : nothing}
+      ${tools
+        ? html`<button type="button" class="icon-btn tool" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkCheck()} aria-label="Caixa de marcar" title="Caixa de marcar">${icon("square-check")}</button><button type="button" class="icon-btn tool ${this._emoji ? "on" : ""}" aria-pressed=${this._emoji ? "true" : "false"} @pointerdown=${keep} @mousedown=${keep} @click=${() => this._toggleEmoji()} aria-label="Emojis" title="Emojis">${icon("smile")}</button>`
+        : nothing}
       <span class="num">${s.num}/${s.total}</span>
       ${menu ? html`<button class="icon-btn" @click=${() => this._openPageMenu()} aria-label="Opções da folha">${icon("ellipsis")}</button>` : html`<span class="icon-btn ghost"></span>`}
     </div>`;

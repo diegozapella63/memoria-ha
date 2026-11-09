@@ -113,6 +113,14 @@ with sync_playwright() as p:
         bwho = a.locator(".who-filter .pick")
         check(texts(bwho) == ["Ana", "Beto", "Todos"] and bwho.nth(0).get_attribute("aria-checked") == "true", f"{tag}: Buscar: de quem, Ana to begin with ({texts(bwho)})")
         check(texts(a.locator(".search-opts .pick")) == ["Incluir arquivados"], f"{tag}: Buscar: Incluir arquivados")
+        # 1.12.0: os botões do mesmo tamanho (De quem lado a lado, Incluir arquivados embaixo com a largura toda), alinhados
+        geo = a.evaluate("""(el) => { const r = (x) => x.getBoundingClientRect(); const who = [...el.renderRoot.querySelectorAll('.who-filter .pick')].map(r);
+          const arch = r(el.renderRoot.querySelector('.search-opts .pick'));
+          return { w: who.map((b) => Math.round(b.width)), h: [...who.map((b) => Math.round(b.height)), Math.round(arch.height)],
+            left: Math.round(who[0].left) - Math.round(arch.left), right: Math.round(who[who.length - 1].right) - Math.round(arch.right) }; }""")
+        check(max(geo["w"]) - min(geo["w"]) <= 1 and max(geo["h"]) - min(geo["h"]) <= 1, f"{tag}: Buscar: os botões do mesmo tamanho ({geo})")
+        check(abs(geo["left"]) <= 1 and abs(geo["right"]) <= 1, f"{tag}: Buscar: Incluir arquivados alinhado com o De quem ({geo})")
+        pg.screenshot(path=str(SHOTS / f"dono-buscar-{scheme}-{w}.png"))
         a.locator(".search-box input").fill("supino")
         pg.wait_for_timeout(300)
         check(a.locator(".result").count() == 0, f"{tag}: Ana: not in Beto's Treino")

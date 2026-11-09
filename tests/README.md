@@ -1,6 +1,6 @@
 # Testes do MemorIA
 
-- `npm test` (na raiz): o servidor (`memoria/rootfs/app/lib`: dados, categorias, de quem é e arquivados, o Agora e o sensor, relatório e PDF, exportação, as ferramentas do CorrerIA em `tests/ferramentas.test.mjs`) e, em `tests/server.test.mjs`, o servidor de verdade com o Home Assistant simulado (também a rota `/api/integracao/ferramentas`, o arquivo `share/memoria/correria.json` e as pessoas da casa, Ana e Beto, com a pessoa de cada login), com `node:test`, sem instalar nada. Nunca dependem do relógio real.
+- `npm test` (na raiz): o servidor (`memoria/rootfs/app/lib`: dados, categorias, de quem é e arquivados, o Agora e o sensor, relatório e PDF, exportação, as ferramentas do CorrerIA em `tests/ferramentas.test.mjs`; as caixas de marcar e o texto delas no PDF em `tests/caixas.test.mjs`) e, em `tests/server.test.mjs`, o servidor de verdade com o Home Assistant simulado (também a rota `/api/integracao/ferramentas`, o arquivo `share/memoria/correria.json` e as pessoas da casa, Ana e Beto, com a pessoa de cada login), com `node:test`, sem instalar nada. Nunca dependem do relógio real.
 - Conferências visuais na prévia (`preview/memoria-preview.html`, sem servidor), em Python + Playwright
   (`pip install playwright && playwright install chromium`). Gere a prévia antes (`cd frontend && npm run build`):
 
@@ -15,6 +15,7 @@
 | `tests/categorias_check.py` | Mais › Categorias, a categoria no bloco (com Nova ali mesmo) e o filtro em Blocos |
 | `tests/correria_check.py` | Mais › Configurações › Integrações › CorrerIA: desligado por padrão, sem depender do Usar IA, e quem usou por último |
 | `tests/conversa_check.py` | Falar (com um microfone simulado) e Conversar com a IA, a chave Usar IA e o microfone sem https |
+| `tests/caixas_check.py` | Caixa de marcar e Emojis no alto da folha: a linha vira item e deixa de ser, Enter faz o próximo item e acaba a lista, o emoji entra no cursor sem fechar o teclado; fora da escrita, um toque marca como feito (riscado) e desmarca, salvo; 390 e 320 px, claro e escuro |
 | `tests/links_check.py` | links nas folhas: etiquetas, abrir fora, tocar no texto para escrever, Adicionar link e Buscar |
 | `tests/relatorio_check.py` | Mais › Relatório pelo servidor (sobe o `dev/fake-ha.mjs` e o servidor com a casa inventada de `tests/fixtures/casa.mjs`): cabeçalho, escolhas guardadas, Baixar PDF e Voltar |
 | `tests/about_check.py` | Mais › Sobre (o mesmo dos outros apps) e a versão igual em todos os lugares |

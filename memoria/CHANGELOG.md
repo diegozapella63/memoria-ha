@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.0
+
+- **Caixa de marcar**, no alto da folha: transforma a linha do cursor num item com caixa (☐). Num item, o Enter já faz o próximo; Enter num item vazio acaba a lista. Fora da escrita, um toque na caixa marca como feito (o texto fica riscado) e outro toque desmarca.
+- **Emojis**, também no alto da folha: abre uma fileira de emojis, e cada um entra onde está o cursor, sem fechar o teclado.
+- No PDF do Relatório, as caixas aparecem como [ ] e [x].
+- **De quem** (em **Blocos** e no **Buscar**): os botões das pessoas e o **Todos** ficam do mesmo tamanho, lado a lado. No **Buscar**, **Incluir arquivados** fica embaixo, com a largura toda, alinhado com eles.
+
 ## 1.11.3
 
 - O filtro **De quem**, em **Blocos** e no **Buscar**, volta a dizer **Todos**, no fim da fileira, à direita.

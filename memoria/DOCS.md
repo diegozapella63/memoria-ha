@@ -18,6 +18,16 @@ Na primeira vez já existem dois blocos de exemplo, **Diário** (abre à noite) 
 - Folhas deixadas em branco somem sozinhas.
 - No **⋯** da folha: horário próprio, mover para outro bloco, **Adicionar link**, copiar o texto ou arrancar a folha (com **Desfazer**).
 
+### Caixas de marcar e emojis
+
+No alto da folha, ao lado do número, ficam **Caixa de marcar** e **Emojis**. Usar os dois não fecha o teclado.
+
+- **Caixa de marcar** transforma a linha onde está o cursor num item com caixa (☐); tocar de novo tira a caixa. Fora da escrita, ela põe um item novo no fim da folha.
+- Num item, o **Enter** já faz outro item embaixo. Enter num item vazio acaba a lista.
+- Fora da escrita, cada item mostra uma caixa: um toque marca como feito (o texto fica riscado), outro toque desmarca. Tocar no texto abre a escrita, como sempre.
+- **Emojis** abre uma fileira de emojis sobre a folha. Cada um entra onde está o cursor; tocar em Emojis de novo fecha a fileira.
+- Na folha, a caixa fica guardada como ☐ (a fazer) e ☑ (feito); listas escritas como `[ ]` e `[x]` também viram caixas. No PDF do Relatório, aparecem como [ ] e [x], e os emojis ficam de fora.
+
 ### Links
 
 Um endereço escrito ou colado na folha (`https://…` ou `www.…`) aparece como uma etiqueta curta com o ícone de link: o nome que você deu ou, sem nome, o site e o que foi buscado ("google.com · receita de bolo") ou o fim do endereço. Tocar na etiqueta abre o link fora do app (no app do Home Assistant, no navegador do celular). Só abrem endereços `http` e `https`.

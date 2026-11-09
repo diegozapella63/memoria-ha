@@ -29,8 +29,14 @@ const whenGenerated = (ms) => {
 };
 const byCreated = (a, b) => a.created - b.created || (a.id < b.id ? -1 : 1);
 
-/** How a line of a sheet reads in the PDF: each link as its name and site ("Receita (site.com.br)"). */
-export const readable = (text) => linksToText(text, { domain: true });
+/** How a line of a sheet reads in the PDF: each link as its name and site ("Receita (site.com.br)"); the boxes as [ ] and
+ * [x], and without the emojis (the Helvetica of the PDF has neither). */
+export const readable = (text) =>
+  linksToText(text, { domain: true })
+    .replace(/^([ \t]*)(?:☐|\[ \])[ \t]?/gm, "$1[ ] ")
+    .replace(/^([ \t]*)(?:☑|\[[xX]\])[ \t]?/gm, "$1[x] ")
+    .replace(/(?![©®™])\p{Extended_Pictographic}|[\u{FE0F}\u{200D}\u{20E3}\u{1F3FB}-\u{1F3FF}]/gu, "")
+    .replace(/(\S) {2,}/g, "$1 ");
 
 /** A line of a sheet in the page: each link as its name and site, a link that opens outside. */
 export function lineHtml(text) {

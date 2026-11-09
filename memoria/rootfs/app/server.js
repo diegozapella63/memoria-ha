@@ -26,7 +26,7 @@ import { Correria, ROUTE as TOOLS_ROUTE } from "./lib/correria.js";
 import { listTools, callTool, ToolError, UnknownTool } from "./lib/ferramentas.js";
 import { sameName } from "./lib/schedule.js";
 
-const VERSION = "1.11.3";
+const VERSION = "1.12.0";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WWW = path.join(HERE, "www");
 const DEV = process.env.MEMORIA_DEV === "1";

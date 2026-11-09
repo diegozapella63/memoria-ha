@@ -1946,6 +1946,20 @@ export const styles = css`
   .chip-row.who-filter .pick {
     flex: none;
   }
+  /* De quem (1.12.0): os botões do mesmo tamanho, lado a lado (com muita gente, a fileira rola para o lado) */
+  .chip-row.who-filter {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(max-content, 1fr);
+  }
+  .chip-row.who-filter .pick {
+    justify-content: center;
+  }
+  /* Buscar: Incluir arquivados embaixo, com a largura toda (alinhado com o De quem) */
+  .chip-row.search-opts .pick {
+    flex: 1;
+    justify-content: center;
+  }
   .chip-row.who-filter .pick .i {
     width: 17px;
     height: 17px;
@@ -2783,6 +2797,88 @@ export const notebookStyles = css`
   }
   .lnk:active {
     filter: brightness(0.95);
+  }
+  /* Caixas de marcar: ☐ a fazer, ☑ feito; na vista da folha, um toque marca (e o texto fica riscado) */
+  .chk {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    margin: 0 9px 0 0;
+    padding: 0;
+    vertical-align: -3px;
+    border: 2px solid var(--ink-soft);
+    border-radius: 6px;
+    background: transparent;
+    color: transparent;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .chk .i {
+    width: 15px;
+    height: 15px;
+    stroke-width: 3;
+  }
+  .chk-line.done .chk {
+    background: var(--rv-accent-ink);
+    border-color: var(--rv-accent-ink);
+    color: var(--paper);
+  }
+  .chk-line.done .chk ~ * {
+    text-decoration: line-through;
+    text-decoration-thickness: 2px;
+    opacity: 0.55;
+  }
+  .chk:focus-visible {
+    outline: 2px solid var(--rv-accent-ink);
+    outline-offset: 2px;
+  }
+  /* no alto da folha: Caixa de marcar e Emojis */
+  .leaf-top .tool {
+    width: 36px;
+    height: 40px;
+    border-radius: 10px;
+  }
+  .leaf-top .tool .i {
+    width: 21px;
+    height: 21px;
+  }
+  .leaf-top .tool.on {
+    color: var(--rv-accent-ink);
+  }
+  /* a fileira de emojis, entre o alto da folha e o texto; rola para o lado */
+  .emoji-row {
+    flex: none;
+    display: flex;
+    gap: 2px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    margin: 0 8px 4px 60px;
+    padding: 4px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--ink) 7%, var(--paper));
+    scrollbar-width: none;
+    position: relative;
+    z-index: 5;
+  }
+  .emoji-row::-webkit-scrollbar {
+    display: none;
+  }
+  .emoji {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    font-size: 24px;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+    font-family: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+  }
+  .emoji:active {
+    background: rgba(127, 127, 127, 0.18);
   }
   /* the editor waits behind the view (it gets the focus at the tap, so the keyboard opens) */
   textarea.ink.behind {
