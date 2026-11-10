@@ -123,7 +123,7 @@ test("categories: Começar do zero keeps them; an import brings and validates th
   assert.equal(out.categories.length, 3);
   assert.deepEqual(out.categories.map((c) => c.name), ["Casa", "Repetido", "Estudos"]);
   assert.notEqual(out.categories[1].id, "catcasa0001", "a repeated id gets a new one");
-  assert.equal(out.categories[2].color, "grafite");
+  assert.equal(out.categories[2].color, "lilas", "1.17.0: Roxo, an old name of the family, is Lilás");
   assert.equal(out.blocks[0].category, "catcasa0001");
   assert.equal("category" in out.blocks[1], false, "an unknown category is dropped");
   assert.deepEqual(normalize({ blocks: [], pages: [] }).categories, []);
@@ -304,4 +304,44 @@ test("Agora: a sheet with its own time opens its block, even a block without tim
   // Ana: nothing with a time is hers or everyone's, so nothing is the block of the moment (no block without a time)
   assert.deepEqual(buildSchedule(data, { person: "Ana" }), []);
   assert.equal(currentAt(buildSchedule(data, { person: "Ana" }), 14 * 60), null);
+});
+
+test("1.17.0: the palette of the family (12 colors); Framboesa and the old names go to the nearest one", () => {
+  const dir = tmp();
+  const now = Date.now();
+  const blk = (id, color) => ({ id, name: id, color, paper: "pautado", periods: [], times: [], order: 0, created: now, updated: now });
+  fs.writeFileSync(
+    path.join(dir, "memoria.json"),
+    JSON.stringify({
+      version: 1,
+      periods: {},
+      app: { accent: "framboesa", sensor_ia: true },
+      categories: [{ id: "cat000000001", name: "Casa", color: "cinza", order: 0, created: now, updated: now }],
+      blocks: [blk("blk000000001", "framboesa"), blk("blk000000002", "verde"), blk("blk000000003", "turquesa")],
+      pages: [],
+    }),
+  );
+  const store = new Store(dir, log);
+  assert.deepEqual(store.data.blocks.map((b) => b.color), ["rosa", "verde", "turquesa"]);
+  assert.equal(store.data.categories[0].color, "grafite");
+  assert.equal(store.data.app.accent, "rosa");
+  store.flush();
+  // saved once with the new colors
+  const saved = JSON.parse(fs.readFileSync(path.join(dir, "memoria.json"), "utf8"));
+  assert.equal(saved.blocks[0].color, "rosa");
+  // the new colors and the old names when saving
+  assert.equal(store.saveBlock({ id: "blk000000002", color: "indigo" }).color, "indigo");
+  assert.equal(store.saveBlock({ id: "blk000000002", color: "roxo" }).color, "lilas");
+  assert.equal(store.saveSettings({ app: { accent: "amarelo" } }).app.accent, "ouro");
+  assert.equal("accent" in store.saveSettings({ app: { accent: "nada" } }).app, false);
+  // Sensores › Chamadas de IA hoje: off unless turned on (here it was on in the file)
+  assert.equal(store.data.app.sensor_ia, true);
+  assert.equal("sensor_ia" in store.saveSettings({ app: { sensor_ia: false } }).app, false);
+  assert.equal(store.saveSettings({ app: { sensor_ia: true } }).app.sensor_ia, true);
+  assert.equal("sensor_ia" in store.saveSettings({ app: { sensor_ia: null } }).app, false);
+  // an import too
+  const n = normalize({ blocks: [blk("blk000000009", "magenta")], pages: [], categories: [], app: { accent: "framboesa", sensor_ia: true } });
+  assert.equal(n.blocks[0].color, "rosa");
+  assert.deepEqual([n.app.accent, n.app.sensor_ia], ["rosa", true]);
+  store.flush();
 });

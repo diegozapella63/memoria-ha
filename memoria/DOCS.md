@@ -8,7 +8,7 @@ Blocos de anotações que funcionam como um caderno de verdade: folhas com espir
 2. Ative **Mostrar na barra lateral** (e, se quiser, **Watchdog**).
 3. Abra o **MemorIA** pela barra lateral.
 
-Na primeira vez já existem dois blocos de exemplo, **Diário** (abre à noite) e **Rascunhos** (manhã e tarde). Dá para renomear, mudar ou excluir. Já tem um backup? Em **Mais › Configurações › Dados › Importar**, escolha o `.zip` e tudo volta.
+Na primeira vez já existem dois blocos de exemplo, **Diário** (abre à noite) e **Rascunhos** (manhã e tarde). Dá para renomear, mudar ou apagar. Já tem um backup? Em **Mais › Configurações › Dados › Importar**, escolha o `.zip` e tudo volta.
 
 ## Escrever e virar a página
 
@@ -67,7 +67,7 @@ Sem usar o controle por pessoa, desligue **Controle por pessoa** em **Mais › C
 
 ## Arquivar um bloco
 
-Um bloco que não se usa mais, mas que vale guardar: nos ajustes dele, toque em **Arquivar bloco**. Nada é apagado: o bloco só sai da estante, do **Agora** (não abre mais sozinho), da **Nova**, do **Buscar** e da conversa com a IA. Logo depois, **Desfazer** traz de volta.
+Um bloco que não se usa mais, mas que vale guardar: nos ajustes dele, toque em **Arquivar bloco**. Nada é apagado: o bloco só sai da estante, do **Agora** (não abre mais sozinho), do **Adicionar**, do **Buscar** e da conversa com a IA. Logo depois, **Desfazer** traz de volta.
 
 Os arquivados ficam em **Arquivados**, recolhido no fim da tela **Blocos**, com o número deles; toque para ver e toque num deles para abrir. Ele abre normalmente, com o aviso **Arquivado em …** no alto e o botão **Desarquivar**, que devolve o bloco à estante com tudo como era (inclusive os horários). Nos ajustes, o mesmo lugar vira **Desarquivar bloco**.
 
@@ -96,7 +96,7 @@ Sem usar categorias, desligue **Usar categorias** em **Mais › Configurações 
 
 ## Criar folhas de mensagens e fotos
 
-No botão **Nova**:
+No botão **Adicionar** (o do meio, embaixo):
 
 - **Escrever**: abre uma folha nova no bloco escolhido.
 - **Colar mensagem**: cole uma mensagem do WhatsApp, e-mail ou anotação. A IA tira horários, nomes e saudações e deixa como uma anotação limpa. Também dá para usar **Como está**.
@@ -106,7 +106,7 @@ No botão **Nova**:
 
 Você revisa e corrige o texto antes de criar a folha.
 
-### Leitura por IA
+### IA do Home Assistant
 
 O MemorIA não tem IA própria e não guarda chave de API. Ele usa a ação `ai_task.generate_data` do Home Assistant, então funciona com a integração de IA que você configurar lá, e dá para trocar quando quiser:
 
@@ -121,7 +121,7 @@ Para configurar:
 
 1. Em **Configurações › Dispositivos e serviços › Adicionar integração**, escolha a integração e siga os passos.
 2. Na página da integração, adicione uma **tarefa de IA** (AI Task). Para ler fotos, escolha um modelo que entenda imagens.
-3. No MemorIA, abra **Mais › Configurações › Integrações** e, em **Leitura por IA**, escolha essa IA (a caixa abre uma janela de baixo para cima com as opções; o Voltar do celular, o **X** ou tocar fora fecham sem mudar nada). "Padrão do Home Assistant" usa a IA preferida definida em **Configurações › Sistema › Geral**. Toque em **Verificar de novo** para conferir se ela está pronta.
+3. No MemorIA, abra **Mais › Configurações › Integrações** e, em **IA do Home Assistant**, escolha essa IA (a caixa abre uma janela de baixo para cima com as opções; o Voltar do celular, o **X** ou tocar fora fecham sem mudar nada). "Padrão do Home Assistant" usa a IA preferida definida em **Configurações › Sistema › Geral**. Toque em **Verificar de novo** para conferir se ela está pronta.
 
 Na hora da leitura, o app copia a foto por alguns segundos para `media/memoria/ia-temp`, chama a IA pelo Home Assistant e apaga a cópia em seguida.
 
@@ -132,7 +132,7 @@ Sem IA configurada, todo o resto funciona normalmente: a mensagem colada vira um
 No alto das telas (e de um bloco) ficam dois botões, como nos outros apps da família:
 
 - **Falar** (o microfone): diga a anotação, por exemplo "Reunião de sexta: levar o orçamento e confirmar o horário com a Ana". Toque de novo (ou em **Pronto**) quando terminar. A **fala para texto do Home Assistant** transcreve (Configurações › Assistentes de voz; com o Home Assistant Cloud ela já vem pronta, em português), a IA organiza como uma anotação e você revisa antes de criar a folha, com o que foi ouvido logo acima. Também em **Nova › Falar**. Até 2 minutos de cada vez.
-- **Conversar com a IA** (o balão): pergunte sobre os blocos, as folhas, o que abre agora ou sobre qualquer assunto. Se pedir para escrever ("crie uma folha no Diário com…" ou "acrescente … na folha 2 do Trabalho"), a IA mostra um cartão com o que vai fazer e só faz quando você toca em **Fazer** (ou **Fazer todas**). A conversa fica guardada enquanto o app está aberto; **Nova** começa outra. O microfone da conversa manda o que você falar.
+- **Conversar com a IA** (o balão): pergunte sobre os blocos, as folhas, o que abre agora ou sobre qualquer assunto. Se pedir para escrever ("crie uma folha no Diário com…" ou "acrescente … na folha 2 do Trabalho"), a IA mostra um cartão com o que vai fazer e só faz quando você toca em **Fazer** (ou **Fazer todas**). A conversa fica guardada enquanto o app está aberto; **Nova conversa** começa outra, e o Voltar do celular fecha a conversa. O microfone da conversa manda o que você falar.
 
 O microfone só funciona quando o Home Assistant é aberto por um endereço seguro (https), como o do Home Assistant Cloud ou o seu endereço externo; num endereço http, o app explica em vez de abrir.
 
@@ -140,6 +140,7 @@ Em **Mais › Configurações › Integrações**:
 
 - **Usar IA**: desligada, somem a leitura por IA (Organizar, fotos e Digitalizar), **Falar** e **Conversar**, em todos os aparelhos. Colar mensagem continua, criando a folha do jeito que está.
 - **Falar**: mostra se a fala para texto está pronta e deixa escolher qual o app usa (**Automático** usa a do assistente de voz preferido). Não muda o assistente de voz do Home Assistant.
+- **Uso da IA**: quantas vezes o app chamou a IA hoje, nos últimos 7 dias e no mês, uma barra por dia (toque para ver o dia), os tipos de chamada (mensagens, fotos, conversa) e as últimas chamadas, com o tempo e os tokens estimados. O Home Assistant não informa o consumo exato: ele fica no painel do provedor da IA.
 
 ## Buscar
 
@@ -167,7 +168,7 @@ content: >
   {{ state_attr('sensor.memoria_agora', 'texto') }}
 ```
 
-Dá para desligar em **Mais › Configurações › Integrações › Sensor no Home Assistant**.
+Dá para desligar em **Mais › Configurações › Integrações › Sensores no Home Assistant**. Ali também dá para ligar `sensor.memoria_ia_hoje`, com as chamadas de IA do dia (os erros, os tokens estimados e os tipos nos atributos).
 
 ## CorrerIA
 
@@ -188,7 +189,7 @@ O **CronologIA** (o calendário da família) pode mostrar no **Agora** dele a fo
 
 ## Relatório
 
-Em **Mais › Relatório**, os blocos e as folhas escritas numa página para ver, imprimir ou salvar:
+Em **Mais › Relatório de anotações**, os blocos e as folhas escritas numa página para ver, imprimir ou salvar:
 
 - no alto, a **categoria** e o **bloco** (só os da categoria escolhida); a escolha volta da próxima vez que o relatório abrir. Os blocos arquivados ficam fora de "Todos os blocos", mas aparecem no fim da lista, em **Arquivados (N)**, para escolher um deles;
 - **Voltar** e **Baixar PDF** lado a lado. O PDF (`anotacoes-AAAA-MM-DD.pdf`, com o nome do bloco ou da categoria quando filtrado) é feito pelo próprio app e funciona também no app do Home Assistant no celular, que não imprime páginas;
@@ -210,6 +211,7 @@ Em **Mais › Configurações › Dados**:
 - **Backup na pasta share**: **Criar backup** salva um `.zip` em `share/memoria`, que você acessa pela rede (por exemplo `\\homeassistant.local\share\memoria` com o app Samba). Os backups da pasta aparecem logo abaixo, com **Restaurar**.
 - **Importar**: traz os blocos e folhas de um `.zip` ou `.json` exportado pelo app (também funciona pelo celular).
 - **Versões anteriores**: o app guarda sozinho uma cópia a cada 10 minutos de uso (as 60 mais recentes) em `/data/versoes`. Toque em **Restaurar** para voltar a uma delas.
+- **Onde ficam os dados**: os blocos, as folhas e os ajustes em `/data/memoria.json`, que entra no backup do Home Assistant; as versões em `/data/versoes`.
 - **Começar do zero**: apaga todos os blocos e folhas; os ajustes e as categorias continuam.
 
 Antes de importar, restaurar ou apagar, o app sempre guarda uma cópia do que existe naquele momento em **Versões anteriores**. Importar e restaurar trocam os blocos (com de quem é cada um e os arquivados), as categorias, as folhas e os períodos do dia; a IA escolhida e o CorrerIA continuam os deste Home Assistant. Um backup de antes da 1.9.0 volta com todos os blocos de **Todos** e nenhum arquivado.
@@ -219,14 +221,14 @@ Antes de importar, restaurar ou apagar, o app sempre guarda uma cópia do que ex
 Em **Mais › Configurações › Aparência**:
 
 - **Tema**: **Automático** segue o claro ou escuro do Home Assistant (e, fora dele, o do celular) e troca na hora, com o app aberto, quando o modo muda. **Claro** e **Escuro** ficam fixos. Cada aparelho guarda a sua escolha.
-- **Cor do app**: com **Cor do dia** ligada (o padrão), a cor muda sozinha todo dia, passando pelas cores (sem o Grafite); é a mesma em todos os aparelhos e troca à meia-noite mesmo com o app aberto. Tocar numa cor desliga a Cor do dia e fica com ela. Dentro de um bloco, vale a cor da capa dele.
+- **Cor do app**: com **Cor do dia** ligada (o padrão), a cor muda sozinha todo dia, passando pelas 11 cores da paleta (sem o Grafite), a mesma cor do dia em todos os apps da família; é a mesma em todos os aparelhos e troca à meia-noite mesmo com o app aberto. Tocar numa cor desliga a Cor do dia e fica com ela. As 12 cores são as mesmas em todos os apps: Vermelho, Coral, Laranja, Ouro, Verde, Menta, Turquesa, Azul, Índigo, Lilás, Rosa e Grafite (as capas e as categorias usam as mesmas; uma Framboesa de antes virou Rosa). Dentro de um bloco, vale a cor da capa dele.
 - **Letra de mão**: ligada, as folhas são escritas como num caderno de verdade; desligada, com a letra comum.
 
 ## Mais
 
-O **Mais** é um menu, como nos outros apps da família: **Categorias**, **Relatório**, **Configurações** e, por último, **Sobre**. Cada linha abre a sua tela. **Configurações** tem as abas **Integrações** (Leitura por IA, Falar, CorrerIA e o sensor), **Dados**, **Aparência** e **Opções** (os períodos do dia); a aba escolhida fica guardada. O Voltar do celular, o **‹ Mais** no alto e arrastar o dedo para a direita voltam ao menu.
+O **Mais** é um menu, como nos outros apps da família: **Categorias**, **Relatório de anotações**, **Configurações** e, por último, **Sobre**. Cada linha abre a sua tela. **Configurações** tem as abas **Integrações** (CorrerIA, IA do Home Assistant, Falar, Uso da IA e Sensores), **Dados**, **Aparência** e **Opções** (os períodos do dia); a aba escolhida fica guardada. O Voltar do celular, o **‹ Mais** no alto e arrastar o dedo para a direita voltam ao menu.
 
-Arrastar o dedo para os lados (fora da folha) troca de aba: **Agora**, **Blocos**, **Buscar** e **Mais**. Na folha, arrastar continua virando a página; dentro de um bloco, arrastar para a direita volta.
+Embaixo ficam **Agora**, **Buscar**, **Adicionar** (o do meio), **Blocos** e **Mais** (os três pontos), na ordem dos outros apps. Arrastar o dedo para os lados (fora da folha) troca de aba, nessa ordem. Na folha, arrastar continua virando a página; dentro de um bloco, arrastar para a direita volta.
 
 ## Sobre
 

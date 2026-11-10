@@ -1,16 +1,20 @@
 // Pure helpers shared by the MemorIA screens.
 
+// The palette of the family (1.17.0): the same 12 colors, in this order and with these names, in every app (the
+// CronologIA's). The Cor do dia goes through the 11 without the Grafite.
 export const PALETTE = [
   { id: "vermelho", label: "Vermelho", fill: "#FF5A4F", ink: "#C42A1F" },
   { id: "coral", label: "Coral", fill: "#FF8A65", ink: "#C2410C" },
-  { id: "rosa", label: "Rosa", fill: "#FF77A9", ink: "#BE185D" },
-  { id: "framboesa", label: "Framboesa", fill: "#E8508A", ink: "#A3124F" },
   { id: "laranja", label: "Laranja", fill: "#FFA23E", ink: "#B45309" },
   { id: "ouro", label: "Ouro", fill: "#F2C14E", ink: "#8A6100" },
-  { id: "lilas", label: "Lilás", fill: "#B99BFF", ink: "#6D3FD6" },
-  { id: "azul", label: "Azul", fill: "#62B5FF", ink: "#0B67A8" },
+  { id: "verde", label: "Verde", fill: "#8BD45F", ink: "#3F7A17" },
   { id: "menta", label: "Menta", fill: "#4ED3A6", ink: "#0E7A57" },
-  { id: "grafite", label: "Grafite", fill: "#B9ADAE", ink: "#5E5253" },
+  { id: "turquesa", label: "Turquesa", fill: "#3CCBDA", ink: "#0B7285" },
+  { id: "azul", label: "Azul", fill: "#62B5FF", ink: "#0B67A8" },
+  { id: "indigo", label: "Índigo", fill: "#8F9BFF", ink: "#3D4BC2" },
+  { id: "lilas", label: "Lilás", fill: "#B99BFF", ink: "#6D3FD6" },
+  { id: "rosa", label: "Rosa", fill: "#FF77A9", ink: "#BE185D" },
+  { id: "grafite", label: "Grafite", fill: "#B5B9C2", ink: "#4E5560" },
 ];
 export const colorById = (id) => PALETTE.find((c) => c.id === id);
 

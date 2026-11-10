@@ -28,7 +28,9 @@ def check(c, label):
 
 
 def tap(pg, loc):
-    loc.scroll_into_view_if_needed()
+    # in the middle of the screen: near the bottom, the toast of the last choice may be over it (1.17.0: the box is lower)
+    loc.evaluate("(e) => e.scrollIntoView({ block: 'center' })")
+    pg.wait_for_timeout(100)
     bx = loc.bounding_box()
     pg.touchscreen.tap(bx["x"] + bx["width"] / 2, bx["y"] + bx["height"] / 2)
     pg.wait_for_timeout(450)

@@ -8,7 +8,12 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { DEFAULT_PERIODS, PAPERS, PERIODS, DURATIONS, normTime, ownerName } from "./schedule.js";
 
-export const COLORS = ["vermelho", "coral", "rosa", "framboesa", "laranja", "ouro", "lilas", "azul", "menta", "grafite"];
+// The palette of the family (1.17.0): the same 12 colors, in this order, in every app (the CronologIA's)
+export const COLORS = ["vermelho", "coral", "laranja", "ouro", "verde", "menta", "turquesa", "azul", "indigo", "lilas", "rosa", "grafite"];
+// a color of before goes to the nearest one of the palette (Framboesa of the MemorIA, the old names of the family)
+const OLD_COLORS = { framboesa: "rosa", amarelo: "ouro", roxo: "lilas", magenta: "rosa", cinza: "grafite" };
+/** A color of the palette: the one given, the nearest one to a color of before, or the fallback. */
+export const paletteColor = (c, fallback) => (COLORS.includes(c) ? c : OLD_COLORS[c] || fallback);
 const PERIOD_IDS = PERIODS.map((p) => p.id);
 export const MAX_TEXT = 50000;
 const MAX_PAGES = 20000;
@@ -87,7 +92,7 @@ function normCategories(list, now) {
     out.push({
       id,
       name,
-      color: COLORS.includes(c.color) ? c.color : "grafite",
+      color: paletteColor(c.color, "grafite"),
       order: Number.isInteger(c.order) ? c.order : out.length,
       created: when(c.created, now),
       updated: when(c.updated, now),
@@ -116,7 +121,7 @@ export function normalize(raw, current = {}) {
     blocks.push({
       id,
       name: (typeof b.name === "string" ? b.name.slice(0, 60).trim() : "") || "Sem nome",
-      color: COLORS.includes(b.color) ? b.color : "lilas",
+      color: paletteColor(b.color, "lilas"),
       paper: PAPERS.includes(b.paper) ? b.paper : "pautado",
       periods: [...new Set((Array.isArray(b.periods) ? b.periods : []).filter((p) => PERIOD_IDS.includes(p)))],
       times: looseTimes(b.times),
@@ -155,10 +160,11 @@ export function normalize(raw, current = {}) {
   }
   const a = raw.app && typeof raw.app === "object" ? raw.app : {};
   const app = {};
-  if (COLORS.includes(a.accent)) app.accent = a.accent;
+  if (paletteColor(a.accent, "")) app.accent = paletteColor(a.accent, "");
   if (a.accent_daily === false) app.accent_daily = false;
   if (typeof a.hand === "boolean") app.hand = a.hand;
   if (typeof a.sensor === "boolean") app.sensor = a.sensor;
+  if (a.sensor_ia === true) app.sensor_ia = true;
   if (a.ai_off === true) app.ai_off = true;
   if (a.cats_off === true) app.cats_off = true;
   if (a.owners_off === true) app.owners_off = true;
@@ -210,7 +216,19 @@ export class Store {
       pages: (raw && Array.isArray(raw.pages) && raw.pages) || (seed ? seed.pages : []),
     };
     this.data.marks = cleanMarks(raw && raw.marks, new Set(this.data.pages.map((p) => p.id)), now);
-    if (first) this.save();
+    // the palette of the family (1.17.0): a color of before (Framboesa) goes to the nearest one, once
+    let moved = false;
+    const fix = (o, key, fallback) => {
+      if (!o || typeof o !== "object" || o[key] === undefined || COLORS.includes(o[key])) return;
+      const c = paletteColor(o[key], fallback);
+      if (c) o[key] = c;
+      else delete o[key];
+      moved = true;
+    };
+    for (const b of this.data.blocks) fix(b, "color", "lilas");
+    for (const c of this.data.categories) fix(c, "color", "grafite");
+    fix(this.data.app, "accent", undefined);
+    if (first || moved) this.save();
   }
 
   save() {
@@ -278,7 +296,7 @@ export class Store {
     if (!existing && this.data.blocks.length >= MAX_BLOCKS) fail("blocos demais");
     const b = existing ? { ...existing } : { id: newId(), created: now, order: this.data.blocks.length };
     if ("name" in input || !existing) b.name = str(input.name || "Novo bloco", 60, "nome").trim() || "Sem nome";
-    if ("color" in input || !existing) b.color = COLORS.includes(input.color) ? input.color : "lilas";
+    if ("color" in input || !existing) b.color = paletteColor(input.color, "lilas");
     if ("paper" in input || !existing) b.paper = PAPERS.includes(input.paper) ? input.paper : "pautado";
     if ("periods" in input || !existing) {
       const ps = Array.isArray(input.periods) ? input.periods.filter((p) => PERIOD_IDS.includes(p)) : [];
@@ -335,7 +353,7 @@ export class Store {
       if (this.data.categories.some((x) => x.id !== c.id && catKey(x.name) === catKey(name))) fail(`Já existe a categoria ${name}.`);
       c.name = name;
     }
-    if ("color" in input) c.color = COLORS.includes(input.color) ? input.color : c.color;
+    if ("color" in input) c.color = paletteColor(input.color, c.color);
     if ("order" in input && Number.isInteger(input.order)) c.order = input.order;
     c.updated = now;
     if (existing) Object.assign(existing, c);
@@ -448,11 +466,13 @@ export class Store {
     }
     if (app && typeof app === "object") {
       const next = { ...this.data.app };
-      if ("accent" in app) next.accent = COLORS.includes(app.accent) ? app.accent : undefined;
+      if ("accent" in app) next.accent = paletteColor(app.accent, undefined);
       // Cor do dia: on unless turned off
       if ("accent_daily" in app) next.accent_daily = app.accent_daily === false ? false : undefined;
       if ("hand" in app) next.hand = Boolean(app.hand);
       if ("sensor" in app) next.sensor = Boolean(app.sensor);
+      // Sensores › Chamadas de IA hoje (1.17.0; off unless turned on): sensor.memoria_ia_hoje
+      if ("sensor_ia" in app) next.sensor_ia = app.sensor_ia === true ? true : undefined;
       // "" = the AI Home Assistant prefers.
       if ("ai_entity" in app) next.ai_entity = /^ai_task\.[a-z0-9_]+$/.test(app.ai_entity || "") ? app.ai_entity : undefined;
       // Usar IA (on unless turned off): off, no reading by AI, no Falar, no Conversa

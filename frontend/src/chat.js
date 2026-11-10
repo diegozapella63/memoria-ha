@@ -32,7 +32,7 @@ export function renderChat({ lit, icon, messages = [], draft = "", busy = false,
   return html`<div class="chat">
     <div class="chat-head">
       <span class="chat-title">${icon("message-circle")}Conversa</span>
-      ${messages.length ? html`<button type="button" class="text-btn" @click=${() => onClear()}>Nova</button>` : nothing}
+      ${messages.length ? html`<button type="button" class="text-btn" @click=${() => onClear()}>Nova conversa</button>` : nothing}
       <button type="button" class="icon-btn" aria-label="Fechar" @click=${() => onClose()}>${icon("x")}</button>
     </div>
     <div class="chat-log">

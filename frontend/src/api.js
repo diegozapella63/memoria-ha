@@ -244,6 +244,11 @@ export class Api {
     return this.call("memoria/ai/status");
   }
 
+  /** Uso da IA: today, 7 days, this month, the days and the last calls (counted by the server). */
+  usage() {
+    return this.call("memoria/usage");
+  }
+
   /** Falar: whether the speech-to-text of Home Assistant works, and the engines to choose from. */
   voiceStatus(fresh = false) {
     return this.call("memoria/voice/status", fresh ? { fresh: true } : {});

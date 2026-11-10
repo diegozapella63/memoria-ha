@@ -195,6 +195,24 @@ test("Conversa: the answer and the actions, checked against the blocks", async (
   a.ws.close();
 });
 
+test("1.17.0: Uso da IA counts the calls to the AI (the conversation and the reading), not the ones refused", async () => {
+  const a = await screen();
+  const before = await a.call("memoria/usage");
+  await a.call("memoria/ai/chat", { messages: [{ role: "user", text: "oi" }], context: {} });
+  await assert.rejects(a.call("memoria/ai/chat", { messages: [], context: {} }), /Escreva alguma coisa/);
+  const res = await fetch(`${base}/api/extract`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: "Reunião sexta 10h" }) });
+  assert.equal(res.status, 200);
+  const u = await a.call("memoria/usage");
+  assert.equal(u.hoje.chamadas, before.hoje.chamadas + 2);
+  assert.equal(u.hoje.tipos.conversa, (before.hoje.tipos.conversa || 0) + 1);
+  assert.equal(u.hoje.tipos.mensagem, (before.hoje.tipos.mensagem || 0) + 1);
+  assert.deepEqual(u.ultimas.slice(0, 2).map((c) => [c.tipo, c.resultado]), [["mensagem", "ok"], ["conversa", "ok"]]);
+  assert.ok(u.hoje.tokens > 0);
+  assert.equal(u.sensor, "sensor.memoria_ia_hoje");
+  assert.equal(u.sensor_on, false);
+  a.ws.close();
+});
+
 test("Usar IA off: no reading, no Falar, no Conversa", async () => {
   const a = await screen();
   await a.call("memoria/settings/save", { app: { ai_off: true } });

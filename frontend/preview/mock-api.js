@@ -2,7 +2,7 @@
 // Mirrors the server's rules (ids, times, conflicts) closely enough for the UI.
 import { DEFAULT_PERIODS, PAPERS, PERIODS, DURATIONS, normTime, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
 
-const COLORS = ["vermelho", "coral", "rosa", "framboesa", "laranja", "ouro", "lilas", "azul", "menta", "grafite"];
+const COLORS = ["vermelho", "coral", "laranja", "ouro", "verde", "menta", "turquesa", "azul", "indigo", "lilas", "rosa", "grafite"];
 const id = () => Math.random().toString(16).slice(2, 14).padEnd(12, "0");
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const clone = (x) => JSON.parse(JSON.stringify(x));
@@ -54,7 +54,7 @@ export class MockApi {
 
   async bootstrap() {
     await wait(60);
-    return { version: "1.16.0", user: { name: "Ana Souza", person: "Ana" }, people: ["Ana", "Beto"], ai: await this.aiStatus(), data: clone(this.data), correria: { ultimo: null } };
+    return { version: "1.17.0", user: { name: "Ana Souza", person: "Ana" }, people: ["Ana", "Beto"], ai: await this.aiStatus(), data: clone(this.data), correria: { ultimo: null } };
   }
 
   // De quem é: the people of the house (Ana uses the preview)
@@ -229,6 +229,31 @@ export class MockApi {
     const res = { periods: clone(d.periods), app: clone(d.app) };
     this.emit({ kind: "settings", ...res });
     return res;
+  }
+
+  // Uso da IA, invented: a few calls in the last days
+  async usage() {
+    await wait(60);
+    const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const now = new Date();
+    const counts = [2, 0, 4, 1, 0, 3, 2];
+    const dias = counts.map((n, i) => ({ dia: ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6 + i)), chamadas: n, erros: i === 2 ? 1 : 0, cota: 0 }));
+    const total = (n) => ({ chamadas: n, erros: 1, cota: 0, tokens: n * 900, imagens: 3, segundos: n * 4, tipos: { mensagem: 5, fotos: 3, conversa: n - 8 }, ias: { "ai_task.google_ai_task": n } });
+    const ago = (m) => new Date(now.getTime() - m * 60000).toISOString();
+    return {
+      hoje: { ...total(2), erros: 0, tipos: { conversa: 2 } },
+      semana: total(12),
+      mes: total(19),
+      dias,
+      ultimas: [
+        { quando: ago(25), tipo: "conversa", ia: "ai_task.google_ai_task", resultado: "ok", segundos: 3.1, tokens: 820, imagens: 0 },
+        { quando: ago(70), tipo: "conversa", ia: "ai_task.google_ai_task", resultado: "ok", segundos: 2.4, tokens: 640, imagens: 0 },
+        { quando: ago(60 * 26), tipo: "fotos", ia: "ai_task.google_ai_task", resultado: "ok", segundos: 6.8, tokens: 1300, imagens: 2 },
+      ],
+      desde: dias[0].dia,
+      sensor: "sensor.memoria_ia_hoje",
+      sensor_on: this.data.app.sensor_ia === true,
+    };
   }
 
   // Falar: the speech-to-text of Home Assistant, simulated (the microphone is the browser's)

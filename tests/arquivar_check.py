@@ -79,7 +79,7 @@ with sync_playwright() as p:
         check(covers(a) == ["Treino", "Trabalho", "Diário", "Ideias"], f"{tag}: the shelf without Viagem ({covers(a)})")
         check(a.locator(".page .status").first.inner_text().strip() == "4 blocos · 8 folhas", f"{tag}: the count leaves it out")
         head = a.locator(".arch-head")
-        check(head.count() == 1 and " ".join(head.inner_text().split()) == "Arquivados 1" and head.get_attribute("aria-expanded") == "false", f"{tag}: Arquivados 1, folded")
+        check(head.count() == 1 and " ".join(head.inner_text().split()) == "Arquivados (1)" and head.get_attribute("aria-expanded") == "false", f"{tag}: Arquivados (1), folded")
         check(a.locator(".arch-row").count() == 0, f"{tag}: nothing under it until tapped")
         check(a.evaluate("(el) => { const r = el.renderRoot; const s = r.querySelector('.shelf').getBoundingClientRect(), h = r.querySelector('.arch-panel').getBoundingClientRect(); return h.top > s.bottom; }"), f"{tag}: after the shelf")
         head.click()
@@ -196,7 +196,7 @@ with sync_playwright() as p:
         pg.screenshot(path=str(SHOTS / f"arquivar-{scheme}-{w}-agora-vazio.png"))
         btns.first.click()
         pg.wait_for_timeout(400)
-        check(view(a) == "shelf" and a.locator(".arch-head .count").inner_text().strip() == "5", f"{tag}: Ver blocos: Arquivados 5")
+        check(view(a) == "shelf" and a.locator(".arch-head .label").inner_text().strip() == "Arquivados (5)", f"{tag}: Ver blocos: Arquivados (5)")
 
         check(not errs, f"{tag}: no page errors {errs}")
         ctx.close()

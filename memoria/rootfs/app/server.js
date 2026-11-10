@@ -20,6 +20,7 @@ import { Store } from "./lib/store.js";
 import { AI } from "./lib/ai.js";
 import { Voice, readRaw, MAX_VOICE_BYTES } from "./lib/voice.js";
 import { Sensor } from "./lib/sensor.js";
+import { AiUsage, resultOf } from "./lib/usage.js";
 import { Backups, backupZip, toCSV, parseImport, listVersions, readVersion, fileStamp } from "./lib/data.js";
 import { anotacoes, reportHtml, reportPdf, pdfName } from "./lib/report.js";
 import { Correria, ROUTE as TOOLS_ROUTE } from "./lib/correria.js";
@@ -27,7 +28,7 @@ import { Integracao, ROUTE as NOW_ROUTE, trechos, clockOf } from "./lib/integrac
 import { listTools, callTool, ToolError, UnknownTool } from "./lib/ferramentas.js";
 import { sameName } from "./lib/schedule.js";
 
-const VERSION = "1.16.0";
+const VERSION = "1.17.0";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WWW = path.join(HERE, "www");
 const DEV = process.env.MEMORIA_DEV === "1";
@@ -57,6 +58,12 @@ const voice = new Voice({ ha, rest: HA_REST, token: TOKEN, log, pick: () => stor
 const aiOff = () => store.data.app.ai_off === true;
 const offError = () => Object.assign(new Error("A IA está desligada em Mais › Configurações › Integrações."), { code: "ai_off" });
 const sensor = new Sensor({ store, log, restUrl: HA_REST, token: TOKEN, enabled: () => store.data.app.sensor !== false });
+// Uso da IA (1.17.0, like the other apps): the calls to ai_task counted here; sensor.memoria_ia_hoje only when turned on
+const usage = new AiUsage({ dir: DATA_DIR, sensor: "sensor.memoria_ia_hoje", label: "MemorIA", rest: HA_REST, token: TOKEN, log, enabled: () => store.data.app.sensor_ia === true });
+/** One call to the AI, for Uso da IA: kind (mensagem, fotos, conversa), characters in and out, images, since when. */
+function countAi(kind, { entity = "", input = 0, output = 0, images = 0, started, err = null }) {
+  usage.record({ kind, entity: entity || store.data.app.ai_entity || "", input, output, images, seconds: (Date.now() - started) / 1000, result: resultOf(err) });
+}
 const backups = new Backups({ dir: SHARE_DIR });
 // Mais › Configurações › Integrações › CorrerIA (off unless turned on; it doesn't need Usar IA: the AI is the CorrerIA's,
 // the Claude's or the Gemini's)
@@ -174,11 +181,23 @@ class Session {
       case "memoria/voice/status":
         return this.result(id, await voice.status({ fresh: !!msg.fresh }));
 
+      // Mais › Configurações › Integrações › Uso da IA
+      case "memoria/usage":
+        return this.result(id, usage.summary());
+
       // Conversa (the chat beside the microphone): one turn -> {reply, actions, provider}
       case "memoria/ai/chat": {
         if (aiOff()) throw offError();
         const started = Date.now();
-        const out = await ai.chat({ messages: msg.messages, context: msg.context });
+        const input = JSON.stringify([msg.messages, msg.context]).length;
+        let out;
+        try {
+          out = await ai.chat({ messages: msg.messages, context: msg.context });
+        } catch (err) {
+          if (err.code !== "invalid_format" && err.code !== "no_ai") countAi("conversa", { input, started, err });
+          throw err;
+        }
+        countAi("conversa", { entity: out.entity, input, output: (out.reply || "").length + JSON.stringify(out.actions || []).length, started });
         log.info(`Conversa via ${out.provider}: ${out.actions.length} ações em ${((Date.now() - started) / 1000).toFixed(1)}s`);
         return this.result(id, out);
       }
@@ -272,7 +291,9 @@ class Session {
       case "memoria/settings/save": {
         if (msg.app && "voice_engine" in msg.app) voice.forget();
         const wasOn = correriaOn();
+        const iaWas = store.data.app.sensor_ia === true;
         const settings = store.saveSettings({ periods: msg.periods, app: msg.app });
+        if ((store.data.app.sensor_ia === true) !== iaWas) (iaWas ? usage.remove() : usage.publish()).catch(() => {});
         if (correriaOn() !== wasOn) {
           correria.publish(correriaOn());
           log.info(`CorrerIA ${correriaOn() ? "ligado" : "desligado"}`);
@@ -341,7 +362,17 @@ function handleExtract(req, res) {
     const started = Date.now();
     try {
       if (aiOff()) throw offError();
-      const out = await ai.extract({ text: body.text, images: body.images });
+      const images = Array.isArray(body.images) ? Math.min(6, body.images.length) : 0;
+      const kind = images ? "fotos" : "mensagem";
+      const input = typeof body.text === "string" ? body.text.length : 0;
+      let out;
+      try {
+        out = await ai.extract({ text: body.text, images: body.images });
+      } catch (err) {
+        if (!["no_ai", "no_vision", "gone", "unavailable", "no_media", "ai_off"].includes(err.code)) countAi(kind, { input, images, started, err });
+        throw err;
+      }
+      if (out.provider) countAi(kind, { entity: out.entity, input, output: out.text.length, images, started });
       log.info(`Leitura por IA via ${out.provider}: ${out.text.length} caracteres em ${((Date.now() - started) / 1000).toFixed(1)}s`);
       sendJson(res, 200, out);
     } catch (err) {

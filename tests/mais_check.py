@@ -19,8 +19,9 @@ PREVIEW = os.environ.get("MEMORIA_PREVIEW_URL") or (REPO / "preview" / "memoria-
 SHOTS = Path(sys.argv[1] if len(sys.argv) > 1 else os.environ.get("MEMORIA_SHOTS", Path(tempfile.gettempdir()) / "memoria-shots"))
 SHOTS.mkdir(parents=True, exist_ok=True)
 VERSION = re.search(r'^version:\s*"?([\d.]+)', (REPO / "memoria" / "config.yaml").read_text(), re.M).group(1)
-PALETTE = ["vermelho", "coral", "rosa", "framboesa", "laranja", "ouro", "lilas", "azul", "menta"]  # no grafite
-FILLS = {"vermelho": "#FF5A4F", "coral": "#FF8A65", "rosa": "#FF77A9", "framboesa": "#E8508A", "laranja": "#FFA23E", "ouro": "#F2C14E", "lilas": "#B99BFF", "azul": "#62B5FF", "menta": "#4ED3A6"}
+# 1.17.0: the palette of the family, in its order (the Cor do dia goes through the 11 without the Grafite)
+PALETTE = ["vermelho", "coral", "laranja", "ouro", "verde", "menta", "turquesa", "azul", "indigo", "lilas", "rosa"]  # no grafite
+FILLS = {"vermelho": "#FF5A4F", "coral": "#FF8A65", "laranja": "#FFA23E", "ouro": "#F2C14E", "verde": "#8BD45F", "menta": "#4ED3A6", "turquesa": "#3CCBDA", "azul": "#62B5FF", "indigo": "#8F9BFF", "lilas": "#B99BFF", "rosa": "#FF77A9"}
 
 n_ok, failed = 0, []
 
@@ -101,18 +102,25 @@ with sync_playwright() as p:
         check(view(a) == "config:integracoes", f"{tag}: Configurações opens on Integrações ({view(a)})")
         check(a.locator(".page-title").first.inner_text().strip() == "Configurações" and a.locator(".uplink").inner_text().strip() == "Mais", f"{tag}: title and ‹ Mais")
         check(a.locator("nav .tab.on").inner_text().strip() == "Mais", f"{tag}: Mais lit in the bar")
+        # 1.17.0: the bar of the family: Agora, Buscar, Adicionar in the middle, Blocos and, last, Mais with three dots
+        labels = [t.strip() for t in a.locator("nav .tab").all_inner_texts()]
+        check(labels == ["Agora", "Buscar", "Adicionar", "Blocos", "Mais"] and "fab" in a.locator("nav .tab").nth(2).get_attribute("class"), f"{tag}: the bar ({labels})")
+        check(a.locator("nav .tab").last.locator("svg circle").count() == 3, f"{tag}: Mais with three dots")
         tabs = [t.strip() for t in a.locator(".more-tabs button").all_inner_texts()]
         check(tabs == ["Integrações", "Dados", "Aparência", "Opções"], f"{tag}: the four tabs ({tabs})")
         bar = a.locator(".more-tabs").evaluate("(x) => [x.scrollWidth, x.clientWidth, [...x.querySelectorAll('button')].map((b) => b.scrollWidth <= b.clientWidth + 1)]")
         check(bar[0] <= bar[1] + 1 and all(bar[2]), f"{tag}: the four tabs fit, no text cut ({bar})")
         heads = [t.strip() for t in a.locator("[role=tabpanel] .mais-head h2").all_inner_texts()]
-        check(heads == ["Leitura por IA", "Falar", "CorrerIA", "Sensor no Home Assistant"], f"{tag}: Integrações: Leitura por IA, Falar, CorrerIA and the sensor ({heads})")
+        check(heads == ["CorrerIA", "IA do Home Assistant", "Falar", "Uso da IA", "Sensores no Home Assistant"], f"{tag}: Integrações in the order of the family ({heads})")
         check(a.locator("#leitura-ia select").count() == 1, f"{tag}: IA usada pelo app in Integrações")
+        uso = a.locator("#uso-ia")
+        check(uso.locator(".uso-tile").count() == 3 and uso.locator(".uso-bar").count() == 7, f"{tag}: Uso da IA: today, 7 days, this month and a bar per day")
+        check(a.locator("#sensor input[role=switch]").count() == 2, f"{tag}: Sensores: MemorIA agora and Chamadas de IA hoje")
         check(not a.evaluate(OVER), f"{tag}: Integrações: nothing past the edge {a.evaluate(OVER)}")
         pg.screenshot(path=str(SHOTS / f"mais-config-integracoes-{scheme}-{w}.png"))
 
         expect = {
-            "Dados": ("config:dados", ["Exportar", "Backup na pasta share", "Importar", "Versões anteriores", "Começar do zero"]),
+            "Dados": ("config:dados", ["Exportar", "Backup na pasta share", "Importar", "Versões anteriores", "Onde ficam os dados", "Começar do zero"]),
             "Aparência": ("config:aparencia", ["Tema", "Cor do app", "Letra de mão"]),
             "Opções": ("config:opcoes", ["Blocos", "Períodos do dia"]),
         }

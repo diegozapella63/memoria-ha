@@ -38,14 +38,14 @@ Como rodar no computador: README.md, em **Desenvolvimento**.
 2. Implementar. Servidor: só módulos nativos do Node. Interface: Lit, em `frontend/src`. A prévia usa a mesma tela com o servidor imitado em `frontend/preview/mock-api.js`: se a mudança depende do servidor, imite lá.
 3. Gerar a interface: `cd frontend && npm install && npm run build`. Faça commit também de `memoria/rootfs/app/www/memoria.js` e `preview/memoria-preview.html`.
 4. Testar: `npm test` (servidor) e as conferências visuais ligadas à mudança (`python3 tests/<nome>_check.py`, ou todas com `tests/visual.sh`). Toda mudança ou bug corrigido vem com o teste dele (ver tests/README.md).
-5. Subir a versão nos três lugares (iguais): `memoria/config.yaml` (`version:`), `memoria/rootfs/app/server.js` (`const VERSION`) e `frontend/preview/mock-api.js` (`version:`). Correção = patch (1.16.0 → 1.16.1); novidade = minor (1.16.x → 1.17.0).
+5. Subir a versão nos três lugares (iguais): `memoria/config.yaml` (`version:`), `memoria/rootfs/app/server.js` (`const VERSION`) e `frontend/preview/mock-api.js` (`version:`). Correção = patch (1.17.0 → 1.17.1); novidade = minor (1.17.x → 1.18.0).
 6. `memoria/CHANGELOG.md`: nova seção no topo, em português, do ponto de vista de quem usa (o que mudou na tela, não no código).
 7. `memoria/DOCS.md` quando muda o comportamento ou aparece algo novo; `README.md` quando muda a lista do que o app tem.
 8. Commit em `main` com mensagem em português ("MemorIA 1.17.0: ..."), `git pull --rebase` e push. O GitHub roda todos os testes a cada push (aba Actions).
 
 ## Arquivos iguais aos dos outros apps
 
-Ao mudar um, mude nos outros: `frontend/src/selectsheet.js` (as caixas de seleção, igual em todos os apps), `about.js`, `look.js`, `swipe.js`, `voice.js` e `chat.js` (os do ResolvIA e da CronologIA) e `memoria/rootfs/app/lib/ws.js`, `ha.js` e `voice.js` (os de `lib/` do ResolvIA). O `lib/pdf.js` é o do ResolvIA, com o nome do app como opção.
+Ao mudar um, mude nos outros: `frontend/src/selectsheet.js` (as caixas de seleção, igual em todos os apps), `about.js`, `look.js`, `swipe.js`, `voice.js` e `chat.js` (os do ResolvIA e da CronologIA), `usage-panel.js` e `memoria/rootfs/app/lib/usage.js` (os do ResolvIA) e `memoria/rootfs/app/lib/ws.js`, `ha.js` e `voice.js` (os de `lib/` do ResolvIA). O `lib/pdf.js` é o do ResolvIA, com o nome do app como opção.
 
 ## Como os apps conversam
 
@@ -65,6 +65,18 @@ Ao mudar um, mude nos outros: `frontend/src/selectsheet.js` (as caixas de seleç
 - **Inativos no fim, recolhidos**: o que está inativo, cancelado, encerrado, arquivado ou ignorado de propósito (por uma opção, como Nunca considerar) fica numa seção no fim da lista, recolhida por padrão, com o nome e a contagem (ex.: **Arquivados (3)**); abre num toque. Vale para todos os apps da família. Aqui: os blocos arquivados, em **Arquivados** no fim de **Blocos** (`_renderArchived`); no **Buscar**, com **Incluir arquivados**, depois dos outros; no Relatório, no fim da escolha do bloco (`<optgroup>` Arquivados (N)).
 - **Caixas de seleção no visual do app**: nenhuma janela nativa do celular. Toda caixa de seleção abre pelo selectsheet.js; sugestões de texto (no lugar do `<datalist>`) e horários (sem AM/PM) também no visual do app; a caixa fechada igual aos outros campos (altura, cantos, seta), no claro e no escuro. Aqui: o `selectsheet.js` vem primeiro no `main.js` e no `preview.js` (e em `www/selectsheet.js` na página do Relatório), com `select:not([multiple]) { pointer-events: none }` no `styles.js` (Shadow DOM); a caixa fechada é a classe `.select`; horários por `_timeSelect` (de meia em meia hora) e `_timePicker` (a hora e depois os minutos), nunca `<input type="time">`.
 - Dados de exemplo e de testes sempre inventados (Ana, Beto): nunca blocos, folhas ou nomes reais do dono.
+
+**Padrão da família (igual em todos os apps)**
+- Barra de baixo: o botão do meio é **Adicionar** (no EconomIA, a ação principal dele); **Buscar**, quando houver, é a 2ª aba; **Mais** é a última, com o ícone de três pontos.
+- **Mais** é um menu: as funções do app, depois **Configurações** e por último **Sobre**. Os relatórios se chamam **Relatório de/do …**.
+- **Configurações** em 4 abas, nesta ordem: **Integrações › Dados › Aparência › Opções**; abre em Integrações. Nenhuma função do app vira aba.
+- **Integrações**, nesta ordem: os outros apps da família › CorrerIA › **IA do Home Assistant** (o Usar IA) › Falar › Uso da IA › Sensores.
+- IA: as entradas se chamam **Colar mensagem**, **Escolher fotos** (ou **Escolher fotos ou PDF**, onde PDF vale) e **Digitalizar com IA**; a conversa recomeça em **Nova conversa**; o Voltar do celular fecha a Conversa.
+- Palavras: **Apagar** (nunca Excluir); **Testar no meu celular**; **Home Assistant Cloud** (não Nabu Casa); recolhidos como **Nome (n)**; o CHANGELOG começa com "# Mudanças".
+- **Dados**: Exportar › Backup na pasta share › Importar › Versões anteriores › Onde ficam os dados › Começar do zero.
+- **Aparência**: o tema vale no aparelho (começa em Automático); a cor do app vale para a casa toda; uma paleta só, de 12 cores (Vermelho, Coral, Laranja, Ouro, Verde, Menta, Turquesa, Azul, Índigo, Lilás, Rosa, Grafite); a Cor do dia é a mesma em todos os apps (as 11 sem o Grafite, pelo número do dia).
+
+Aqui: a barra em `_renderNav`; o menu em `_moreRows`; as abas em `_configTabs`; Integrações em `_renderConfig` (os outros apps: nenhum ainda; o CronologIA lê o `share/memoria/integracao.json` sozinho); o Uso da IA é o `usage.js`/`usage-panel.js` do ResolvIA (iguais lá: ao mudar, mude nos dois); a paleta em `frontend/src/util.js` (`PALETTE`), `lib/store.js` (`COLORS`, `paletteColor`: uma cor de antes vira a mais próxima ao abrir) e `lib/report.js`; a Cor do dia em `look.js` (`colorOfDay`).
 
 ## Conversa com o dono
 

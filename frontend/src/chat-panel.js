@@ -124,7 +124,7 @@ export const ChatMixin = (Base) =>
       }
       if (v.name === "shelf") return "Blocos (a estante com todos os blocos e o Seu dia)";
       if (v.name === "search") return this._query ? `Buscar, procurando "${this._query}"` : "Buscar";
-      if (v.name === "more") return "Mais (o menu: Categorias, Relatório, Configurações e Sobre)";
+      if (v.name === "more") return "Mais (o menu: Categorias, Relatório de anotações, Configurações e Sobre)";
       if (v.name === "categorias") return "Mais › Categorias (as categorias dos blocos)";
       if (v.name === "config") return "Mais › Configurações (integrações, dados, aparência e opções)";
       if (v.name === "sobre") return "Mais › Sobre (CorrerIA Code, quem faz o app, os outros apps da família e o GitHub)";

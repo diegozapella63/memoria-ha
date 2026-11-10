@@ -6,6 +6,7 @@ import { aboutPage, aboutStyles } from "./about.js";
 import { themePicker, colorPicker, lookStyles, colorOfDay } from "./look.js";
 import { swipeStart, swipeEnd, slideIn } from "./swipe.js";
 import { chatStyles } from "./chat.js";
+import { usagePanel, usageStyles } from "./usage-panel.js";
 import { ChatMixin } from "./chat-panel.js";
 import { Recorder, micError, VOICE_RATE, VOICE_MAX_S } from "./voice.js";
 import { PALETTE, colorById, colorVars, hexToRgba, fold, foldKeepLength, plural, clip, writtenAt, hm, newId, firstLine, prepareImage } from "./util.js";
@@ -87,7 +88,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     _correria: { state: true },
   };
 
-  static styles = [styles, notebookStyles, aboutStyles, unsafeCSS(lookStyles), unsafeCSS(chatStyles)];
+  static styles = [styles, notebookStyles, aboutStyles, unsafeCSS(lookStyles), unsafeCSS(chatStyles), unsafeCSS(usageStyles)];
 
   constructor() {
     super();
@@ -380,11 +381,11 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   _accent() {
     if (this._accentDaily()) return colorOfDay(PALETTE, new Date(this._now));
-    return colorById(this._app("accent", "lilas")) || PALETTE[6];
+    return colorById(this._app("accent", "lilas")) || colorById("lilas");
   }
 
   _colorOf(block) {
-    return (block && colorById(block.color)) || PALETTE[6];
+    return (block && colorById(block.color)) || colorById("lilas");
   }
 
   _cv(block) {
@@ -717,6 +718,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       if (tab === "integracoes") {
         this._refreshAi(false);
         if (this._aiOn() && !this._voice) this._loadVoice();
+        if (this._aiOn()) this._loadUsage();
       }
       if (tab === "dados") this._loadBackups();
     }
@@ -1290,6 +1292,30 @@ class MemoriaApp extends ChatMixin(LitElement) {
     </div>`;
   }
 
+  /** Mais › Configurações › Integrações › Uso da IA: the calls counted by the server (uso_ia.json), like the other apps. */
+  async _loadUsage() {
+    if (!this.api.usage) return;
+    try {
+      this._usage = await this.api.usage();
+    } catch (err) {
+      this._usage = null;
+    }
+    this.requestUpdate();
+  }
+
+  _renderUsage() {
+    const ai = this._ai || {};
+    return usagePanel({
+      u: this._usage,
+      day: this._usageDay,
+      onDay: (d) => ((this._usageDay = d), this.requestUpdate()),
+      head: this._secHead("chart-column", "Uso da IA", "As chamadas do app para a IA. Os tokens são estimados."),
+      app: "MemorIA",
+      using: (ai.using && ai.using.id) || "",
+      names: Object.fromEntries((ai.entities || []).map((e) => [e.id, e.name])),
+    });
+  }
+
   async _refreshAi(force = true) {
     if (!force && Date.now() - this._aiAt < 60000) return;
     this._aiChecking = true;
@@ -1561,9 +1587,9 @@ class MemoriaApp extends ChatMixin(LitElement) {
     if (!b) return;
     const n = this._pagesOf(b.id).length;
     this._openConfirm({
-      title: `Excluir “${clip(b.name, 24)}”?`,
+      title: `Apagar “${clip(b.name, 24)}”?`,
       text: n ? `As ${plural(n, "folha", "folhas")} deste bloco também serão apagadas. Não dá para desfazer.` : "Este bloco está vazio.",
-      label: "Excluir bloco",
+      label: "Apagar bloco",
       danger: true,
       run: async () => {
         this._closeSheet();
@@ -1572,7 +1598,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           this._onEvent({ kind: "block_deleted", id: b.id });
           this._showToast("Bloco excluído");
         } catch (err) {
-          this._showToast(`Não consegui excluir: ${err.message}`);
+          this._showToast(`Não consegui apagar: ${err.message}`);
         }
       },
     });
@@ -2109,11 +2135,11 @@ class MemoriaApp extends ChatMixin(LitElement) {
     return html`
       <nav>
         <div class="tabs">
-          ${tab(["now"], "", "Agora", "clock-3")} ${tab(["shelf", "block"], "/blocos", "Blocos", "library")}
-          <button class="tab fab" @click=${() => this._openNew()} aria-label="Nova folha">
-            <span class="pill">${icon("plus")}</span><span>Nova</span>
+          ${tab(["now"], "", "Agora", "clock-3")} ${tab(["search"], "/buscar", "Buscar", "search")}
+          <button class="tab fab" @click=${() => this._openNew()} aria-label="Adicionar">
+            <span class="pill">${icon("plus")}</span><span>Adicionar</span>
           </button>
-          ${tab(["search"], "/buscar", "Buscar", "search")} ${tab(["more", ...IN_MORE], "/mais", "Mais", "sliders-horizontal")}
+          ${tab(["shelf", "block"], "/blocos", "Blocos", "library")} ${tab(["more", ...IN_MORE], "/mais", "Mais", "ellipsis")}
         </div>
       </nav>
     `;
@@ -2645,7 +2671,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const none = cats.length > 0 && all.some((b) => !this._cat(b.category));
     const groups = timeline(this._schedule());
     const { cur } = this._slot();
-    const chip = (v, label, c = null) => html`<button class="pick ${c ? "list" : ""} ${fcat === v ? "on" : ""}" style=${c ? colorVars(colorById(c.color) || PALETTE[9], this._dark) : ""} aria-pressed=${fcat === v ? "true" : "false"} @click=${() => this._setShelfCat(v)}>${c ? html`<span class="dot"></span>` : nothing}<span>${label}</span></button>`;
+    const chip = (v, label, c = null) => html`<button class="pick ${c ? "list" : ""} ${fcat === v ? "on" : ""}" style=${c ? colorVars(colorById(c.color) || colorById("grafite"), this._dark) : ""} aria-pressed=${fcat === v ? "true" : "false"} @click=${() => this._setShelfCat(v)}>${c ? html`<span class="dot"></span>` : nothing}<span>${label}</span></button>`;
     return html`
       <section class="page">
         ${this._renderHead("Blocos", { text: `${plural(blocks.length, "bloco", "blocos")} · ${plural(pages, "folha", "folhas")}`, extra: this._renderViewToggle() })}
@@ -2737,7 +2763,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         this.requestUpdate();
       }}>
         <span class="tile muted">${icon("archive")}</span>
-        <span class="grow"><span class="label">Arquivados <span class="count">${list.length}</span></span></span>
+        <span class="grow"><span class="label">Arquivados (${list.length})</span></span>
         ${icon("chevron-down", "chev")}
       </button>
       ${open
@@ -3083,7 +3109,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     return [
       // without Usar categorias, no Categorias
       ...(this._catsOn() ? [["/categorias", "tag", "Categorias", cats.length ? `${clip(cats.map((c) => c.name).join(", "), 44)}.` : "Para agrupar os blocos."]] : []),
-      ["relatorio", "clipboard-list", "Relatório", "Os blocos e as folhas, para imprimir ou salvar em PDF."],
+      ["relatorio", "clipboard-list", "Relatório de anotações", "Os blocos e as folhas, para imprimir ou salvar em PDF."],
       ["/config", "sliders-horizontal", "Configurações", cfg[0].toUpperCase() + cfg.slice(1)],
       ["/sobre", "info", "Sobre", "CorrerIA Code, os apps e o GitHub."],
     ];
@@ -3135,7 +3161,10 @@ class MemoriaApp extends ChatMixin(LitElement) {
       this._go(this._configPath(k), true, history.state && history.state.rvUp ? { rvUp: true } : null);
     };
     let body;
-    if (tab === "integracoes") body = html`${this._renderAiPanel()} ${this._aiOn() && this.api.voiceStatus ? this._renderVoicePanel() : nothing} ${this._renderCorreriaPanel()} ${this._renderSensorPanel()}`;
+    // the order of the family: the other apps (none here) › CorrerIA › IA do Home Assistant › Falar › Uso da IA › Sensores
+    if (tab === "integracoes")
+      body = html`${this._renderCorreriaPanel()} ${this._renderAiPanel()} ${this._aiOn() && this.api.voiceStatus ? this._renderVoicePanel() : nothing}
+        ${this._aiOn() ? this._renderUsage() : nothing} ${this._renderSensorPanel()}`;
     else if (tab === "dados") body = this._renderDataPanel();
     else if (tab === "aparencia") body = this._renderAppearanceTab();
     else body = this._renderOptionsTab();
@@ -3239,15 +3268,22 @@ class MemoriaApp extends ChatMixin(LitElement) {
     </div>`;
   }
 
-  /** Mais › Configurações › Integrações › Sensor no Home Assistant. */
+  /** Mais › Configurações › Integrações › Sensores no Home Assistant: MemorIA agora and, with the AI, Chamadas de IA hoje. */
   _renderSensorPanel() {
     const on = this._app("sensor", true);
+    const ia = this._app("sensor_ia", false) === true;
     return html`<div class="panel" id="sensor">
-      ${this._secHead("activity", "Sensor no Home Assistant", "Para usar em painéis e automações do Home Assistant.")}
+      ${this._secHead("activity", "Sensores no Home Assistant", "Para usar em painéis e automações do Home Assistant.")}
       <div class="row switch-row">
         <div class="grow"><div class="label">MemorIA agora</div><div class="hint" style="white-space:normal">${on ? html`<code>sensor.memoria_agora</code>, com o bloco e a folha do momento.` : "Desligado."}</div></div>
         ${this._switch(on, "Sensor MemorIA agora", (e) => this._saveSettings({ app: { sensor: e.target.checked } }))}
       </div>
+      ${this._aiOn()
+        ? html`<div class="row switch-row">
+            <div class="grow"><div class="label">Chamadas de IA hoje</div><div class="hint" style="white-space:normal">${ia ? html`<code>sensor.memoria_ia_hoje</code>, com as chamadas, os erros e os tokens estimados.` : "Desligado."}</div></div>
+            ${this._switch(ia, "Sensor Chamadas de IA hoje", (e) => this._saveSettings({ app: { sensor_ia: e.target.checked ? true : null } }))}
+          </div>`
+        : nothing}
     </div>`;
   }
 
@@ -3267,7 +3303,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
                   const mine = blocks.filter((b) => b.category === c.id);
                   const arch = this._data.blocks.filter((b) => b.archived && b.category === c.id).length;
                   const hint = [mine.length ? `${plural(mine.length, "bloco", "blocos")}: ${mine.map((b) => b.name).join(", ")}` : arch ? "" : "Nenhum bloco", arch ? plural(arch, "arquivado", "arquivados") : ""].filter(Boolean).join(" · ");
-                  return html`<button class="row cat-row" style=${colorVars(colorById(c.color) || PALETTE[9], this._dark)} @click=${() => this._openCategorySheet(c)}>
+                  return html`<button class="row cat-row" style=${colorVars(colorById(c.color) || colorById("grafite"), this._dark)} @click=${() => this._openCategorySheet(c)}>
                     <span class="tile">${icon("tag")}</span>
                     <div class="grow"><div class="label">${c.name}</div><div class="hint">${hint}</div></div>
                     ${icon("chevron-right", "chev")}
@@ -3330,6 +3366,9 @@ class MemoriaApp extends ChatMixin(LitElement) {
         ${this._secHead("archive-restore", "Versões anteriores", "Uma cópia a cada 10 minutos de uso e antes de importar, restaurar ou apagar.")}
         <div class="btn-row sec-actions"><button class="btn outline sm" @click=${() => this._openVersions()}>${icon("archive-restore")}Ver versões</button></div>
       </div>
+      <div class="panel" id="onde">
+        ${this._secHead("database", "Onde ficam os dados", html`Os blocos, as folhas e os ajustes em <code>/data/memoria.json</code>, no backup do Home Assistant; as versões anteriores em <code>/data/versoes</code>.`)}
+      </div>
       <div class="panel">
         ${this._secHead("trash", "Começar do zero", "Apaga todos os blocos e folhas. Os ajustes continuam.")}
         <div class="btn-row sec-actions"><button class="btn danger sm" @click=${() => this._confirmErase()}>${icon("trash")}Apagar tudo</button></div>
@@ -3350,7 +3389,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     }
     if (ai.reason) detail = `${detail} ${ai.reason}`.trim();
     const on = this._aiOn();
-    const head = html`${this._secHead("sparkles", "Leitura por IA", "Lê mensagens coladas, prints e fotos de anotações em papel para criar folhas, com a IA configurada no Home Assistant. O app não guarda nenhuma chave.")}
+    const head = html`${this._secHead("sparkles", "IA do Home Assistant", "Lê mensagens coladas, prints e fotos de anotações em papel para criar folhas, com a IA configurada no Home Assistant. O app não guarda nenhuma chave.")}
       <div class="row switch-row ai-switch">
         <div class="grow"><div class="label">Usar IA</div><div class="hint" style="white-space:normal">${on ? "Ligado." : "Desligado: sem leitura por IA, sem Falar e sem Conversar."}</div></div>
         ${this._switch(on, "Usar IA", (e) => this._setAiOn(e.target.checked))}
@@ -3480,7 +3519,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         <div class="chip-row grid cat-pick">
           <button class="pick ${!f.category && f.newCat == null ? "on" : ""}" @click=${() => this._setForm({ category: "", newCat: null })}><span>Sem categoria</span></button>
           ${this._cats().map(
-            (c) => html`<button class="pick list ${f.category === c.id && f.newCat == null ? "on" : ""}" style=${colorVars(colorById(c.color) || PALETTE[9], this._dark)} @click=${() => this._setForm({ category: c.id, newCat: null })}><span class="dot"></span><span>${clip(c.name, 22)}</span></button>`,
+            (c) => html`<button class="pick list ${f.category === c.id && f.newCat == null ? "on" : ""}" style=${colorVars(colorById(c.color) || colorById("grafite"), this._dark)} @click=${() => this._setForm({ category: c.id, newCat: null })}><span class="dot"></span><span>${clip(c.name, 22)}</span></button>`,
           )}
           <button class="pick ${f.newCat != null ? "on" : ""}" @click=${() => {
             this._setForm({ newCat: f.newCat == null ? "" : f.newCat });
@@ -3530,7 +3569,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           })()
         : nothing}
       <div class="sheet-actions">
-        ${f.id ? html`<button class="btn danger" @click=${() => this._confirmDeleteBlock()} aria-label="Excluir bloco">${icon("trash")}</button>` : nothing}
+        ${f.id ? html`<button class="btn danger" @click=${() => this._confirmDeleteBlock()} aria-label="Apagar bloco">${icon("trash")}</button>` : nothing}
         <button class="btn primary" @click=${() => this._saveBlockSheet()}>${f.id ? "Salvar" : "Criar bloco"}</button>
       </div>
     `;
@@ -3736,7 +3775,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       </div>
       ${!ai.images && !ai.off
         ? html`<div class="imp-error soft">${icon("sparkles")}<span>${ai.reason || "Para ler fotos, o Home Assistant precisa de uma integração de IA com tarefa de IA que entenda imagens."}
-            <button class="text-btn inline" @click=${() => this._openAiSettings()}>Ver Leitura por IA</button></span></div>`
+            <button class="text-btn inline" @click=${() => this._openAiSettings()}>Ver IA do Home Assistant</button></span></div>`
         : nothing}
       ${error}
     `;

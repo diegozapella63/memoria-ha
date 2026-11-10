@@ -35,7 +35,7 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **Categorias** para agrupar os blocos (Trabalho, Casa, Estudos…), com filtro na estante.
 - **De quem é**: um bloco de uma pessoa da casa só abre sozinho no Agora dela; os de Todos, para todo mundo.
 - **Arquivar bloco**: sai da estante, do Agora e da busca sem apagar nada e fica em **Arquivados**, no fim de Blocos.
-- **Relatório** dos blocos e das folhas, com **Baixar PDF** (funciona no app do Home Assistant no celular).
+- **Relatório de anotações**, com os blocos e as folhas e **Baixar PDF** (funciona no app do Home Assistant no celular).
 - **No ⋯ da folha**: horário próprio, mover para outro bloco, adicionar link, copiar o texto ou arrancar a folha, com Desfazer.
 - **Caixas de marcar e emojis**: no alto da folha, transforme linhas em itens com caixa para marcar como feito com um toque, e ponha emojis sem fechar o teclado.
 - **Links que abrem com um toque**: endereços na folha viram etiquetas curtas (o nome, ou o site), sem aquele texto comprido.
@@ -47,8 +47,9 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **CorrerIA**: com o app CorrerIA, o WhatsApp, o Claude e o Gemini leem e mudam os blocos (buscar, ler, criar e editar folhas, links, blocos e categorias). Ligue em **Mais → Configurações → Integrações**.
 - **Salvo no Home Assistant**: sincroniza na hora entre aparelhos e entra no backup.
 - **Dados**: exportar (ZIP com um arquivo de texto por bloco, CSV e JSON), backup na pasta `share/memoria`, importar, versões anteriores automáticas e começar do zero.
-- **Mais** em menu, como nos outros apps: **Categorias**, **Relatório**, **Configurações** em abas (Integrações, Dados, Aparência e Opções) e **Sobre**. Arrastar o dedo para os lados troca de aba.
-- **Aparência**: tema automático (segue o claro ou escuro do Home Assistant, na hora), claro ou escuro, **Cor do dia** ou uma das 10 cores, e letra de mão, que dá para desligar.
+- **Mais** em menu, como nos outros apps: **Categorias**, **Relatório de anotações**, **Configurações** em abas (Integrações, Dados, Aparência e Opções) e **Sobre**. Embaixo, **Agora**, **Buscar**, **Adicionar**, **Blocos** e **Mais**; arrastar o dedo para os lados troca de aba.
+- **Uso da IA**, em Integrações: as chamadas do app para a IA, por dia, com os tokens estimados.
+- **Aparência**: tema automático (segue o claro ou escuro do Home Assistant, na hora), claro ou escuro, **Cor do dia** (a mesma em todos os apps da família) ou uma das 12 cores da família, e letra de mão, que dá para desligar.
 
 Mais detalhes em [memoria/DOCS.md](memoria/DOCS.md).
 

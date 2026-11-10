@@ -9,8 +9,8 @@ import { parseLinks, linksToText, domainOf } from "./links.js";
 
 // The colors of the app (frontend/src/util.js PALETTE)
 export const PALETTE = {
-  vermelho: "#FF5A4F", coral: "#FF8A65", rosa: "#FF77A9", framboesa: "#E8508A", laranja: "#FFA23E",
-  ouro: "#F2C14E", lilas: "#B99BFF", azul: "#62B5FF", menta: "#4ED3A6", grafite: "#B9ADAE",
+  vermelho: "#FF5A4F", coral: "#FF8A65", laranja: "#FFA23E", ouro: "#F2C14E", verde: "#8BD45F", menta: "#4ED3A6",
+  turquesa: "#3CCBDA", azul: "#62B5FF", indigo: "#8F9BFF", lilas: "#B99BFF", rosa: "#FF77A9", grafite: "#B5B9C2",
 };
 const PERIOD_LABEL = { manha: "manhã", tarde: "tarde", noite: "noite" };
 const DEFAULT_COLOR = "#B99BFF";

@@ -1,4 +1,17 @@
-# Changelog
+# Mudanças
+
+## 1.17.0
+
+O MemorIA fica igual aos outros apps da família:
+
+- **Barra de baixo**: **Agora**, **Buscar**, **Adicionar** (o botão do meio, que antes se chamava Nova), **Blocos** e **Mais**, agora com os três pontos.
+- **Mais › Relatório de anotações** (antes só Relatório).
+- **Mais › Configurações › Integrações** na ordem dos outros apps: **CorrerIA**, **IA do Home Assistant** (antes Leitura por IA), **Falar**, **Uso da IA** e **Sensores no Home Assistant**.
+- **Uso da IA**, novo: quantas vezes o app chamou a IA hoje, em 7 dias e no mês, uma barra por dia, os tipos de chamada e as últimas chamadas, com os tokens estimados. Em **Sensores**, dá para ligar `sensor.memoria_ia_hoje`.
+- **Dados**: **Onde ficam os dados**, antes de **Começar do zero**.
+- **Cores**: as 12 cores da família, com os mesmos nomes em todos os apps (Vermelho, Coral, Laranja, Ouro, Verde, Menta, Turquesa, Azul, Índigo, Lilás, Rosa e Grafite). A **Cor do dia** é a mesma em todos os apps. Um bloco ou uma categoria em Framboesa passa a Rosa.
+- **Conversa**: **Nova conversa** no lugar de Nova.
+- **Apagar bloco** (antes Excluir) e **Arquivados (2)**, com a contagem entre parênteses, como nos outros apps.
 
 ## 1.16.0
 

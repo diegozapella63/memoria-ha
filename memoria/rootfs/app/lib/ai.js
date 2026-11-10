@@ -197,7 +197,7 @@ export class AI {
     const reply = replyOf(out);
     const actions = parseChatActions(out && typeof out === "object" ? out.acoes : null, payload.context);
     if (!reply && !actions.length) throw coded("formato", "A IA não respondeu. Tente de novo.");
-    return { reply, actions, provider: entity.name };
+    return { reply, actions, provider: entity.name, entity: entity.id };
   }
 
   async _viaHA(entityId, prompt, images) {

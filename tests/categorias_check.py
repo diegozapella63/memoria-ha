@@ -67,8 +67,8 @@ with sync_playwright() as p:
         # ---- the menu: Categorias, Relatório, Configurações, Sobre (the last)
         a.locator("nav .tab", has_text="Mais").click()
         pg.wait_for_timeout(500)
-        rows = [r.split(" ")[0] for r in texts(a.locator(".more-menu .more-row b"))]
-        check(rows == ["Categorias", "Relatório", "Configurações", "Sobre"], f"{tag}: the menu ({rows})")
+        rows = [" ".join(r.split()) for r in texts(a.locator(".more-menu .more-row b"))]
+        check(rows == ["Categorias", "Relatório de anotações", "Configurações", "Sobre"], f"{tag}: the menu ({rows})")
         check(texts(a.locator(".more-row", has_text="Categorias").locator(".mb > span")) == ["Pessoal, Trabalho."], f"{tag}: Categorias says which")
         # Relatório in the preview: it explains (the page is made by the server)
         a.locator(".more-row", has_text="Relatório").click()
