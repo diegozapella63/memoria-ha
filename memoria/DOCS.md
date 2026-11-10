@@ -43,8 +43,10 @@ Em **⋯ › Adicionar link**, cole o **Link** e, se quiser, um **Nome** (por ex
 
 Em **Blocos**, abra um bloco e toque na linha **Abre sozinho** (ou no ícone de ajustes). Em **Quando abrir sozinho**:
 
-- **Períodos**: Manhã, Tarde e Noite. O começo de cada um fica em **Mais › Configurações › Opções** (padrão 05:00, 12:00 e 18:00).
-- **Horários exatos**: por exemplo Treino às 07:00 e Diário às 22:00.
+- **Períodos**: Manhã, Tarde e Noite. O começo de cada um fica em **Mais › Configurações › Opções** (padrão 05:00, 12:00 e 18:00), numa caixa com os horários de meia em meia hora.
+- **Horários exatos**: por exemplo Treino às 07:00 e Diário às 22:00. Em **Horário exato** (ou **Outro horário**), escolha a hora e, em seguida, os minutos (de 5 em 5).
+
+Os horários abrem nas janelas do próprio app, sempre em 24 horas (sem AM/PM), e nunca no relógio do celular.
 
 No alto do **Agora** aparece primeiro o que vale agora e, em seguida, os dois próximos horários (depois da meia-noite, os de amanhã). Um toque espia outro horário; **Voltar para agora** volta. O dia inteiro fica em **Blocos › Seu dia**.
 
@@ -143,7 +145,7 @@ Em **Mais › Configurações › Integrações**:
 
 Em **Buscar**, procure qualquer palavra nas folhas dos blocos, sem se importar com acentos. Logo abaixo da caixa, **De quem** escolhe os blocos (os seus e os de **Todos**, para começar; os de outra pessoa; ou todos), como em **Blocos**, mas com a escolha própria. Cada resultado mostra o trecho com a palavra marcada, o bloco e quando foi escrito; toque para abrir a folha.
 
-Os blocos arquivados ficam de fora. Para procurar neles também, toque em **Incluir arquivados**; as escolhas ficam guardadas no aparelho.
+Os blocos arquivados ficam de fora. Para procurar neles também, toque em **Incluir arquivados**; eles vêm depois dos outros (os blocos e as folhas), e as escolhas ficam guardadas no aparelho.
 
 Antes de escrever, o **Buscar** já mostra os blocos (os de **De quem**, com a categoria de cada um); escrevendo, ficam os do nome procurado, e as folhas encontradas vêm embaixo. Toque num bloco para abrir.
 
@@ -188,7 +190,7 @@ O **CronologIA** (o calendário da família) pode mostrar no **Agora** dele a fo
 
 Em **Mais › Relatório**, os blocos e as folhas escritas numa página para ver, imprimir ou salvar:
 
-- no alto, a **categoria** e o **bloco** (só os da categoria escolhida); a escolha volta da próxima vez que o relatório abrir. Os blocos arquivados ficam fora de "Todos os blocos", mas aparecem no fim da lista, marcados "(arquivado)", para escolher um deles;
+- no alto, a **categoria** e o **bloco** (só os da categoria escolhida); a escolha volta da próxima vez que o relatório abrir. Os blocos arquivados ficam fora de "Todos os blocos", mas aparecem no fim da lista, em **Arquivados (N)**, para escolher um deles;
 - **Voltar** e **Baixar PDF** lado a lado. O PDF (`anotacoes-AAAA-MM-DD.pdf`, com o nome do bloco ou da categoria quando filtrado) é feito pelo próprio app e funciona também no app do Home Assistant no celular, que não imprime páginas;
 - o cabeçalho, igual ao dos relatórios dos outros apps da família: o ícone, **MemorIA · anotações**, quantos blocos e folhas e quando foi gerado;
 - os gráficos **Por categoria** e **Por bloco** (quantas folhas em cada), quando há mais de um;

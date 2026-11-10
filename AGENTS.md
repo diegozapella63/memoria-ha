@@ -1,0 +1,71 @@
+# Instruções para quem for mexer neste repositório (pessoas ou IAs)
+
+MemorIA é um app (add-on) do Home Assistant com blocos de anotações em forma de caderno: blocos que abrem sozinhos num período do dia ou num horário exato, folhas com horário próprio (trechos), categorias, de quem é cada bloco, arquivar, Relatório em PDF, leitura por IA, Falar e Conversar. Faz parte de uma família de apps do mesmo dono, que conversam entre si pelo Home Assistant:
+
+| App | Repositório | O que é |
+|---|---|---|
+| MemorIA | `diegozapella63/memoria-ha` (este) | blocos de anotações |
+| CronologIA | `diegozapella63/cronologia-ha` | calendário, rotinas, remédios, placar (mostra o trecho de agora daqui) |
+| ResolvIA | `diegozapella63/resolvia-ha` | listas de tarefas, pontos, repetição |
+| InventarIA | `diegozapella63/inventario-ha` | inventário da casa |
+| GerencIA | `diegozapella63/gerencia-ha` | finanças |
+| CorrerIA | `diegozapella63/correria-ha` | o WhatsApp, o Claude e o Gemini: usa as ferramentas daqui |
+
+O Home Assistant instala direto do GitHub (`repository.yaml` + `memoria/config.yaml`), a partir da branch `main`. Por isso o JavaScript gerado da interface fica no repositório: o que está em `main` é o que os usuários recebem.
+
+## Estrutura
+
+```
+memoria/config.yaml            versão e opções do app
+memoria/CHANGELOG.md           o que mudou em cada versão (o HA mostra ao atualizar)
+memoria/DOCS.md                manual do usuário (aba Documentação no HA)
+memoria/rootfs/app/server.js   servidor (Node 22, sem dependências: só módulos do Node)
+memoria/rootfs/app/lib/        regras: store.js (dados), schedule.js (períodos, horários e o Agora), writing.js, report.js e
+                               pdf.js (Relatório), ferramentas.js e correria.js (CorrerIA), integracao.js (CronologIA)...
+memoria/rootfs/app/www/        interface já gerada (não editar à mão)
+frontend/src/                  código da interface (Lit): memoria-app.js, styles.js e os arquivos iguais aos dos outros apps
+preview/memoria-preview.html   prévia gerada pelo build, abre sem servidor
+dev/fake-ha.mjs                Home Assistant simulado para desenvolver e testar
+tests/                         testes (ver tests/README.md)
+tools/prints_readme.py         refaz as capturas do README (docs/*.png) pela prévia
+```
+
+Como rodar no computador: README.md, em **Desenvolvimento**.
+
+## Checklist de toda mudança
+
+1. `git pull --rebase` antes de começar: outras sessões (pessoas ou IAs) também publicam aqui.
+2. Implementar. Servidor: só módulos nativos do Node. Interface: Lit, em `frontend/src`. A prévia usa a mesma tela com o servidor imitado em `frontend/preview/mock-api.js`: se a mudança depende do servidor, imite lá.
+3. Gerar a interface: `cd frontend && npm install && npm run build`. Faça commit também de `memoria/rootfs/app/www/memoria.js` e `preview/memoria-preview.html`.
+4. Testar: `npm test` (servidor) e as conferências visuais ligadas à mudança (`python3 tests/<nome>_check.py`, ou todas com `tests/visual.sh`). Toda mudança ou bug corrigido vem com o teste dele (ver tests/README.md).
+5. Subir a versão nos três lugares (iguais): `memoria/config.yaml` (`version:`), `memoria/rootfs/app/server.js` (`const VERSION`) e `frontend/preview/mock-api.js` (`version:`). Correção = patch (1.16.0 → 1.16.1); novidade = minor (1.16.x → 1.17.0).
+6. `memoria/CHANGELOG.md`: nova seção no topo, em português, do ponto de vista de quem usa (o que mudou na tela, não no código).
+7. `memoria/DOCS.md` quando muda o comportamento ou aparece algo novo; `README.md` quando muda a lista do que o app tem.
+8. Commit em `main` com mensagem em português ("MemorIA 1.17.0: ..."), `git pull --rebase` e push. O GitHub roda todos os testes a cada push (aba Actions).
+
+## Arquivos iguais aos dos outros apps
+
+Ao mudar um, mude nos outros: `frontend/src/selectsheet.js` (as caixas de seleção, igual em todos os apps), `about.js`, `look.js`, `swipe.js`, `voice.js` e `chat.js` (os do ResolvIA e da CronologIA) e `memoria/rootfs/app/lib/ws.js`, `ha.js` e `voice.js` (os de `lib/` do ResolvIA). O `lib/pdf.js` é o do ResolvIA, com o nome do app como opção.
+
+## Como os apps conversam
+
+- **MemorIA → CronologIA**: `share/memoria/integracao.json` e a rota `/api/integracao/agora` (o trecho de agora e os dois próximos de uma pessoa, pelo relógio do celular de quem olha), em `lib/integracao.js`.
+- **CorrerIA → MemorIA**: o contrato de todos os apps da família (ver o AGENTS.md do CorrerIA); os detalhes daqui estão no README.md, em **Como os apps conversam**.
+
+## Como o dono gosta (interface)
+
+- Tudo em português do Brasil, sem palavras em inglês na tela.
+- **Menos é mais**: textos curtos, sem explicar o óbvio, sem avisos repetidos.
+- Botões lado a lado com o mesmo tamanho e alinhados; nada torto nem cortado.
+- **Mais** é um menu, não uma tela de ajustes: **Categorias**, **Relatório**, **Configurações** (abas Integrações, Dados, Aparência, Opções) e, por último, **Sobre** (o mesmo dos outros apps). O Voltar do celular, o **‹ Mais** e arrastar para a direita voltam ao menu.
+- O que depende da IA respeita o interruptor **Usar IA**; o que depende de uma integração só aparece com ela ligada.
+- Em http (sem https) não há câmera nem microfone: explicar e oferecer escolher a foto.
+- Celular primeiro (390 px; nada passa da largura em 320 px); tema claro e escuro.
+- Relatórios (a página e o PDF, iguais em todos os apps): o cabeçalho dos apps, os números, os gráficos e, no fim, a marca da CorrerIA Code como no **Sobre**. O app do Home Assistant no Android não imprime: o PDF é feito pelo servidor e baixado (**Baixar PDF**).
+- **Inativos no fim, recolhidos**: o que está inativo, cancelado, encerrado, arquivado ou ignorado de propósito (por uma opção, como Nunca considerar) fica numa seção no fim da lista, recolhida por padrão, com o nome e a contagem (ex.: **Arquivados (3)**); abre num toque. Vale para todos os apps da família. Aqui: os blocos arquivados, em **Arquivados** no fim de **Blocos** (`_renderArchived`); no **Buscar**, com **Incluir arquivados**, depois dos outros; no Relatório, no fim da escolha do bloco (`<optgroup>` Arquivados (N)).
+- **Caixas de seleção no visual do app**: nenhuma janela nativa do celular. Toda caixa de seleção abre pelo selectsheet.js; sugestões de texto (no lugar do `<datalist>`) e horários (sem AM/PM) também no visual do app; a caixa fechada igual aos outros campos (altura, cantos, seta), no claro e no escuro. Aqui: o `selectsheet.js` vem primeiro no `main.js` e no `preview.js` (e em `www/selectsheet.js` na página do Relatório), com `select:not([multiple]) { pointer-events: none }` no `styles.js` (Shadow DOM); a caixa fechada é a classe `.select`; horários por `_timeSelect` (de meia em meia hora) e `_timePicker` (a hora e depois os minutos), nunca `<input type="time">`.
+- Dados de exemplo e de testes sempre inventados (Ana, Beto): nunca blocos, folhas ou nomes reais do dono.
+
+## Conversa com o dono
+
+Respostas curtas, em português. Ao terminar uma mudança: o que mudou, a versão e se está publicado. Ele usa o app do Home Assistant no Android: pense no Voltar do celular, no teclado e na câmera.

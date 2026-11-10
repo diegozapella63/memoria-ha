@@ -975,16 +975,6 @@ export const styles = css`
     flex-wrap: wrap;
     gap: 8px;
   }
-  .hidden-input {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    width: 100%;
-    height: 100%;
-    border: 0;
-    padding: 0;
-    pointer-events: none;
-  }
 
   /* ---------- settings ---------- */
   .row {
@@ -3392,8 +3382,12 @@ export const notebookStyles = css`
     width: 15px;
     height: 15px;
   }
-  .add-time {
-    position: relative;
+  /* + Horário: the hour and the minutes in the sheets of selectsheet.js; their two boxes never show */
+  .add-time-wrap {
+    display: contents;
+  }
+  .tp-box {
+    display: none;
   }
   .review-text {
     width: 100%;
@@ -3573,17 +3567,6 @@ export const notebookStyles = css`
     background: var(--cs);
     color: var(--ci);
   }
-  .time-input {
-    font-family: var(--rv-display);
-    font-size: 19px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    border: 1.5px solid var(--rv-line-strong);
-    background: var(--rv-surface-2);
-    border-radius: 12px;
-    padding: 6px 10px;
-    min-width: 104px;
-  }
   .pick .pick-sub {
     font-size: 12px;
     font-weight: 500;
@@ -3671,6 +3654,12 @@ export const notebookStyles = css`
   .select:focus {
     outline: 0;
     border-color: var(--rv-accent);
+  }
+  /* a time (Períodos do dia): the same box, as wide as the time */
+  .select.time-select {
+    width: auto;
+    flex: none;
+    font-variant-numeric: tabular-nums;
   }
   .ai-actions {
     display: flex;

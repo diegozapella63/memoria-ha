@@ -55,6 +55,7 @@ const local = {
 };
 
 const byCreated = (a, b) => a.created - b.created || (a.id < b.id ? -1 : 1);
+const pad2 = (n) => String(n).padStart(2, "0");
 const periodOf = (id) => PERIODS.find((p) => p.id === id);
 const reduceMotion = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
@@ -2815,15 +2816,19 @@ class MemoriaApp extends ChatMixin(LitElement) {
       const b = this._block(p.block);
       return b && (withArch || !b.archived) && this._ofWho(b, who);
     });
+    // with Incluir arquivados, the archived ones come after the others (1.16.0), the blocks and the sheets
+    const arch = (p) => Number(!!this._block(p.block).archived);
     let results = [];
     if (needle) {
       results = pool
         .filter((p) => fold(p.text).includes(needle))
-        .sort((a, b) => b.updated - a.updated)
+        .sort((a, b) => arch(a) - arch(b) || b.updated - a.updated)
         .slice(0, 80);
     }
     // the blocks come already (1.15.0), the ones of the name searched with a word, to open or to select and change
-    const blocks = this._allBlocks().filter((b) => (withArch || !b.archived) && this._ofWho(b, who) && (!needle || fold(b.name).includes(needle)));
+    const blocks = this._allBlocks()
+      .filter((b) => (withArch || !b.archived) && this._ofWho(b, who) && (!needle || fold(b.name).includes(needle)))
+      .sort((a, b) => Number(!!a.archived) - Number(!!b.archived));
     return html`
       <section class="page">
         ${this._renderHead("Buscar", { text: `Em ${plural(pool.length, "folha", "folhas")} · acentos não importam` })}
@@ -3199,7 +3204,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         (p) => html`<div class="row">
           <span class="tile" style=${colorVars(this._accent(), this._dark)}>${icon(p.icon)}</span>
           <div class="grow"><div class="label">${p.label}</div><div class="hint">começa às</div></div>
-          <input class="time-input" type="time" .value=${periods[p.id]} aria-label="Começo da ${p.label}" @change=${(e) => normTime(e.target.value) && this._saveSettings({ periods: { [p.id]: e.target.value } })} />
+          ${this._timeSelect(periods[p.id], `Começo da ${p.label}`, (t) => this._saveSettings({ periods: { [p.id]: t } }))}
         </div>`,
       )}
     </div>`;
@@ -3415,23 +3420,49 @@ class MemoriaApp extends ChatMixin(LitElement) {
     </div>`;
   }
 
+  /**
+   * A time in a box of choice in the look of the app (1.16.0): never the clock of the phone (nor AM/PM). Every half
+   * hour, plus the time it has when that is another one; opens the sheet of selectsheet.js.
+   */
+  _timeSelect(value, label, onPick) {
+    const cur = normTime(value) || "";
+    const times = Array.from({ length: 48 }, (_, k) => `${pad2(k >> 1)}:${k % 2 ? "30" : "00"}`);
+    if (cur && !times.includes(cur)) times.push(cur), times.sort();
+    return html`<select class="select time-select" aria-label=${label} @change=${(e) => normTime(e.target.value) && onPick(normTime(e.target.value))}>
+      ${times.map((t) => html`<option value=${t} ?selected=${t === cur}>${t}</option>`)}
+    </select>`;
+  }
+
+  /**
+   * + Horário (a block, a sheet): the hour and then the minutes, each in the sheet of selectsheet.js (1.16.0), never
+   * the clock of the phone. The two boxes stay hidden; they start on nothing, so any choice counts.
+   */
   _timePicker(onPick, label = "Horário") {
+    const boxes = (el) => el.closest(".add-time-wrap").querySelectorAll("select");
     const open = (ev) => {
-      const input = ev.currentTarget.querySelector("input");
-      try {
-        input.showPicker();
-      } catch (e) {
-        input.focus();
-        input.click();
-      }
+      const [h, m] = boxes(ev.currentTarget);
+      h.value = "";
+      m.value = "";
+      this._tpHour = "";
+      if (window.__selectSheet && window.__selectSheet.open) window.__selectSheet.open(h);
     };
-    return html`<button class="pick add-time" @click=${open}>${icon("plus")}<span>${label}</span>
-      <input class="hidden-input" type="time" tabindex="-1" @click=${(e) => e.stopPropagation()} @change=${(e) => {
-        const t = normTime(e.target.value);
-        e.target.value = "";
+    const hour = this._tpHour || "00";
+    return html`<span class="add-time-wrap"><button class="pick add-time" @click=${open}>${icon("plus")}<span>${label}</span></button>
+      <select class="tp-box" tabindex="-1" aria-label="Hora" @change=${(e) => {
+        this._tpHour = e.target.value;
+        this.requestUpdate();
+        const m = boxes(e.target)[1];
+        // the minutes of that hour, then the second sheet
+        this.updateComplete.then(() => window.__selectSheet && window.__selectSheet.open(m));
+      }}><option value="" hidden selected></option>${Array.from({ length: 24 }, (_, k) => html`<option value=${pad2(k)}>${pad2(k)}h</option>`)}</select>
+      <select class="tp-box" tabindex="-1" aria-label="Minutos" @change=${(e) => {
+        const t = normTime(`${this._tpHour}:${e.target.value}`);
+        const [h, m] = boxes(e.target);
+        h.value = "";
+        m.value = "";
         if (t) onPick(t);
-      }} />
-    </button>`;
+      }}><option value="" hidden selected></option>${Array.from({ length: 12 }, (_, k) => html`<option value=${pad2(k * 5)}>${hour}:${pad2(k * 5)}</option>`)}</select>
+    </span>`;
   }
 
   _renderBlockSheet() {

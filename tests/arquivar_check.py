@@ -159,6 +159,17 @@ with sync_playwright() as p:
         check(len(metas) == 2 and all(m.startswith("Viagem da serra · arquivado · ") for m in metas), f"{tag}: with it, the sheets of the archived block, marked ({metas})")
         check(a.evaluate(OVER) == [], f"{tag}: nothing out of the screen in Buscar {a.evaluate(OVER)}")
         pg.screenshot(path=str(SHOTS / f"arquivar-{scheme}-{w}-buscar.png"))
+        # 1.16.0: with it, the archived ones after the others, the sheets (even one written later) and the blocks
+        a.evaluate("(el) => { for (const p of el._data.pages) if (p.block === 'viagem00001') p.updated = Date.now(); el.requestUpdate(); }")
+        a.locator(".search-box input").fill("domingo")
+        pg.wait_for_timeout(300)
+        metas = texts(a.locator(".result .r-meta"))
+        arch = ["· arquivado ·" in m for m in metas]
+        check(len(metas) == 3 and arch == [False, False, True], f"{tag}: the sheet of the archived block after the others ({metas})")
+        a.locator(".search-box input").fill("")
+        pg.wait_for_timeout(300)
+        names = texts(a.locator(".search-blocks .block-row .label"))
+        check(len(names) == 5 and names[-1] == "Viagem da serra", f"{tag}: the archived block after the others ({names})")
         pg.reload()
         a.locator(".page-title").first.wait_for()
         pg.wait_for_timeout(500)

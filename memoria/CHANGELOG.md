@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.16.0
+
+- **Horários no visual do app**: nada mais do relógio do celular nem de AM/PM.
+  - **Mais › Configurações › Opções › Períodos do dia**: o começo da Manhã, da Tarde e da Noite fica numa caixa igual às outras do app, com os horários de meia em meia hora e o atual marcado.
+  - **Horário exato** (nos ajustes do bloco) e **Escolher horário** (no ⋯ da folha): escolha a hora e, logo em seguida, os minutos (de 5 em 5), nas janelas do app. O X ou o Voltar do celular desistem sem mudar nada.
+- **Buscar** com **Incluir arquivados**: os blocos arquivados e as folhas deles vêm depois dos outros.
+- **Relatório**: na escolha do bloco, os arquivados ficam no fim, em **Arquivados (N)**. As caixas de escolha do alto têm a mesma seta das caixas do app.
+
 ## 1.15.1
 
 - **CronologIA**: a folha de agora que ele mostra é a mesma do **Agora** daqui, pelo relógio do celular de quem olha (antes valia o relógio do Home Assistant, e em outro fuso podia dizer "nada agora"). Ele também recebe o papel do bloco e se a folha é em letra de mão, para desenhar a folha igual.

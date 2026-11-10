@@ -237,9 +237,13 @@ export function reportHtml(rep, { tema = null, cor = DEFAULT_COLOR } = {}) {
       (rep.hasNone ? `<option value="sem"${rep.cat === "sem" ? " selected" : ""}>Sem categoria</option>` : "") +
       `</select>`
     : "";
+  // the archived blocks at the end, under Arquivados (N), like at the end of Blocos (1.16.0)
+  const opt = (b) => `<option value="${esc(b.id)}"${rep.block === b.id ? " selected" : ""}>${esc(b.name)}</option>`;
+  const archived = rep.blocks.filter((b) => b.archived);
   const blockSel =
     `<select name="bloco" aria-label="Bloco" onchange="${CHOOSE}"><option value=""${rep.block ? "" : " selected"}>${rep.cat ? "Todos os blocos dela" : "Todos os blocos"}</option>` +
-    rep.blocks.map((b) => `<option value="${esc(b.id)}"${rep.block === b.id ? " selected" : ""}>${esc(b.name)}${b.archived ? " (arquivado)" : ""}</option>`).join("") +
+    rep.blocks.filter((b) => !b.archived).map(opt).join("") +
+    (archived.length ? `<optgroup label="Arquivados (${archived.length})">${archived.map(opt).join("")}</optgroup>` : "") +
     `</select>`;
   const page = (p) => {
     const meta = [`Folha ${p.n}`, day(p.created), ...(p.times.length ? [`às ${p.times.join(", ")}`] : [])].join(" · ");
@@ -269,7 +273,7 @@ main{max-width:860px;margin:0 auto}
 .barra{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
 .barra a,.barra select{font:inherit;font-size:14px;font-weight:600;min-height:44px;min-width:0;padding:8px 10px;border-radius:12px;border:1px solid var(--borda);background:var(--card);color:var(--fg);text-decoration:none;cursor:pointer;text-align:center}
 .barra a{display:flex;align-items:center;justify-content:center;line-height:1.2}
-.barra select{grid-column:1/-1;text-align:left;font-size:15px;padding:10px 14px;text-overflow:ellipsis}
+.barra select{grid-column:1/-1;text-align:left;font-size:15px;padding:10px 40px 10px 14px;text-overflow:ellipsis;appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);background-position:calc(100% - 20px) 52%,calc(100% - 14px) 52%;background-size:6px 6px;background-repeat:no-repeat}
 .barra .pdf{background:var(--a);border-color:transparent;color:#1a1210}
 .cab{display:flex;gap:14px;align-items:center;background:var(--card);border:1px solid var(--linha);border-left:6px solid var(--a);border-radius:16px;padding:16px 18px;margin-bottom:14px}
 .cab .ic{width:52px;height:52px;flex:none;color:var(--fg)}

@@ -11,7 +11,7 @@
 | `tests/buscar_check.py` | Buscar com os blocos já na tela (De quem, Incluir arquivados, o nome procurado); Selecionar (e segurar o dedo), Todos e Nenhum, Alterar a categoria e de quem é de dois blocos com Manter de início, Desfazer, o Voltar sai; Nova com Novo bloco |
 | `tests/tempo_check.py` | Fica no Agora (1 h no ⋯ da folha: até quando no alto, depois Nada agora com os próximos para espiar, e não a janta até a manhã) e as caixas marcadas no Agora só para aquela vez (a folha não muda, em Blocos aparece como está, no dia seguinte começa limpa) |
 | `tests/ordem_check.py` | A fileira do alto do Agora: o horário de agora primeiro e os dois próximos (depois da meia-noite também), com o relógio da página acertado pelo teste; espiar não muda a ordem; o dia inteiro em Blocos › Seu dia |
-| `tests/arquivar_check.py` | Arquivar bloco: fora da estante, do Agora, da Nova e do Buscar (Incluir arquivados), Arquivados no fim de Blocos, Desfazer e Desarquivar |
+| `tests/arquivar_check.py` | Arquivar bloco: fora da estante, do Agora, da Nova e do Buscar (Incluir arquivados, e então depois dos outros), Arquivados no fim de Blocos, Desfazer e Desarquivar |
 | `tests/dono_check.py` | De quem é: Todos ou uma pessoa da casa (ou o nome escrito, sem as pessoas), o Agora e o Seu dia de quem usa, "de Beto" na estante; o filtro De quem em Blocos e no Buscar |
 | `tests/opcoes_check.py` | Mais › Configurações › Opções › Blocos: Usar categorias e Controle por pessoa (ligados de início), o que some com cada um desligado e volta ao ligar |
 | `tests/vista_check.py` | Blocos em blocos ou em lista: a escolha rápida no alto, a lista, o filtro de categoria nela e a escolha guardada |
@@ -23,6 +23,7 @@
 | `tests/relatorio_check.py` | Mais › Relatório pelo servidor (sobe o `dev/fake-ha.mjs` e o servidor com a casa inventada de `tests/fixtures/casa.mjs`): cabeçalho, escolhas guardadas, Baixar PDF e Voltar |
 | `tests/about_check.py` | Mais › Sobre (o mesmo dos outros apps) e a versão igual em todos os lugares |
 | `tests/selects_check.py` | as caixas de seleção no visual do app (`frontend/src/selectsheet.js`) |
+| `tests/horarios_check.py` | os horários no visual do app, sem o relógio do celular nem AM/PM: Períodos do dia numa caixa igual às outras (de meia em meia hora), Horário exato e Escolher horário (a hora e depois os minutos), o X e o Voltar; nenhum campo nativo de hora ou data nem `<datalist>` nas telas; 390 e 320 px, claro e escuro |
 
 Cada uma aceita a pasta das capturas: `python3 tests/mais_check.py /tmp/capturas`. Todas: `tests/visual.sh [pasta]`, que
 serve a prévia por http numa porta livre (`MEMORIA_PREVIEW_URL`): aberta como arquivo (file://), o Chromium mais novo nem

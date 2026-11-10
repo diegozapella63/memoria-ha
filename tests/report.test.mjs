@@ -153,7 +153,11 @@ test("Arquivar bloco and De quem é (1.9.0): the archived out of all but a choic
   assert.equal(countText(rep), "3 blocos · 4 folhas");
   assert.deepEqual(rep.blocks.map((b) => [b.name, !!b.archived]), [["Mercado", false], ["Reforma da cozinha", false], ["Inglês", false], ["Ideias soltas", true]]);
   const h = reportHtml(rep);
-  assert.match(h, /<option value="ideias00001">Ideias soltas \(arquivado\)<\/option><\/select>/);
+  // 1.16.0: the archived ones at the end, under Arquivados (N), like at the end of Blocos
+  assert.match(h, /<option value="ingles00001">Inglês<\/option><optgroup label="Arquivados \(1\)"><option value="ideias00001">Ideias soltas<\/option><\/optgroup><\/select>/);
+  assert.doesNotMatch(reportHtml(anotacoes({ ...data, blocks: data.blocks.map((b) => ({ ...b, archived: undefined })) }, { now: NOW })), /optgroup/);
+  // the boxes closed like the ones of the app: no arrow of the phone, the arrow of the app
+  assert.match(h, /\.barra select\{[^}]*appearance:none;-webkit-appearance:none;[^}]*background-image:linear-gradient/);
   assert.match(h, /<h2><span>Mercado<\/span><small>Casa · de Ana · 2 folhas · abre de manhã \(05:00\)<\/small><\/h2>/);
   // chosen: it comes, marked
   rep = anotacoes(data, { bloco: "ideias00001", now: NOW });
