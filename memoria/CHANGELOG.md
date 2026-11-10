@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.20.0
+
+- **Atalho no celular**, em **Mais › Configurações › Opções**: o caminho do MemorIA no Home Assistant, com **Copiar**, e como criar um ícone na tela inicial do celular que abre o app direto (no app do Home Assistant: Configurações › Aplicativo complementar › Gerenciar atalhos). O mesmo vale em todos os apps da família.
+
 ## 1.19.1
 
 - **Tema**: **Automático** agora se chama **Sistema** (segue o claro ou escuro do Home Assistant, como antes). O nome cabe ao lado do ícone e é o mesmo em todos os apps da família.

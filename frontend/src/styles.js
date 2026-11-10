@@ -3834,4 +3834,28 @@ export const notebookStyles = css`
     height: 40px;
     border-radius: 12px;
   }
+  /* Opções › Atalho no celular: the steps, and the path on the whole width (never cut) with Copiar under it */
+  .shortcut .steps {
+    margin: 0 0 14px;
+    padding-left: 22px;
+    color: var(--rv-text-2);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .shortcut .steps b {
+    color: var(--rv-text);
+    font-weight: 600;
+  }
+  .shortcut .field {
+    margin-bottom: 0;
+  }
+  .copy-row {
+    display: grid;
+    gap: 8px;
+  }
+  .copy-row input[type="text"] {
+    min-width: 0;
+    font-family: ui-monospace, monospace;
+    font-size: 14px;
+  }
 `;

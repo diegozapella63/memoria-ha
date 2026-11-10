@@ -25,7 +25,7 @@ import { VERSION } from "./lib/version.js";
 import { Backups, backupZip, toCSV, parseImport, listVersions, readVersion, fileStamp } from "./lib/data.js";
 import { anotacoes, reportHtml, reportPdf, pdfName } from "./lib/report.js";
 import { Correria, ROTA as TOOLS_ROUTE } from "./lib/correria.js";
-import { Integracao, ROUTE as NOW_ROUTE, trechos, clockOf } from "./lib/integracao.js";
+import { Integracao, ROUTE as NOW_ROUTE, trechos, clockOf, panelOf } from "./lib/integracao.js";
 import { listTools, callTool, ToolError, UnknownTool } from "./lib/ferramentas.js";
 import { sameName } from "./lib/schedule.js";
 
@@ -171,7 +171,8 @@ class Session {
 
       case "memoria/bootstrap": {
         const [aiStatus, who] = await Promise.all([ai.status().catch((err) => ({ ready: false, images: false, entities: [], reason: err.message })), peopleFor(this.user)]);
-        return this.result(id, { version: VERSION, user: { name: this.user.name, person: who.person }, people: who.people, ai: aiStatus, data: store.data, correria: { ultimo: correria.last } });
+        // atalho: Opções › Atalho no celular, the path of the panel (null outside Home Assistant)
+        return this.result(id, { version: VERSION, atalho: panelOf(), user: { name: this.user.name, person: who.person }, people: who.people, ai: aiStatus, data: store.data, correria: { ultimo: correria.last } });
       }
 
       // De quem é (the block's sheet): the people of the house, fresh, and the person of this login

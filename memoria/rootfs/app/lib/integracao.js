@@ -29,8 +29,9 @@ export function clockOf(hora, dia, fallback = new Date()) {
   return at.getMonth() === +d[2] - 1 && at.getDate() === +d[3] ? at : fallback;
 }
 
-/** The address of this app in Home Assistant (/app/<slug> since 2026.2): hostname a1b2c3d4-memoria -> a1b2c3d4_memoria. */
-export function panelOf(h = os.hostname()) {
+/** The address of this app in Home Assistant (/app/<slug> since 2026.2): hostname a1b2c3d4-memoria -> a1b2c3d4_memoria
+ * (MEMORIA_HOST takes the place of the hostname in the tests); outside Home Assistant, null. Also Opções › Atalho no celular. */
+export function panelOf(h = process.env.MEMORIA_HOST || os.hostname()) {
   return /^[a-z0-9]+-memoria$/.test(h) ? `/app/${h.replace("-", "_")}` : null;
 }
 

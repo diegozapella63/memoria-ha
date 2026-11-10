@@ -54,7 +54,9 @@ export class MockApi {
 
   async bootstrap() {
     await wait(60);
-    return { version: typeof __MEMORIA_VERSION__ === "string" ? __MEMORIA_VERSION__ : "dev", user: { name: "Ana Souza", person: "Ana" }, people: ["Ana", "Beto"], ai: await this.aiStatus(), data: clone(this.data), correria: { ultimo: null } };
+    // atalho: no path in the preview (outside Home Assistant); ?atalho=/app/... shows the card (the visual checks)
+    const atalho = (typeof location !== "undefined" && new URLSearchParams(location.search).get("atalho")) || null;
+    return { version: typeof __MEMORIA_VERSION__ === "string" ? __MEMORIA_VERSION__ : "dev", atalho, user: { name: "Ana Souza", person: "Ana" }, people: ["Ana", "Beto"], ai: await this.aiStatus(), data: clone(this.data), correria: { ultimo: null } };
   }
 
   // De quem é: the people of the house (Ana uses the preview)

@@ -117,6 +117,7 @@ test("categories over the WebSocket: the other screens hear them", async () => {
   const boot = await a.call("memoria/bootstrap");
   assert.equal(boot.version, fs.readFileSync(path.join(ROOT, "memoria/config.yaml"), "utf8").match(/version: "([\d.]+)"/)[1]);
   assert.deepEqual(boot.data.categories.map((c) => c.name), ["Casa", "Estudos"]);
+  if (!/^[a-z0-9]+-memoria$/.test(os.hostname())) assert.equal(boot.atalho, null, "Atalho no celular: no path outside Home Assistant");
   await b.call("memoria/subscribe");
   const cat = await a.call("memoria/category/save", { category: { name: "Saúde", color: "rosa" } });
   assert.equal(cat.name, "Saúde");

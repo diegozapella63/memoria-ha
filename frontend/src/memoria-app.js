@@ -259,6 +259,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     try {
       const res = await this.api.bootstrap();
       this._version = res.version || "";
+      this._atalho = res.atalho || null;
       this._user = res.user || { name: "" };
       this._people = Array.isArray(res.people) ? res.people : [];
       // Home Assistant still starting: the people (and who uses this screen) a little later
@@ -3236,7 +3237,48 @@ class MemoriaApp extends ChatMixin(LitElement) {
           ${this._timeSelect(periods[p.id], `Começo da ${p.label}`, (t) => this._saveSettings({ periods: { [p.id]: t } }))}
         </div>`,
       )}
+    </div>
+    ${this._renderShortcut()}`;
+  }
+
+  /**
+   * Opções › Atalho no celular: the path of the panel, for a pinned shortcut of the Home Assistant app (Android) that
+   * opens the MemorIA straight from the home screen. Only inside Home Assistant (the path comes from the server).
+   */
+  _renderShortcut() {
+    if (!this._atalho) return nothing;
+    return html`<div class="panel shortcut" id="atalho">
+      ${this._secHead("smartphone", "Atalho no celular", "Um ícone na tela inicial do celular que abre o MemorIA direto.")}
+      <ol class="steps">
+        <li>No app do Home Assistant: <b>Configurações › Aplicativo complementar › Gerenciar atalhos</b>.</li>
+        <li>Em <b>Atalho fixado</b>, escolha o tipo <b>Painel</b> e cole o <b>Caminho</b> abaixo.</li>
+      </ol>
+      <label class="field">
+        <span class="flabel">Caminho</span>
+        <span class="copy-row"
+          ><input type="text" id="mm-atalho" readonly .value=${this._atalho} @focus=${(e) => e.target.select()} /><button
+            type="button"
+            class="btn outline"
+            @click=${() => this._copyShortcut()}
+          >
+            ${icon("copy")}Copiar
+          </button></span
+        >
+      </label>
     </div>`;
+  }
+
+  /** Copiar of Atalho no celular: over http there is no clipboard, so the text stays selected for a long press. */
+  async _copyShortcut() {
+    const input = this.renderRoot.querySelector("#mm-atalho");
+    try {
+      await navigator.clipboard.writeText(input.value);
+      this._showToast("Caminho copiado");
+    } catch {
+      input.focus();
+      input.select();
+      this._showToast("Toque e segure no texto para copiar");
+    }
   }
 
   /**

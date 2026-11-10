@@ -102,6 +102,13 @@ test("the address of the app in Home Assistant", () => {
   assert.equal(panelOf("a1b2c3d4-memoria"), "/app/a1b2c3d4_memoria");
   assert.equal(panelOf("local-memoria"), "/app/local_memoria");
   assert.equal(panelOf("meu-computador"), null);
+  // 1.20.0: MEMORIA_HOST takes the place of the hostname (the tests of Atalho no celular)
+  process.env.MEMORIA_HOST = "a1b2c3d4-memoria";
+  try {
+    assert.equal(panelOf(), "/app/a1b2c3d4_memoria");
+  } finally {
+    delete process.env.MEMORIA_HOST;
+  }
 });
 
 // ---------- 1.14.0: Fica no Agora (how long a time holds) and the marks of the Agora (only for that time of the sheet)
