@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.19.0
+
+- **Uma altura só**: botões, campos, caixas de seleção, botões de escolha (as abas de Configurações, o Tema) e as escolhas em botões têm a mesma altura, a mesma de todos os apps da família. O **Restaurar** das versões, os horários do Agora e o **Escrever** do Adicionar também. O Tema ficou com o ícone ao lado do nome.
+
 ## 1.18.0
 
 - **Mais › Configurações › Dados**: os botões no padrão dos outros apps da família: na largura do cartão no celular, da mesma altura.

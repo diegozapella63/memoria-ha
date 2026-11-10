@@ -1,5 +1,5 @@
-// Mais › Aparência like the InventarIA: the theme as three big buttons (icon above the
-// name) and the app color as tag-shaped swatches with their names.
+// Mais › Aparência like the InventarIA: the theme as three buttons of choice of the height of the family (the icon
+// beside the name; on a narrow phone, only the name) and the app color as tag-shaped swatches with their names.
 // Shared by the CronologIA and the ResolvIA (same file in both).
 import { html } from "../vendor/lit-all.min.js";
 
@@ -41,8 +41,10 @@ export function colorPicker({ palette, value, onPick }) {
 
 export const lookStyles = `
   .seg.themes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; margin: 2px 0 18px; }
-  .seg.themes button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: auto; min-height: 66px; padding: 10px 4px 9px; font-size: 15px; }
-  .seg.themes button .i { width: 22px; height: 22px; margin: 0; }
+  .seg.themes { min-height: 50px; }
+  .seg.themes button { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 7px; height: auto; min-height: 0; padding: 0 6px; font-size: 15px; }
+  .seg.themes button .i { width: 18px; height: 18px; margin: 0; flex: none; }
+  @media (max-width: 380px) { .seg.themes button .i { display: none; } }
   .seg.themes button.on .i { color: var(--rv-accent-ink); }
   .tag-swatches { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin: 0 -6px 14px; }
   .tsw { --sw-bg: var(--rv-surface); position: relative; display: grid; justify-items: center; gap: 4px; padding: 8px 2px 7px; border-radius: 10px; background: var(--sw-bg); cursor: pointer; -webkit-tap-highlight-color: transparent; min-width: 0; }
