@@ -1905,13 +1905,30 @@ export const styles = css`
     line-height: 1.4;
     color: var(--rv-muted);
   }
+  /* Dados: the buttons of the family (the GerencIA is the model): the width of the card on the phone (250 px from
+     1000 px on), the same height, the icon beside the text; Criar backup full, the others with a border, Apagar tudo red */
   .opts .btn,
+  #dados .opts .btn,
   #dados .sec-actions .btn {
-    flex: none;
-    width: 11.5em;
-    max-width: 100%;
+    flex: 1 1 100%;
+    width: 100%;
+    min-height: 50px;
+    font-size: 15px;
+    padding: 0 18px;
     justify-content: center;
     white-space: nowrap;
+  }
+  @media (min-width: 1000px) {
+    .opts .btn,
+    #dados .opts .btn,
+    #dados .sec-actions .btn {
+      flex: none;
+      width: 250px;
+    }
+  }
+  #dados .sec-actions .btn.danger {
+    color: var(--rv-late);
+    border-color: color-mix(in srgb, var(--rv-late) 55%, transparent);
   }
   .panel code {
     font-size: 13px;

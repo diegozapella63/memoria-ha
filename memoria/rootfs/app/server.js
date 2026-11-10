@@ -24,7 +24,7 @@ import { AiUsage, resultOf } from "./lib/usage.js";
 import { VERSION } from "./lib/version.js";
 import { Backups, backupZip, toCSV, parseImport, listVersions, readVersion, fileStamp } from "./lib/data.js";
 import { anotacoes, reportHtml, reportPdf, pdfName } from "./lib/report.js";
-import { Correria, ROUTE as TOOLS_ROUTE } from "./lib/correria.js";
+import { Correria, ROTA as TOOLS_ROUTE } from "./lib/correria.js";
 import { Integracao, ROUTE as NOW_ROUTE, trechos, clockOf } from "./lib/integracao.js";
 import { listTools, callTool, ToolError, UnknownTool } from "./lib/ferramentas.js";
 import { sameName } from "./lib/schedule.js";
@@ -67,7 +67,11 @@ function countAi(kind, { entity = "", input = 0, output = 0, images = 0, started
 const backups = new Backups({ dir: SHARE_DIR });
 // Mais › Configurações › Integrações › CorrerIA (off unless turned on; it doesn't need Usar IA: the AI is the CorrerIA's,
 // the Claude's or the Gemini's)
-const correria = new Correria({ dataDir: DATA_DIR, shareDir: SHARE_DIR, port: PORT, version: VERSION, log });
+const correria = new Correria({
+  about: { app: "memoria", nome: "MemorIA", assunto: "anotações em blocos (cadernos): folhas, categorias e links" },
+  dir: SHARE_DIR, dataDir: DATA_DIR, port: PORT, version: VERSION, log, enabled: () => correriaOn(),
+  url: process.env.MEMORIA_URL_INTERNA || "",
+});
 const correriaOn = () => store.data.app.correria === true;
 // the other apps of the family (the CronologIA): what holds now, always on, with the key of share/memoria/integracao.json
 const integracao = new Integracao({ dataDir: DATA_DIR, shareDir: SHARE_DIR, port: PORT, version: VERSION, log });
@@ -295,7 +299,7 @@ class Session {
         const settings = store.saveSettings({ periods: msg.periods, app: msg.app });
         if ((store.data.app.sensor_ia === true) !== iaWas) (iaWas ? usage.remove() : usage.publish()).catch(() => {});
         if (correriaOn() !== wasOn) {
-          correria.publish(correriaOn());
+          correria.publish();
           log.info(`CorrerIA ${correriaOn() ? "ligado" : "desligado"}`);
         }
         this.result(id, settings);
@@ -405,7 +409,7 @@ async function handleVoice(req, res) {
  * (400 {erro}: a bad argument, saying what works; 404: no such tool). Every screen hears what changed.
  */
 async function handleTools(req, res) {
-  if (!correriaOn() || !correria.authorized(req.headers)) return sendJson(res, 401, { erro: "Chave inválida ou CorrerIA desligado no MemorIA." });
+  if (!correria.authorized(req.headers)) return sendJson(res, 401, { erro: "Chave inválida ou CorrerIA desligado no MemorIA." });
   if (req.method === "GET") return sendJson(res, 200, listTools());
   if (req.method !== "POST") return sendJson(res, 405, { erro: "Use GET ou POST." });
   let body;
@@ -437,7 +441,7 @@ async function handleTools(req, res) {
       sendJson(res, 500, { erro: `Não deu certo: ${err.message}` });
     }
   }
-  broadcast({ kind: "correria", ultimo: correria.used(cliente) });
+  broadcast({ kind: "correria", ultimo: correria.used(cliente, body.nome) });
 }
 
 /**
@@ -608,7 +612,7 @@ server.on("upgrade", (req, socket, head) => {
 
 server.listen(PORT, () => log.info(`MemorIA ${VERSION} ouvindo na porta ${PORT}${DEV ? " (modo dev)" : ""}`));
 // the file of the CorrerIA with this version and address (or none, when off)
-correria.publish(correriaOn());
+correria.publish();
 // the file of the other apps (the CronologIA), always
 integracao.publish();
 ha.start();

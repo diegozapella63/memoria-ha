@@ -137,6 +137,8 @@ with sync_playwright() as p:
             if t == "Dados":
                 widths = a.evaluate("(el) => [...el.renderRoot.querySelectorAll('#dados .opts .btn, #dados .sec-actions .btn')].map((b) => Math.round(b.getBoundingClientRect().width))")
                 check(len(widths) == 7 and len(set(widths)) == 1, f"{tag}: Dados: every button the same width ({widths})")
+                hs = a.evaluate("(el) => [...el.renderRoot.querySelectorAll('#dados .opts .btn, #dados .sec-actions .btn')].map((b) => Math.round(b.getBoundingClientRect().height))")
+                check(min(hs) >= 48 and len(set(hs)) == 1 and (w >= 1000 or widths[0] >= w - 90), f"{tag}: Dados: like the GerencIA, the width of the card on the phone and the same height ({widths[0]}x{hs})")
         # the tab is in the address of the screen: it stays on a reload
         check(a.evaluate("() => history.state.rvPath") == "/config/opcoes", f"{tag}: the tab in the address")
         pg.reload()

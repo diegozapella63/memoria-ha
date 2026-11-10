@@ -1,5 +1,10 @@
 # Mudanças
 
+## 1.18.0
+
+- **Mais › Configurações › Dados**: os botões no padrão dos outros apps da família: na largura do cartão no celular, da mesma altura.
+- O CorrerIA e o Relatório em PDF usam o mesmo código do ResolvIA e do CronologIA (nada muda na tela).
+
 ## 1.17.1
 
 - Nada muda na tela: a versão do app passa a ficar num lugar só, e o servidor ganhou mais testes (a conexão com o Home Assistant, os dados, os backups e as versões).

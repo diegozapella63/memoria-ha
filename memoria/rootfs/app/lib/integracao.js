@@ -1,10 +1,11 @@
 // What holds now, for the other apps of the family (the CronologIA shows it in its Agora): this app always writes
-// share/memoria/integracao.json ({app, nome, url, ip_url, chave, versao, agora, painel, gravado_em}; 600, atomic; the
+// share/memoria/integracao.json ({app, nome, url, ip_url, chave, versao, agora, painel, gravado_em}: the start is the same
+// in every app of the family, with gravado_em in ISO 8601 with the zone; 600, atomic; the
 // key is its own, in /data/integracao.key, apart from the one of the CorrerIA) and answers GET /api/integracao/agora
 // with Authorization: Bearer <chave>: the sheet of now and of the next two times, for a person, like the Agora here.
 import os from "node:os";
 import path from "node:path";
-import { addressOf, keyIn, bearerIs, writePrivate, localIso } from "./correria.js";
+import { addressOf, keyIn, bearerIs, writePrivate } from "./correria.js";
 import { PERIODS, buildSchedule, ahead, occurrence, minutesOf, fmtMin } from "./schedule.js";
 import { linksToText } from "./links.js";
 import { firstLine, checkOf, CHECK_TODO, CHECK_DONE } from "./writing.js";
@@ -107,7 +108,7 @@ export class Integracao {
   /** Writes share/memoria/integracao.json (at the start: the address can change when the app is reinstalled). */
   publish() {
     try {
-      const body = { app: "memoria", nome: "MemorIA", ...addressOf(this.port, this.internalUrl), chave: this.key(), versao: this.version, agora: ROUTE, painel: panelOf(), gravado_em: localIso() };
+      const body = { app: "memoria", nome: "MemorIA", ...addressOf(this.port, this.internalUrl), chave: this.key(), versao: this.version, agora: ROUTE, painel: panelOf(), gravado_em: new Date().toISOString() };
       writePrivate(this.shareFile, JSON.stringify(body, null, 1));
     } catch (err) {
       this.log.warn(`Integração: não consegui gravar ${this.shareFile}: ${err.message}`);

@@ -373,6 +373,9 @@ test("CorrerIA: the summary's block of the moment is the one of the person who a
 test("1.13.0: the trechos of now for the CronologIA, with the key of share/memoria/integracao.json, for each person", async () => {
   const info = JSON.parse(fs.readFileSync(path.join(dir, "share", "integracao.json"), "utf8"));
   assert.equal(info.app, "memoria");
+  assert.deepEqual(Object.keys(info).slice(0, 2), ["app", "nome"], "the start is the same in every app of the family");
+  assert.equal(info.nome, "MemorIA");
+  assert.ok(Number.isFinite(Date.parse(info.gravado_em)) && /Z$/.test(info.gravado_em), "gravado_em with the zone");
   assert.equal(info.agora, "/api/integracao/agora");
   assert.ok(info.url && info.chave.length >= 32 && info.versao, "address, key and version");
   assert.equal(info.painel, null, "not in Home Assistant: no address of the panel");
