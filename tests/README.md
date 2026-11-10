@@ -1,6 +1,8 @@
 # Testes do MemorIA
 
-- `npm test` (na raiz): o servidor (`memoria/rootfs/app/lib`: dados, categorias, de quem é e arquivados, o Agora e o sensor, relatório e PDF, exportação, as ferramentas do CorrerIA em `tests/ferramentas.test.mjs`; as caixas de marcar e o texto delas no PDF em `tests/caixas.test.mjs`; o Agora de agora em diante, o Fica no Agora, as marcas do Agora e os trechos para o CronologIA em `tests/agora.test.mjs`) e, em `tests/server.test.mjs`, o servidor de verdade com o Home Assistant simulado (também a rota `/api/integracao/ferramentas`, o arquivo `share/memoria/correria.json`, a rota `/api/integracao/agora` com o `share/memoria/integracao.json` e as pessoas da casa, Ana e Beto, com a pessoa de cada login), com `node:test`, sem instalar nada. Nunca dependem do relógio real.
+- `npm test` ou `tests/run.sh` (na raiz): o servidor (`memoria/rootfs/app/lib`: dados, categorias, de quem é e arquivados, o Agora e o sensor, relatório e PDF, exportação, as ferramentas do CorrerIA em `tests/ferramentas.test.mjs`; as caixas de marcar e o texto delas no PDF em `tests/caixas.test.mjs`; o Agora de agora em diante, o Fica no Agora, as marcas do Agora e os trechos para o CronologIA em `tests/agora.test.mjs`) e, em `tests/server.test.mjs`, o servidor de verdade com o Home Assistant simulado (também a rota `/api/integracao/ferramentas`, o arquivo `share/memoria/correria.json`, a rota `/api/integracao/agora` com o `share/memoria/integracao.json` e as pessoas da casa, Ana e Beto, com a pessoa de cada login), com `node:test`, sem instalar nada. Nunca dependem do relógio real.
+- `tests/version.test.mjs`: a versão só no `memoria/config.yaml`; o build a escreve no `lib/version.js` e na prévia.
+- `tests/usage.test.mjs`: o Uso da IA (`lib/usage.js`, o mesmo do ResolvIA).
 - Conferências visuais na prévia (`preview/memoria-preview.html`, sem servidor), em Python + Playwright
   (`pip install playwright && playwright install chromium`). Gere a prévia antes (`cd frontend && npm run build`):
 
@@ -25,8 +27,17 @@
 | `tests/selects_check.py` | as caixas de seleção no visual do app (`frontend/src/selectsheet.js`) |
 | `tests/horarios_check.py` | os horários no visual do app, sem o relógio do celular nem AM/PM: Períodos do dia numa caixa igual às outras (de meia em meia hora), Horário exato e Escolher horário (a hora e depois os minutos), o X e o Voltar; nenhum campo nativo de hora ou data nem `<datalist>` nas telas; 390 e 320 px, claro e escuro |
 
-Cada uma aceita a pasta das capturas: `python3 tests/mais_check.py /tmp/capturas`. Todas: `tests/visual.sh [pasta]`, que
-serve a prévia por http numa porta livre (`MEMORIA_PREVIEW_URL`): aberta como arquivo (file://), o Chromium mais novo nem
-sempre guarda a escolha da tela (localStorage) depois de recarregar.
+Cada uma aceita a pasta das capturas: `python3 tests/mais_check.py /tmp/capturas`. Todas: `tests/e2e/run.sh` (ou só algumas:
+`tests/e2e/run.sh arquivar mais`; as capturas em `$MEMORIA_SHOTS`) ou `tests/visual.sh [pasta]`, que servem a prévia por http
+numa porta livre (`MEMORIA_PREVIEW_URL`): aberta como arquivo (file://), o Chromium mais novo nem sempre guarda a escolha
+da tela (localStorage) depois de recarregar.
+
+## Cobertura
+
+`tests/run.sh --cobertura`: a cobertura de linhas, ramos e funções do servidor (`memoria/rootfs/app`), pela do próprio Node
+(`--experimental-test-coverage`, sem instalar nada; o servidor de verdade do `server.test.mjs` entra junto). Na 1.17.1: 96,9%
+das linhas (antes, 91,8%). `ha.test.mjs`, `ws.test.mjs` e `voice.test.mjs` são os do ResolvIA (os arquivos são iguais; ao
+mudar lá, copie). A tela não entra na conta: ela vai num pacote só, minificado, com o Lit (`npm run build`), e as conferências
+visuais acima passam por todas as telas.
 
 Toda mudança ou correção vem com o teste dela. Dados de exemplo sempre inventados (Ana, Beto).

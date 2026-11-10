@@ -428,3 +428,53 @@ test("1.14.0: Fica no Agora saved on the sheet, and the marks of the Agora reach
   a.ws.close();
   b.ws.close();
 });
+
+test("Mais › Configurações › Dados over the server: export, import, backups in share, versions and start over", async () => {
+  const a = await screen();
+  // export: the whole data, the spreadsheet and the ZIP; another format is not there
+  let res = await fetch(`${base}/api/export/json`);
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-disposition"), /attachment; filename="memoria-\d{4}-\d\d-\d\d.*\.json"/);
+  const json = await res.json();
+  assert.ok(json.blocks.length > 0 && json.pages.length > 0);
+  res = await fetch(`${base}/api/export/csv`);
+  assert.match(res.headers.get("content-type"), /text\/csv/);
+  assert.match(await res.text(), /Mercado/);
+  res = await fetch(`${base}/api/export/zip`);
+  const zip = Buffer.from(await res.arrayBuffer());
+  assert.equal(zip.subarray(0, 2).toString("latin1"), "PK");
+  assert.equal((await fetch(`${base}/api/export/pdf`)).status, 404);
+  // import: a .json and the .zip of the export; something else says why
+  res = await fetch(`${base}/api/import`, { method: "POST", headers: { "x-file-name": encodeURIComponent("cópia.json") }, body: JSON.stringify(json) });
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).blocks, json.blocks.length);
+  res = await fetch(`${base}/api/import`, { method: "POST", headers: { "x-file-name": "memoria.zip" }, body: zip });
+  assert.equal(res.status, 200);
+  res = await fetch(`${base}/api/import`, { method: "POST", headers: { "x-file-name": "%E0%A4%A" }, body: "não é json" });
+  assert.equal(res.status, 400);
+  assert.match((await res.json()).error, /não é um backup do MemorIA/);
+  // backups in share/memoria: create, list, restore; a name that isn't one is refused
+  const made = await a.call("memoria/backups/create");
+  assert.match(made.name, /^memoria-.*\.zip$/);
+  assert.equal(made.folder, "share/memoria");
+  const list = await a.call("memoria/backups/list");
+  assert.equal(list.available, true);
+  assert.ok(list.backups.some((b) => b.name === made.name && b.size > 0));
+  await a.call("memoria/data/erase");
+  assert.equal((await a.call("memoria/bootstrap")).data.blocks.length, 0, "Começar do zero: no blocks");
+  const back = await a.call("memoria/backups/restore", { name: made.name });
+  assert.equal(back.blocks, json.blocks.length, "the backup brings them back");
+  await assert.rejects(a.call("memoria/backups/restore", { name: "../memoria.json" }), /Backup inválido/);
+  await assert.rejects(a.call("memoria/backups/restore", { name: "memoria-2020-01-01-0000.zip" }), /não existe mais/);
+  // versions: one before importing, restoring and erasing; restore one
+  const versions = await a.call("memoria/versions/list");
+  assert.ok(versions.length >= 2);
+  assert.ok(versions.some((v) => /importar|restaurar|zero|apagar/.test(v.reason)), JSON.stringify(versions.map((v) => v.reason)));
+  const restored = await a.call("memoria/versions/restore", { name: versions[0].name });
+  assert.equal(typeof restored.blocks, "number");
+  await assert.rejects(a.call("memoria/versions/restore", { name: "nada.json" }), /Versão inválida/);
+  // an unknown command and a message that is not JSON
+  await assert.rejects(a.call("memoria/nada"), /Comando desconhecido/);
+  a.ws.send("isto não é json");
+  a.ws.close();
+});

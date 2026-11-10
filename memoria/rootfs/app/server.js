@@ -21,6 +21,7 @@ import { AI } from "./lib/ai.js";
 import { Voice, readRaw, MAX_VOICE_BYTES } from "./lib/voice.js";
 import { Sensor } from "./lib/sensor.js";
 import { AiUsage, resultOf } from "./lib/usage.js";
+import { VERSION } from "./lib/version.js";
 import { Backups, backupZip, toCSV, parseImport, listVersions, readVersion, fileStamp } from "./lib/data.js";
 import { anotacoes, reportHtml, reportPdf, pdfName } from "./lib/report.js";
 import { Correria, ROUTE as TOOLS_ROUTE } from "./lib/correria.js";
@@ -28,7 +29,6 @@ import { Integracao, ROUTE as NOW_ROUTE, trechos, clockOf } from "./lib/integrac
 import { listTools, callTool, ToolError, UnknownTool } from "./lib/ferramentas.js";
 import { sameName } from "./lib/schedule.js";
 
-const VERSION = "1.17.0";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WWW = path.join(HERE, "www");
 const DEV = process.env.MEMORIA_DEV === "1";

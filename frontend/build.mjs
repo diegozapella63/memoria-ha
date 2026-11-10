@@ -9,6 +9,13 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
+
+// The version lives in one place, memoria/config.yaml: the build writes it for the server (lib/version.js) and the preview.
+const VERSION = /^version:\s*"?([\d.]+)"?/m.exec(readFileSync(resolve(root, "memoria/config.yaml"), "utf8"))[1];
+writeFileSync(
+  resolve(root, "memoria/rootfs/app/lib/version.js"),
+  `// Written by frontend/build.mjs from memoria/config.yaml (the only place to change the version).\nexport const VERSION = "${VERSION}";\n`,
+);
 const common = {
   bundle: true,
   minify: true,
@@ -17,6 +24,7 @@ const common = {
   target: ["chrome100", "safari15", "firefox100"],
   logLevel: "warning",
   format: "iife",
+  define: { __MEMORIA_VERSION__: JSON.stringify(VERSION) },
   // Lit prints a "loaded from a bundle" notice unless this is set first.
   banner: {
     js: "/* MemorIA · Lit (BSD-3), Lucide icons (ISC), Barlow, Barlow Condensed & Caveat (OFL) */\nwindow.litDisableBundleWarning=true;",

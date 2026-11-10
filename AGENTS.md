@@ -37,8 +37,8 @@ Como rodar no computador: README.md, em **Desenvolvimento**.
 1. `git pull --rebase` antes de começar: outras sessões (pessoas ou IAs) também publicam aqui.
 2. Implementar. Servidor: só módulos nativos do Node. Interface: Lit, em `frontend/src`. A prévia usa a mesma tela com o servidor imitado em `frontend/preview/mock-api.js`: se a mudança depende do servidor, imite lá.
 3. Gerar a interface: `cd frontend && npm install && npm run build`. Faça commit também de `memoria/rootfs/app/www/memoria.js` e `preview/memoria-preview.html`.
-4. Testar: `npm test` (servidor) e as conferências visuais ligadas à mudança (`python3 tests/<nome>_check.py`, ou todas com `tests/visual.sh`). Toda mudança ou bug corrigido vem com o teste dele (ver tests/README.md).
-5. Subir a versão nos três lugares (iguais): `memoria/config.yaml` (`version:`), `memoria/rootfs/app/server.js` (`const VERSION`) e `frontend/preview/mock-api.js` (`version:`). Correção = patch (1.17.0 → 1.17.1); novidade = minor (1.17.x → 1.18.0).
+4. Testar: `tests/run.sh` (servidor; `--cobertura` mede a cobertura, que fica acima de 95% das linhas) e as conferências visuais ligadas à mudança (`tests/e2e/run.sh nome ...`, ou todas). Toda mudança ou bug corrigido vem com o teste dele (ver tests/README.md).
+5. Subir a versão num lugar só, `memoria/config.yaml` (`version:`), e rodar o build: ele escreve `memoria/rootfs/app/lib/version.js` (o servidor) e a prévia (o `tests/version.test.mjs` confere). Correção = patch (1.17.1 → 1.17.2); novidade = minor (1.17.x → 1.18.0).
 6. `memoria/CHANGELOG.md`: nova seção no topo, em português, do ponto de vista de quem usa (o que mudou na tela, não no código).
 7. `memoria/DOCS.md` quando muda o comportamento ou aparece algo novo; `README.md` quando muda a lista do que o app tem.
 8. Commit em `main` com mensagem em português ("MemorIA 1.17.0: ..."), `git pull --rebase` e push. O GitHub roda todos os testes a cada push (aba Actions).
@@ -76,7 +76,7 @@ Ao mudar um, mude nos outros: `frontend/src/selectsheet.js` (as caixas de seleç
 - **Dados**: Exportar › Backup na pasta share › Importar › Versões anteriores › Onde ficam os dados › Começar do zero.
 - **Aparência**: o tema vale no aparelho (começa em Automático); a cor do app vale para a casa toda; uma paleta só, de 12 cores (Vermelho, Coral, Laranja, Ouro, Verde, Menta, Turquesa, Azul, Índigo, Lilás, Rosa, Grafite); a Cor do dia é a mesma em todos os apps (as 11 sem o Grafite, pelo número do dia).
 
-Aqui: a barra em `_renderNav`; o menu em `_moreRows`; as abas em `_configTabs`; Integrações em `_renderConfig` (os outros apps: nenhum ainda; o CronologIA lê o `share/memoria/integracao.json` sozinho); o Uso da IA é o `usage.js`/`usage-panel.js` do ResolvIA (iguais lá: ao mudar, mude nos dois); a paleta em `frontend/src/util.js` (`PALETTE`), `lib/store.js` (`COLORS`, `paletteColor`: uma cor de antes vira a mais próxima ao abrir) e `lib/report.js`; a Cor do dia em `look.js` (`colorOfDay`).
+Aqui não há aviso no celular (o componente Quem recebe/Testar no meu celular não se aplica). `panel_admin: false` no `config.yaml` fica como está: todas as pessoas da casa usam os blocos, não só os administradores. A barra em `_renderNav`; o menu em `_moreRows`; as abas em `_configTabs`; Integrações em `_renderConfig` (os outros apps: nenhum ainda; o CronologIA lê o `share/memoria/integracao.json` sozinho); o Uso da IA é o `usage.js`/`usage-panel.js` do ResolvIA (iguais lá: ao mudar, mude nos dois); a paleta em `frontend/src/util.js` (`PALETTE`), `lib/store.js` (`COLORS`, `paletteColor`: uma cor de antes vira a mais próxima ao abrir) e `lib/report.js`; a Cor do dia em `look.js` (`colorOfDay`).
 
 ## Conversa com o dono
 

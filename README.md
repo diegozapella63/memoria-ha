@@ -74,7 +74,7 @@ MEMORIA_DEV=1 HA_WS_URL=ws://127.0.0.1:8123/api/websocket HA_REST_URL=http://127
                                                  # abre em http://127.0.0.1:8099
 ```
 
-Testes: `npm test` (servidor, com `node:test`) e as conferências visuais na prévia (Playwright), descritas em [tests/README.md](tests/README.md). O GitHub roda todos a cada push.
+Testes: `tests/run.sh` (o servidor, com `node:test`; `--cobertura` mede a cobertura) e `tests/e2e/run.sh` (as conferências visuais na prévia, com Playwright), descritos em [tests/README.md](tests/README.md). O GitHub roda todos a cada push. A versão fica só no `memoria/config.yaml`: o build a leva para o servidor e para a prévia.
 
 Arquivos iguais aos dos outros apps da família (ao mudar um, mude nos outros): `frontend/src/selectsheet.js`, `about.js`, `look.js`, `swipe.js`, `voice.js` e `chat.js` (os do ResolvIA e da CronologIA) e `memoria/rootfs/app/lib/ws.js`, `ha.js` e `voice.js` (os de `lib/` do ResolvIA). O `lib/pdf.js` é o do ResolvIA, com o nome do app como opção.
 

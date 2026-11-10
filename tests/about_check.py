@@ -32,10 +32,9 @@ def check(c, label):
         failed.append(label)
 
 
-# the version is the same everywhere it appears
-server_v = re.search(r'const VERSION = "([\d.]+)"', (REPO / "memoria/rootfs/app/server.js").read_text()).group(1)
-mock_v = re.search(r'version: "([\d.]+)"', (REPO / "frontend/preview/mock-api.js").read_text()).group(1)
-check(server_v == VERSION == mock_v, f"version {VERSION} in config.yaml, server.js and mock-api.js ({server_v}, {mock_v})")
+# the version is only in config.yaml; the build writes it for the server (lib/version.js) and the preview
+server_v = re.search(r'export const VERSION = "([\d.]+)"', (REPO / "memoria/rootfs/app/lib/version.js").read_text()).group(1)
+check(server_v == VERSION and f'"{VERSION}"' in (REPO / "preview/memoria-preview.html").read_text(), f"version {VERSION} of config.yaml in lib/version.js and the preview ({server_v})")
 check(f"## {VERSION}" in (REPO / "memoria/CHANGELOG.md").read_text(), f"CHANGELOG has {VERSION}")
 
 OVER = """(el) => {

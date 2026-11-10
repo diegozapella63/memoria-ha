@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.17.1
+
+- Nada muda na tela: a versão do app passa a ficar num lugar só, e o servidor ganhou mais testes (a conexão com o Home Assistant, os dados, os backups e as versões).
+
 ## 1.17.0
 
 O MemorIA fica igual aos outros apps da família:
