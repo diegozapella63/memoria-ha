@@ -16,11 +16,11 @@ export function colorOfDay(palette, date = new Date()) {
   return list[((day % list.length) + list.length) % list.length];
 }
 
-/** Automático / Claro / Escuro. icon(name) draws an app icon. */
+/** Sistema / Claro / Escuro. icon(name) draws an app icon. */
 export function themePicker({ theme, onTheme, icon }) {
   return html`<div class="seg themes" role="radiogroup" aria-label="Tema">
     ${[
-      ["auto", "Automático", "smartphone"],
+      ["auto", "Sistema", "smartphone"],
       ["light", "Claro", "sun"],
       ["dark", "Escuro", "moon"],
     ].map(([k, label, ic]) => html`<button type="button" class=${theme === k ? "on" : ""} role="radio" aria-checked=${theme === k ? "true" : "false"} @click=${() => onTheme(k)}>${icon(ic)}<span>${label}</span></button>`)}

@@ -144,7 +144,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     window.addEventListener("resize", this._onResize);
     if (this._mql && this._mql.addEventListener) this._mql.addEventListener("change", this._onScheme);
     this._tickTimer = setInterval(() => this._tick(), 20000);
-    // Automático follows Home Assistant's light/dark mode while the app is open (and the system, and in the
+    // Sistema follows Home Assistant's light/dark mode while the app is open (and the system, and in the
     // preview the viewer's choice on the page)
     this._themeTimer = setInterval(() => this._theme === "auto" && this._syncDark(), 1500);
     if (window.MutationObserver) {

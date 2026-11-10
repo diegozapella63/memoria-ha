@@ -4025,7 +4025,7 @@ dialog.ss-wrap::backdrop{background:transparent}
     height: 19px;
   }
 `;var ke="M8 0h20a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8L0 13V7z",ds="M9.7 10a2.7 2.7 0 1 0-5.4 0a2.7 2.7 0 1 0 5.4 0z";function Ua(s,t=new Date){let e=s.filter(i=>i.id!=="grafite"),a=Math.floor(Date.UTC(t.getFullYear(),t.getMonth(),t.getDate())/864e5);return e[(a%e.length+e.length)%e.length]}function ja({theme:s,onTheme:t,icon:e}){return c`<div class="seg themes" role="radiogroup" aria-label="Tema">
-    ${[["auto","Autom\xE1tico","smartphone"],["light","Claro","sun"],["dark","Escuro","moon"]].map(([a,i,o])=>c`<button type="button" class=${s===a?"on":""} role="radio" aria-checked=${s===a?"true":"false"} @click=${()=>t(a)}>${e(o)}<span>${i}</span></button>`)}
+    ${[["auto","Sistema","smartphone"],["light","Claro","sun"],["dark","Escuro","moon"]].map(([a,i,o])=>c`<button type="button" class=${s===a?"on":""} role="radio" aria-checked=${s===a?"true":"false"} @click=${()=>t(a)}>${e(o)}<span>${i}</span></button>`)}
   </div>`}function Ya({palette:s,value:t,onPick:e}){return c`<div class="tag-swatches" role="radiogroup" aria-label="Cor do app">
     ${s.map(a=>c`<button type="button" class="tsw ${t===a.id?"on":""}" role="radio" aria-checked=${t===a.id?"true":"false"} style="--a:${a.fill}" @click=${()=>e(a.id)}>
         <svg viewBox="-5 -5 40 30" aria-hidden="true"><path class="sw-ring" d=${ke}></path><path class="sw-gap" d=${ke}></path><path class="sw-fill" d=${ke+ds}></path><path class="sw-check" d="m14.6 10.3 3.2 3.2 6.5-6.9"></path></svg>

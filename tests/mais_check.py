@@ -2,7 +2,7 @@
 # Configurações in tabs (Integrações, Dados, Aparência, Opções), the tab in the address of the screen (it stays
 # on a reload); the phone's Back, "‹ Mais", Mais in the bar and a swipe to the right go back to the menu.
 # Swiping sideways changes the tab of the bar (Agora ⇄ Blocos ⇄ Buscar ⇄ Mais), never on the notebook (there it
-# turns the page). Automático follows the light/dark mode while the app is open (the system, and in the preview
+# turns the page). Sistema follows the light/dark mode while the app is open (the system, and in the preview
 # the viewer's data-theme); Cor do dia changes the color of the app every day.
 # 320 px to the computer, light and dark.
 #
@@ -236,9 +236,9 @@ with sync_playwright() as p:
             pg.go_back()
             pg.wait_for_timeout(500)
 
-        # ---- the theme: Automático follows the light/dark mode live; Claro/Escuro win
+        # ---- the theme: Sistema follows the light/dark mode live; Claro/Escuro win
         dark = lambda: a.evaluate("(el) => el.hasAttribute('dark')")
-        check(dark() == (scheme == "dark"), f"{tag}: Automático follows the system ({scheme})")
+        check(dark() == (scheme == "dark"), f"{tag}: Sistema follows the system ({scheme})")
         other = "light" if scheme == "dark" else "dark"
         pg.emulate_media(color_scheme=other)
         pg.wait_for_timeout(400)
@@ -250,7 +250,7 @@ with sync_playwright() as p:
         # the preview inside a viewer that has its own light/dark (data-theme on the page)
         pg.evaluate(f"() => document.documentElement.setAttribute('data-theme', '{other}')")
         pg.wait_for_timeout(400)
-        check(dark() == (other == "dark"), f"{tag}: the viewer's theme (data-theme={other}) wins in Automático")
+        check(dark() == (other == "dark"), f"{tag}: the viewer's theme (data-theme={other}) wins in Sistema")
         pg.evaluate("() => document.documentElement.removeAttribute('data-theme')")
         pg.wait_for_timeout(400)
         check(dark() == (scheme == "dark"), f"{tag}: and back to the system without it")
@@ -261,7 +261,7 @@ with sync_playwright() as p:
         a.locator(".more-tabs button", has_text="Aparência").click()
         pg.wait_for_timeout(400)
         th = [t.strip() for t in a.locator(".seg.themes button").all_inner_texts()]
-        check(th == ["Automático", "Claro", "Escuro"], f"{tag}: Tema in three buttons ({th})")
+        check(th == ["Sistema", "Claro", "Escuro"], f"{tag}: Tema in three buttons ({th})")
         tw = a.evaluate("(el) => [...el.renderRoot.querySelectorAll('.seg.themes button')].map((b) => Math.round(b.getBoundingClientRect().width))")
         check(len(set(tw)) == 1, f"{tag}: the three the same width ({tw})")
         a.locator(".seg.themes button", has_text="Claro" if scheme == "dark" else "Escuro").click()
@@ -271,9 +271,9 @@ with sync_playwright() as p:
         pg.wait_for_timeout(1700)
         check(dark() == (scheme != "dark"), f"{tag}: and the system changing doesn't move it")
         pg.emulate_media(color_scheme=scheme)
-        a.locator(".seg.themes button", has_text="Automático").click()
+        a.locator(".seg.themes button", has_text="Sistema").click()
         pg.wait_for_timeout(300)
-        check(dark() == (scheme == "dark"), f"{tag}: Automático again")
+        check(dark() == (scheme == "dark"), f"{tag}: Sistema again")
         # Cor do dia: on by default, the color of today; a color turns it off; the switch turns it back on
         sw = a.locator(".daily-row input[role=switch]")
         check(sw.is_checked(), f"{tag}: Cor do dia on by default")

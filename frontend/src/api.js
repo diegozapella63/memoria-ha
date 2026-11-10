@@ -137,7 +137,7 @@ function parentHass() {
 
 const mql = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
 
-/** Automático: the light/dark mode of Home Assistant; outside it, the viewer's choice (the preview), else the system. */
+/** Sistema: the light/dark mode of Home Assistant; outside it, the viewer's choice (the preview), else the system. */
 function detectDark() {
   const p = parentHass();
   if (p && p.themes && typeof p.themes.darkMode === "boolean") return p.themes.darkMode;

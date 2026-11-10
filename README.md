@@ -49,7 +49,7 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **Dados**: exportar (ZIP com um arquivo de texto por bloco, CSV e JSON), backup na pasta `share/memoria`, importar, versões anteriores automáticas e começar do zero.
 - **Mais** em menu, como nos outros apps: **Categorias**, **Relatório de anotações**, **Configurações** em abas (Integrações, Dados, Aparência e Opções) e **Sobre**. Embaixo, **Agora**, **Buscar**, **Adicionar**, **Blocos** e **Mais**; arrastar o dedo para os lados troca de aba.
 - **Uso da IA**, em Integrações: as chamadas do app para a IA, por dia, com os tokens estimados.
-- **Aparência**: tema automático (segue o claro ou escuro do Home Assistant, na hora), claro ou escuro, **Cor do dia** (a mesma em todos os apps da família) ou uma das 12 cores da família, e letra de mão, que dá para desligar.
+- **Aparência**: tema Sistema (segue o claro ou escuro do Home Assistant, na hora), Claro ou Escuro, **Cor do dia** (a mesma em todos os apps da família) ou uma das 12 cores da família, e letra de mão, que dá para desligar.
 
 Mais detalhes em [memoria/DOCS.md](memoria/DOCS.md).
 

@@ -8,7 +8,7 @@
 
 | Arquivo | O que confere |
 |---|---|
-| `tests/mais_check.py` | Mais em menu, Configurações em abas, Voltar, ‹ Mais e arrastar; tema automático e Cor do dia |
+| `tests/mais_check.py` | Mais em menu, Configurações em abas, Voltar, ‹ Mais e arrastar; tema Sistema e Cor do dia |
 | `tests/agora_check.py` | Agora: folha com horário de quem é dono, Nada com horário (sem bloco qualquer) e de quem são os blocos com horário; os botões das escolhas do mesmo tamanho; o nome do bloco com a largura toda, sem quebrar palavra |
 | `tests/buscar_check.py` | Buscar com os blocos já na tela (De quem, Incluir arquivados, o nome procurado); Selecionar (e segurar o dedo), Todos e Nenhum, Alterar a categoria e de quem é de dois blocos com Manter de início, Desfazer, o Voltar sai; Nova com Novo bloco |
 | `tests/tempo_check.py` | Fica no Agora (1 h no ⋯ da folha: até quando no alto, depois Nada agora com os próximos para espiar, e não a janta até a manhã) e as caixas marcadas no Agora só para aquela vez (a folha não muda, em Blocos aparece como está, no dia seguinte começa limpa) |

@@ -220,7 +220,7 @@ Antes de importar, restaurar ou apagar, o app sempre guarda uma cópia do que ex
 
 Em **Mais › Configurações › Aparência**:
 
-- **Tema**: **Automático** segue o claro ou escuro do Home Assistant (e, fora dele, o do celular) e troca na hora, com o app aberto, quando o modo muda. **Claro** e **Escuro** ficam fixos. Cada aparelho guarda a sua escolha.
+- **Tema**: **Sistema** segue o claro ou escuro do Home Assistant (e, fora dele, o do celular) e troca na hora, com o app aberto, quando o modo muda. **Claro** e **Escuro** ficam fixos. Cada aparelho guarda a sua escolha.
 - **Cor do app**: com **Cor do dia** ligada (o padrão), a cor muda sozinha todo dia, passando pelas 11 cores da paleta (sem o Grafite), a mesma cor do dia em todos os apps da família; é a mesma em todos os aparelhos e troca à meia-noite mesmo com o app aberto. Tocar numa cor desliga a Cor do dia e fica com ela. As 12 cores são as mesmas em todos os apps: Vermelho, Coral, Laranja, Ouro, Verde, Menta, Turquesa, Azul, Índigo, Lilás, Rosa e Grafite (as capas e as categorias usam as mesmas; uma Framboesa de antes virou Rosa). Dentro de um bloco, vale a cor da capa dele.
 - **Letra de mão**: ligada, as folhas são escritas como num caderno de verdade; desligada, com a letra comum.
 
