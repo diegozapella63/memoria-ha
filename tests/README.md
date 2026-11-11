@@ -20,7 +20,8 @@
 | `tests/categorias_check.py` | Mais › Categorias, a categoria no bloco (com Nova ali mesmo) e o filtro em Blocos |
 | `tests/correria_check.py` | Mais › Configurações › Integrações › CorrerIA: desligado por padrão, sem depender do Usar IA, e quem usou por último |
 | `tests/conversa_check.py` | Falar (com um microfone simulado) e Conversar com a IA, a chave Usar IA e o microfone sem https |
-| `tests/caixas_check.py` | Caixa de marcar e Emojis no alto da folha: a linha vira item e deixa de ser, Enter faz o próximo item e acaba a lista, o emoji entra no cursor sem fechar o teclado; fora da escrita, um toque marca como feito (riscado) e desmarca, salvo; 390 e 320 px, claro e escuro |
+| `tests/caixas_check.py` | Caixa de marcar e Pronto no alto da folha (sem os Emojis, 1.21.0): a linha vira item e deixa de ser, Enter faz o próximo item e acaba a lista; escrevendo, o Pronto no lugar do número e um toque sai da escrita; fora da escrita, um toque marca como feito (riscado) e desmarca, salvo; 390 e 320 px, claro e escuro |
+| `tests/campos_check.py` | os campos de texto que aumentam e guardam o tamanho no aparelho (`textareas.js`, igual em todos os apps; a folha do caderno e a Conversa ficam de fora) e o Verificar de novo na largura do cartão no celular (250 px no computador) |
 | `tests/links_check.py` | links nas folhas: etiquetas, abrir fora, tocar no texto para escrever, Adicionar link e Buscar |
 | `tests/relatorio_check.py` | Mais › Relatório pelo servidor (sobe o `dev/fake-ha.mjs` e o servidor com a casa inventada de `tests/fixtures/casa.mjs`): cabeçalho, escolhas guardadas, Baixar PDF e Voltar |
 | `tests/about_check.py` | Mais › Sobre (o mesmo dos outros apps) e a versão igual em todos os lugares |

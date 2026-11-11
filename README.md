@@ -37,7 +37,7 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **Arquivar bloco**: sai da estante, do Agora e da busca sem apagar nada e fica em **Arquivados**, no fim de Blocos.
 - **Relatório de anotações**, com os blocos e as folhas e **Baixar PDF** (funciona no app do Home Assistant no celular).
 - **No ⋯ da folha**: horário próprio, mover para outro bloco, adicionar link, copiar o texto ou arrancar a folha, com Desfazer.
-- **Caixas de marcar e emojis**: no alto da folha, transforme linhas em itens com caixa para marcar como feito com um toque, e ponha emojis sem fechar o teclado.
+- **Caixas de marcar**: no alto da folha, transforme linhas em itens com caixa para marcar como feito com um toque; escrevendo, **Pronto** sai da escrita num toque.
 - **Links que abrem com um toque**: endereços na folha viram etiquetas curtas (o nome, ou o site), sem aquele texto comprido.
 - **Nova folha de mensagem ou foto**: cole uma mensagem do WhatsApp, escolha fotos ou digitalize uma anotação em papel; a IA configurada no Home Assistant (Claude, OpenAI, Gemini ou Ollama) transcreve e você revisa. Escolha qual em **Mais → Configurações → Integrações**.
 - **Falar e Conversar com a IA**, no alto das telas: diga uma anotação (a fala para texto do Home Assistant transcreve e a IA organiza) ou converse sobre os blocos; o que a IA propõe escrever só acontece depois do seu toque.

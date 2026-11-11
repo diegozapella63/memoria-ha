@@ -46,7 +46,7 @@ export function renderChat({ lit, icon, messages = [], draft = "", busy = false,
       ${error ? html`<div class="chat-error">${icon("circle-alert")}<span>${error}</span></div>` : nothing}
     </div>
     <form class="chat-input" @submit=${(e) => (e.preventDefault(), send())}>
-      <textarea rows="1" .value=${draft} placeholder=${rec ? "Ouvindo…" : "Escreva aqui…"} aria-label="Mensagem para a IA" ?disabled=${rec}
+      <textarea rows="1" data-size="off" .value=${draft} placeholder=${rec ? "Ouvindo…" : "Escreva aqui…"} aria-label="Mensagem para a IA" ?disabled=${rec}
         @input=${(e) => onDraft(e.target.value)}
         @keydown=${(e) => {
           if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {

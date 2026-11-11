@@ -1,8 +1,8 @@
-# MemorIA 1.12.0: no alto da folha, Caixa de marcar e Emojis. Caixa de marcar faz da linha do cursor um item (☐) ou tira a
+# MemorIA 1.12.0: no alto da folha, Caixa de marcar. Caixa de marcar faz da linha do cursor um item (☐) ou tira a
 # caixa; fora do editor, põe um item novo no fim. Enter num item faz outro embaixo; Enter num item vazio acaba a lista.
-# Emojis abre uma fileira; cada um entra onde está o cursor, sem fechar o teclado (o foco fica na folha). Fora do
-# editor, as caixas viram quadradinhos: um toque marca como feito (☑, o texto riscado) e o outro desmarca, sem abrir o
-# editor; fica salvo. 390 e 320 px, claro e escuro.
+# 1.21.0: os Emojis saíram (o teclado do celular já tem) e, escrevendo, o Pronto fica no lugar do número da folha: um
+# toque sai do editor (o teclado fecha e as caixas voltam). Fora do editor, as caixas viram quadradinhos: um toque marca
+# como feito (☑, o texto riscado) e o outro desmarca, sem abrir o editor; fica salvo. 390 e 320 px, claro e escuro.
 #
 # Usa a prévia (sem servidor): cd frontend && npm run build, depois
 #   python3 tests/caixas_check.py [pasta das capturas]
@@ -30,7 +30,7 @@ def check(c, label):
 OVER = """(el) => {
   const W = window.innerWidth, bad = [];
   for (const e of el.renderRoot.querySelectorAll(".page *")) {
-    if (e.closest(".cat-filter, .who-filter, .tline, .emoji-row")) continue;
+    if (e.closest(".cat-filter, .who-filter, .tline")) continue;
     const r = e.getBoundingClientRect();
     if (r.width && (r.right > W + 1 || r.left < -1)) bad.push(e.tagName.toLowerCase() + "." + [...e.classList].join(".") + " " + Math.round(r.left) + ".." + Math.round(r.right));
   }
@@ -63,7 +63,8 @@ with sync_playwright() as p:
         a.evaluate("(el) => el._openPage('ideias00001', 'new')")
         pg.wait_for_timeout(900)
         tools = a.locator(".leaf-top .tool")
-        check([tools.nth(i).get_attribute("aria-label") for i in range(tools.count())] == ["Caixa de marcar", "Emojis"], f"{tag}: no alto da folha, Caixa de marcar e Emojis")
+        check([tools.nth(i).get_attribute("aria-label") for i in range(tools.count())] == ["Caixa de marcar"], f"{tag}: no alto da folha, Caixa de marcar (sem os Emojis)")
+        done = a.locator(".leaf-top .ink-done")
 
         # ---- Caixa de marcar e o Enter
         ta = a.locator("textarea.ink")
@@ -87,41 +88,38 @@ with sync_playwright() as p:
         tap(pg, tools.nth(0))
         check(a.evaluate(VALUE).endswith("\nFim da lista"), f"{tag}: de novo, a caixa sai ({a.evaluate(VALUE)!r})")
 
-        # ---- Emojis
-        tap(pg, tools.nth(1))
-        row = a.locator(".emoji-row")
-        check(row.count() == 1 and tools.nth(1).get_attribute("aria-pressed") == "true", f"{tag}: Emojis abre a fileira")
+        # ---- Pronto: escrevendo, no lugar do número da folha
+        check(done.count() == 1 and done.inner_text().strip() == "Pronto" and a.locator(".leaf-top .num").count() == 0, f"{tag}: escrevendo, o Pronto no lugar do número")
         check(not a.evaluate(OVER), f"{tag}: nada passa da largura {a.evaluate(OVER)}")
         pg.screenshot(path=str(SHOTS / f"caixas-editor-{scheme}-{w}.png"))
-        a.evaluate("(el) => { const t = el.renderRoot.querySelector('textarea.ink'); const i = t.value.indexOf('Fim da lista'); t.setSelectionRange(i, i); }")
-        tap(pg, row.locator(".emoji", has_text="🛒"))
-        check(a.evaluate(VALUE).endswith("\n🛒Fim da lista"), f"{tag}: o emoji entra onde está o cursor ({a.evaluate(VALUE)[-20:]!r})")
-        check(a.evaluate(FOCUSED) and row.count() == 1, f"{tag}: e a fileira continua aberta, com o teclado")
-        tap(pg, tools.nth(1))
-        check(row.count() == 0, f"{tag}: Emojis de novo fecha a fileira")
+        tap(pg, tools.nth(0))
+        check(a.evaluate(FOCUSED) and done.count() == 1, f"{tag}: a Caixa de marcar não tira do editor")
+        tap(pg, tools.nth(0))
         pid = a.evaluate("(el) => el._pad.page")
 
-        # ---- fora do editor: um toque marca como feito
-        a.evaluate("(el) => el.renderRoot.querySelector('textarea.ink').blur()")
-        pg.wait_for_timeout(500)
+        # ---- Pronto: um toque sai do editor; fora dele, um toque marca como feito
+        tap(pg, done)
+        pg.wait_for_timeout(300)
+        check(not a.evaluate(FOCUSED) and a.evaluate("(el) => el._editing") is None and done.count() == 0, f"{tag}: Pronto sai do editor")
+        check(a.locator(".leaf-top .num").count() == 1, f"{tag}: fora do editor, o número da folha de novo")
         boxes = a.locator(".ink-view .chk")
         check(boxes.count() == 3 and all(boxes.nth(i).get_attribute("aria-checked") == "false" for i in range(3)), f"{tag}: fora do editor, três caixas para marcar")
         txt = a.locator(".ink-view").inner_text()
         check("☐" not in txt and "Pão" in txt, f"{tag}: o quadradinho no lugar do ☐")
         tap(pg, boxes.nth(1))
         check(boxes.nth(1).get_attribute("aria-checked") == "true" and a.evaluate("(el) => el._editing") is None, f"{tag}: um toque marca como feito, sem abrir o editor")
-        check(a.evaluate(f"(el) => el._page('{pid}').text") == "☐ Feira\n☑ Pão\n☐ Leite\n🛒Fim da lista", f"{tag}: a folha guarda o ☑ ({a.evaluate(f'(el) => el._page({chr(39)}{pid}{chr(39)}).text')!r})")
+        check(a.evaluate(f"(el) => el._page('{pid}').text") == "☐ Feira\n☑ Pão\n☐ Leite\nFim da lista", f"{tag}: a folha guarda o ☑ ({a.evaluate(f'(el) => el._page({chr(39)}{pid}{chr(39)}).text')!r})")
         deco = a.evaluate("(el) => getComputedStyle(el.renderRoot.querySelectorAll('.ink-view .chk-line')[1].querySelector('.chk ~ span')).textDecorationLine")
         check(deco == "line-through", f"{tag}: o feito fica riscado ({deco})")
         pg.screenshot(path=str(SHOTS / f"caixas-feito-{scheme}-{w}.png"))
         pg.wait_for_timeout(600)
         saved = a.evaluate(f"(el) => el.api.data ? (el.api.data.pages.find((p) => p.id === '{pid}') || {{}}).text : null")
-        check(saved in (None, "☐ Feira\n☑ Pão\n☐ Leite\n🛒Fim da lista"), f"{tag}: e fica salvo ({saved!r})")
+        check(saved in (None, "☐ Feira\n☑ Pão\n☐ Leite\nFim da lista"), f"{tag}: e fica salvo ({saved!r})")
         tap(pg, boxes.nth(1))
         check(boxes.nth(1).get_attribute("aria-checked") == "false", f"{tag}: outro toque desmarca")
         # Caixa de marcar fora do editor: um item novo no fim, com o teclado
         tap(pg, tools.nth(0))
-        check(a.evaluate(VALUE).endswith("🛒Fim da lista\n☐ ") and a.evaluate(FOCUSED), f"{tag}: fora do editor, um item novo no fim ({a.evaluate(VALUE)[-12:]!r})")
+        check(a.evaluate(VALUE).endswith("\nFim da lista\n☐ ") and a.evaluate(FOCUSED), f"{tag}: fora do editor, um item novo no fim ({a.evaluate(VALUE)[-12:]!r})")
         check(not errs, f"{tag}: sem erros {errs}")
         ctx.close()
     b.close()

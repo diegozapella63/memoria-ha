@@ -19,8 +19,6 @@ const THEME_KEY = "memoria.theme";
 const SAVE_DELAY = 600;
 const TURN_MS = 600;
 const PAPER_LABEL = { pautado: "Pautado", quadriculado: "Quadriculado", pontilhado: "Pontilhado", liso: "Liso" };
-// Emojis for a sheet (the row over it): the ones of lists, the house, food, health and the day
-const EMOJIS = ["✅", "❌", "⭐", "❤️", "👍", "🙏", "😊", "😂", "🎉", "🔥", "💡", "📌", "📅", "⏰", "⚠️", "❗", "❓", "📝", "🛒", "💊", "🍎", "🥗", "🍽️", "☕", "🏠", "🧹", "🧺", "🚗", "💰", "📞", "✈️", "🎂", "🎁", "📚", "💪", "🏃", "😴", "🌱", "🐶", "🐱"];
 const RINGS = Array.from({ length: 14 }, () => html`<i></i>`);
 // The screens of Mais (a menu, like the other apps): each one goes over the menu, and Back returns to it.
 const IN_MORE = ["categorias", "config", "sobre"];
@@ -83,8 +81,6 @@ class MemoriaApp extends ChatMixin(LitElement) {
     _now: { state: true },
     _dark: { state: true },
     _editing: { state: true },
-    // Emojis: the row of emojis open over the sheet being written
-    _emoji: { state: true },
     _correria: { state: true },
   };
 
@@ -2138,7 +2134,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         <div class="tabs">
           ${tab(["now"], "", "Agora", "clock-3")} ${tab(["search"], "/buscar", "Buscar", "search")}
           <button class="tab fab" @click=${() => this._openNew()} aria-label="Adicionar">
-            <span class="pill">${icon("plus")}</span><span>Adicionar</span>
+            <span class="pill">${icon("plus")}</span>
           </button>
           ${tab(["shelf", "block"], "/blocos", "Blocos", "library")} ${tab(["more", ...IN_MORE], "/mais", "Mais", "ellipsis")}
         </div>
@@ -2291,11 +2287,11 @@ class MemoriaApp extends ChatMixin(LitElement) {
         <div class="pad-cover"></div>
         <div class="pad-stack"></div>
         <div class="leaf ${b.paper}">
-          ${this._renderLeafTop({ created: page ? page.created : null, times: page ? page.times : [], num: idx + 1, total }, !!page, true)}
-          ${this._emoji ? this._renderEmojis() : nothing}
+          ${this._renderLeafTop({ created: page ? page.created : null, times: page ? page.times : [], num: idx + 1, total }, !!page, true, this._editing != null && this._editing === pad.page)}
           ${viewing ? this._renderInkView(page, hand, `Folha ${idx + 1} de ${total} do bloco ${b.name}`) : nothing}
           <textarea
             class="ink ${hand ? "" : "normal"} ${viewing ? "behind" : ""}"
+            data-size="off"
             .value=${live(page ? page.text : "")}
             placeholder=${page ? "" : idx === 0 ? "Escreva a primeira folha deste bloco…" : "Folha nova. Escreva aqui…"}
             spellcheck="true"
@@ -2305,7 +2301,6 @@ class MemoriaApp extends ChatMixin(LitElement) {
             @focus=${() => (this._editing = pad.page)}
             @blur=${() => {
               this._editing = null;
-              this._emoji = false;
               if (page && this._saving.has(page.id)) this._flushSave(page.id);
               setTimeout(() => this._tick(), 400);
             }}
@@ -2455,7 +2450,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
     this._queueSave(id, 300);
   }
 
-  // ---------- writing: a box (Caixa de marcar) and the emojis, from the top of the sheet
+  // ---------- writing: a box (Caixa de marcar) and Pronto, from the top of the sheet (the emojis came out in 1.21.0: the
+  // keyboard of the phone has them)
 
   /** The editor ready to take something: with the focus (inside the tap, so the phone opens the keyboard) and the cursor
    * at the end when it had no focus. */
@@ -2515,28 +2511,12 @@ class MemoriaApp extends ChatMixin(LitElement) {
     this._inkSet(ta, v.slice(0, pos) + add + v.slice(pos), pos + add.length);
   }
 
-  /** Emojis: the row opens (and closes) over the sheet; each one goes where the cursor is. */
-  _toggleEmoji() {
-    this._inkReady();
-    this._haptic("light");
-    this._emoji = !this._emoji;
-  }
-
-  _insertEmoji(em) {
-    const ta = this._inkReady();
+  /** Pronto: out of the editor (the keyboard closes; a sheet with boxes or links shows them again). */
+  _inkDone() {
+    const ta = this.renderRoot.querySelector("textarea.ink");
     if (!ta) return;
-    const { selectionStart: a, selectionEnd: z, value: v } = ta;
-    this._inkSet(ta, v.slice(0, a) + em + v.slice(z), a + em.length);
-  }
-
-  _renderEmojis() {
-    // a tap here never takes the focus from the sheet (the keyboard stays open)
-    const keep = (e) => e.preventDefault();
-    // rolar a fileira para o lado não vira a folha nem troca de tela
-    const stay = (e) => e.stopPropagation();
-    return html`<div class="emoji-row" role="toolbar" aria-label="Emojis" data-noswipe @pointerdown=${keep} @mousedown=${keep} @touchstart=${stay} @touchend=${stay}>
-      ${EMOJIS.map((em) => html`<button type="button" class="emoji" aria-label=${em} @click=${() => this._insertEmoji(em)}>${em}</button>`)}
-    </div>`;
+    this._haptic("light");
+    ta.blur();
   }
 
   _editFromView(e, page) {
@@ -2570,16 +2550,18 @@ class MemoriaApp extends ChatMixin(LitElement) {
     if (y < ta.scrollTop || y > ta.scrollTop + ta.clientHeight - 40) ta.scrollTop = Math.max(0, y - ta.clientHeight / 3);
   }
 
-  _renderLeafTop(s, menu, tools = false) {
+  _renderLeafTop(s, menu, tools = false, editing = false) {
     // the tools never take the focus from the sheet (the keyboard stays open while writing)
     const keep = (e) => e.preventDefault();
-    return html`<div class="leaf-top">
+    return html`<div class="leaf-top ${editing ? "editing" : ""}">
       <span class="when">${s.created ? writtenAt(s.created, new Date(this._now)) : "folha nova"}</span>
       ${(s.times || []).length ? html`<span class="pin">${icon("clock")}${s.times.join(" · ")}</span>` : nothing}
       ${tools
-        ? html`<button type="button" class="icon-btn tool" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkCheck()} aria-label="Caixa de marcar" title="Caixa de marcar">${icon("square-check")}</button><button type="button" class="icon-btn tool ${this._emoji ? "on" : ""}" aria-pressed=${this._emoji ? "true" : "false"} @pointerdown=${keep} @mousedown=${keep} @click=${() => this._toggleEmoji()} aria-label="Emojis" title="Emojis">${icon("smile")}</button>`
+        ? html`<button type="button" class="icon-btn tool" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkCheck()} aria-label="Caixa de marcar" title="Caixa de marcar">${icon("square-check")}</button>`
         : nothing}
-      <span class="num">${s.num}/${s.total}</span>
+      ${editing
+        ? html`<button type="button" class="ink-done" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkDone()}>${icon("check")}Pronto</button>`
+        : html`<span class="num">${s.num}/${s.total}</span>`}
       ${menu ? html`<button class="icon-btn" @click=${() => this._openPageMenu()} aria-label="Opções da folha">${icon("ellipsis")}</button>` : html`<span class="icon-btn ghost"></span>`}
     </div>`;
   }
@@ -3736,7 +3718,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           ${ai.ready ? html`<button class="btn outline" ?disabled=${!(f.text || "").trim()} @click=${() => this._readText(false)}>Como está</button>` : nothing}
           <button class="btn primary" ?disabled=${!(f.text || "").trim()} @click=${() => this._readText(true)}>${ai.ready ? html`${icon("sparkles")}Organizar` : "Criar folha"}</button>
         </div>
-        <p class="sheet-note">${ai.ready ? `${ai.using.name} limpa a mensagem e deixa como uma anotação. Você revisa antes de salvar.` : ai.off ? "A mensagem vira uma folha do jeito que está." : "Sem IA configurada: a mensagem vira uma folha do jeito que está."}</p>
+        ${ai.ready || ai.off ? nothing : html`<p class="sheet-note">Sem IA configurada: a mensagem vira uma folha do jeito que está.</p>`}
       `;
     }
 
@@ -3761,7 +3743,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       return html`
         ${this._sheetHead("Revisar folha", toPick)}
         ${thumbs}
-        <p class="sheet-note top">${from ? `${from[0].toUpperCase()}${from.slice(1)}. ` : ""}Corrija o que precisar antes de salvar.</p>
+        ${from ? html`<p class="sheet-note top">${from[0].toUpperCase()}${from.slice(1)}.</p>` : nothing}
         ${f.heard ? html`<div class="heard">${icon("mic")}<span>${f.heard}</span></div>` : nothing}
         ${f.note ? html`<div class="imp-error soft">${icon("sparkles")}<span>${f.note}</span></div>` : nothing}
         <textarea class="review-text" .value=${f.result} aria-label="Texto da folha" @input=${(e) => this._setForm({ result: e.target.value })}></textarea>
@@ -3801,7 +3783,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           ? nothing
           : html`<button class="imp-opt" ?disabled=${!ai.images} @click=${() => this._pickFiles("photos")}>
                 <span class="imp-ic">${icon("images")}</span>
-                <span class="imp-tx"><b>Escolher fotos</b><small>${this._isHaAndroid() ? "Prints e fotos da galeria, uma por vez" : "Prints e fotos da galeria (até 6)"}</small></span>
+                <span class="imp-tx"><b>Escolher fotos</b><small>Prints e fotos da galeria</small></span>
                 ${icon("chevron-right")}
               </button>
               <button class="imp-opt" ?disabled=${!ai.images} @click=${() => this._openCamera()}>

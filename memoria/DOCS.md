@@ -18,16 +18,15 @@ Na primeira vez já existem dois blocos de exemplo, **Diário** (abre à noite) 
 - Folhas deixadas em branco somem sozinhas.
 - No **⋯** da folha: horário próprio, mover para outro bloco, **Adicionar link**, copiar o texto ou arrancar a folha (com **Desfazer**).
 
-### Caixas de marcar e emojis
+### Caixas de marcar e Pronto
 
-No alto da folha, ao lado do número, ficam **Caixa de marcar** e **Emojis**. Usar os dois não fecha o teclado.
+No alto da folha, ao lado do número, fica **Caixa de marcar**; usar não fecha o teclado. Escrevendo, o **Pronto** fica no lugar do número: um toque sai da escrita (o teclado fecha, e as caixas e os links aparecem de novo). Os emojis são os do teclado do celular.
 
 - **Caixa de marcar** transforma a linha onde está o cursor num item com caixa (☐); tocar de novo tira a caixa. Fora da escrita, ela põe um item novo no fim da folha.
 - Num item, o **Enter** já faz outro item embaixo. Enter num item vazio acaba a lista.
 - Fora da escrita, cada item mostra uma caixa: um toque marca como feito (o texto fica riscado), outro toque desmarca. Tocar no texto abre a escrita, como sempre.
 - No **Agora**, marcar vale só para aquela vez do trecho: a folha não muda (em **Blocos** ela aparece como está) e, na próxima vez que o trecho aparecer, as caixas voltam desmarcadas. Serve para listas de todo dia, como as refeições ou os remédios. Fora do Agora, em **Blocos**, marcar grava na folha.
-- **Emojis** abre uma fileira de emojis sobre a folha. Cada um entra onde está o cursor; tocar em Emojis de novo fecha a fileira.
-- Na folha, a caixa fica guardada como ☐ (a fazer) e ☑ (feito); listas escritas como `[ ]` e `[x]` também viram caixas. No PDF do Relatório, aparecem como [ ] e [x], e os emojis ficam de fora.
+- Na folha, a caixa fica guardada como ☐ (a fazer) e ☑ (feito); listas escritas como `[ ]` e `[x]` também viram caixas. No PDF do Relatório, aparecem como [ ] e [x], e os emojis ficam de fora (a letra do PDF não tem).
 
 ### Links
 

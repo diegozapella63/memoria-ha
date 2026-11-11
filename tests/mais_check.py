@@ -104,7 +104,11 @@ with sync_playwright() as p:
         check(a.locator("nav .tab.on").inner_text().strip() == "Mais", f"{tag}: Mais lit in the bar")
         # 1.17.0: the bar of the family: Agora, Buscar, Adicionar in the middle, Blocos and, last, Mais with three dots
         labels = [t.strip() for t in a.locator("nav .tab").all_inner_texts()]
-        check(labels == ["Agora", "Buscar", "Adicionar", "Blocos", "Mais"] and "fab" in a.locator("nav .tab").nth(2).get_attribute("class"), f"{tag}: the bar ({labels})")
+        check(labels == ["Agora", "Buscar", "", "Blocos", "Mais"] and "fab" in a.locator("nav .tab").nth(2).get_attribute("class"), f"{tag}: the bar ({labels})")
+        # 1.21.0: Adicionar only with the + (its name in the aria-label), in every app of the family
+        fab = a.locator("nav .tab.fab")
+        fb, tb = fab.locator(".pill").bounding_box(), a.locator("nav .tab").first.bounding_box()
+        check(fab.get_attribute("aria-label") == "Adicionar" and abs((fb["y"] + fb["height"] / 2) - (tb["y"] + tb["height"] / 2)) <= 3, f"{tag}: Adicionar only the +, in the middle of the bar")
         check(a.locator("nav .tab").last.locator("svg circle").count() == 3, f"{tag}: Mais with three dots")
         tabs = [t.strip() for t in a.locator(".more-tabs button").all_inner_texts()]
         check(tabs == ["Integrações", "Dados", "Aparência", "Opções"], f"{tag}: the four tabs ({tabs})")

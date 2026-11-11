@@ -1,5 +1,14 @@
 # Mudanças
 
+## 1.21.0
+
+- **Pronto**: escrevendo numa folha, o botão **Pronto** fica no alto, no lugar do número da folha. Um toque sai da escrita: o teclado fecha e as caixas e os links aparecem de novo.
+- **Sem a fileira de emojis** no alto da folha: o teclado do celular já tem os emojis.
+- **Adicionar só com o +**: o botão do meio da barra de baixo fica só com o ícone, sem o texto embaixo, como em todos os apps da família.
+- **Menos avisos na tela**: saíram "uma por vez" do Escolher fotos, "limpa a mensagem… Você revisa antes de salvar" do Colar mensagem e "Corrija o que precisar antes de salvar" da revisão.
+- **Verificar de novo** (IA e Falar) na largura do cartão no celular, como os outros botões das Configurações.
+- **Campos de texto que aumentam**: o Colar mensagem e o texto da revisão aumentam puxando o canto, e o tamanho fica guardado no aparelho, como nos outros apps da família.
+
 ## 1.20.0
 
 - **Atalho no celular**, em **Mais › Configurações › Opções**: o caminho do MemorIA no Home Assistant, com **Copiar**, e como criar um ícone na tela inicial do celular que abre o app direto (no app do Home Assistant: Configurações › Aplicativo complementar › Gerenciar atalhos). O mesmo vale em todos os apps da família.

@@ -1210,19 +1210,20 @@ export const styles = css`
     box-shadow: 0 0 0 2px var(--rv-nav);
     box-sizing: border-box;
   }
+  /* Adicionar: only the + (1.21.0, every app of the family): the button stands out already, no text under it */
   .tab.fab {
     color: var(--rv-text);
     font-weight: 600;
+    justify-content: center;
   }
   .tab.fab .pill {
-    width: 58px;
-    height: 38px;
-    border-radius: 14px;
+    width: 62px;
+    height: 44px;
+    border-radius: 15px;
     background: var(--rv-accent);
     color: var(--rv-on-accent);
     display: grid;
     place-items: center;
-    margin-top: -4px;
     transition: transform 0.12s;
   }
   .tab.fab:active .pill {
@@ -2924,7 +2925,7 @@ export const notebookStyles = css`
     outline: 2px solid var(--rv-accent-ink);
     outline-offset: 2px;
   }
-  /* no alto da folha: Caixa de marcar e Emojis */
+  /* no alto da folha: Caixa de marcar (e Pronto, escrevendo) */
   .leaf-top .tool {
     width: 36px;
     height: 40px;
@@ -2937,39 +2938,31 @@ export const notebookStyles = css`
   .leaf-top .tool.on {
     color: var(--rv-accent-ink);
   }
-  /* a fileira de emojis, entre o alto da folha e o texto; rola para o lado */
-  .emoji-row {
+  /* Pronto (1.21.0): while writing, in the place of the number of the sheet; out of the editor in one tap */
+  .leaf-top .ink-done {
     flex: none;
-    display: flex;
-    gap: 2px;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    margin: 0 8px 4px 60px;
-    padding: 4px;
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--ink) 7%, var(--paper));
-    scrollbar-width: none;
-    position: relative;
-    z-index: 5;
-  }
-  .emoji-row::-webkit-scrollbar {
-    display: none;
-  }
-  .emoji {
-    flex: none;
-    width: 40px;
-    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 34px;
+    margin-left: 4px;
+    padding: 0 12px 0 9px;
     border: 0;
-    border-radius: 10px;
-    background: transparent;
-    font-size: 24px;
-    line-height: 1;
-    padding: 0;
+    border-radius: 17px;
+    background: var(--rv-accent);
+    color: var(--rv-on-accent, #fff);
+    font-family: var(--rv-display);
+    font-size: 15px;
+    font-weight: 600;
     cursor: pointer;
-    font-family: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
   }
-  .emoji:active {
-    background: rgba(127, 127, 127, 0.18);
+  .leaf-top .ink-done .i {
+    width: 17px;
+    height: 17px;
+    stroke-width: 2.6;
+  }
+  .leaf-top .ink-done:active {
+    transform: scale(0.96);
   }
   /* the editor waits behind the view (it gets the focus at the tap, so the keyboard opens) */
   textarea.ink.behind {
@@ -3682,8 +3675,17 @@ export const notebookStyles = css`
     display: flex;
     margin: 14px 0 6px;
   }
+  /* Verificar de novo (IA, Falar): the width of the card on the phone, like the buttons of Dados (1.21.0) */
   .ai-actions .btn {
-    flex: none;
+    flex: 1 1 100%;
+    width: 100%;
+    min-height: 50px;
+  }
+  @media (min-width: 1000px) {
+    .ai-actions .btn {
+      flex: none;
+      width: 250px;
+    }
   }
   .steps-box {
     margin: 10px 0 14px;
