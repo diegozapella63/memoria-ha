@@ -1351,6 +1351,12 @@ dialog.ss-wrap::backdrop{background:transparent}
     resize: none;
     line-height: 1.4;
   }
+  /* 1.22.0: a text of one line that can be long (a link, its name) shows all of it, growing with the text */
+  .field textarea.grow {
+    field-sizing: content;
+    min-height: 50px;
+    max-height: 40vh;
+  }
   .field textarea:focus,
   .field input:focus {
     border-color: var(--rv-accent);
@@ -4241,16 +4247,16 @@ ${t}`:String(t)}var li=(s,t,e="")=>Ce(s,ni(t,e)),ci=/^([ \t]*)(☐|☑|\[ \]|\[[
       <div class="chip-row grid dur-pick" role="radiogroup" aria-labelledby="dur-l">
         ${Re.map(a=>c`<button class="pick ${t===a?"on":""}" role="radio" aria-checked=${t===a?"true":"false"} @click=${()=>e(a)}><span>${a?`${a/60} h`:"At\xE9 o pr\xF3ximo"}</span></button>`)}
       </div>
-    </div>`}async _setPageTimes(t,e){let a=[...new Set(e.map(vt).filter(Boolean))].sort();await this._savePageMeta(t,{times:a}),this._tick()}async _movePage(t,e){let a=this._page(t),i=this._block(e);if(!a||!i||a.block===e)return;let o=a.block,r=this._pagesOf(o),n=r.indexOf(a),l=r[n-1]||r[n+1];this._closeSheet();let h=this._pad&&this._pad.page===t;if(h&&(this._pad={block:o,page:l?l.id:"new"}),!await this._savePageMeta(t,{block:e})){h&&(this._pad={block:o,page:t});return}this._showToast(`Folha movida para ${S(i.name,22)}`,{label:"Ver",run:()=>this._openPage(e,t)})}_confirmDeletePage(t){let e=this._page(t);e&&this._openConfirm({title:"Arrancar esta folha?",text:e.text.trim()?`\u201C${S(Y(j(e.text)),60)}\u201D ser\xE1 apagada.`:"A folha em branco ser\xE1 removida.",label:"Apagar folha",danger:!0,run:()=>{this._closeSheet();let a={...e};this._deletePage(t),this._haptic("medium"),this._showToast("Folha apagada",{label:"Desfazer",run:()=>{this._dropped.delete(a.id),this._putPage(a),this._base.delete(a.id),this._queueSave(a.id,0),this._setPad({block:a.block,page:a.id})}})}})}_openLinkSheet(t){this._openSubSheet("link",{page:t,url:"",name:"",error:""}),this.updateComplete.then(()=>{let e=this.renderRoot.querySelector(".sheet input[type=url]");e&&e.focus()})}_renderLinkSheet(){let t=this._form;return c`
+    </div>`}async _setPageTimes(t,e){let a=[...new Set(e.map(vt).filter(Boolean))].sort();await this._savePageMeta(t,{times:a}),this._tick()}async _movePage(t,e){let a=this._page(t),i=this._block(e);if(!a||!i||a.block===e)return;let o=a.block,r=this._pagesOf(o),n=r.indexOf(a),l=r[n-1]||r[n+1];this._closeSheet();let h=this._pad&&this._pad.page===t;if(h&&(this._pad={block:o,page:l?l.id:"new"}),!await this._savePageMeta(t,{block:e})){h&&(this._pad={block:o,page:t});return}this._showToast(`Folha movida para ${S(i.name,22)}`,{label:"Ver",run:()=>this._openPage(e,t)})}_confirmDeletePage(t){let e=this._page(t);e&&this._openConfirm({title:"Arrancar esta folha?",text:e.text.trim()?`\u201C${S(Y(j(e.text)),60)}\u201D ser\xE1 apagada.`:"A folha em branco ser\xE1 removida.",label:"Apagar folha",danger:!0,run:()=>{this._closeSheet();let a={...e};this._deletePage(t),this._haptic("medium"),this._showToast("Folha apagada",{label:"Desfazer",run:()=>{this._dropped.delete(a.id),this._putPage(a),this._base.delete(a.id),this._queueSave(a.id,0),this._setPad({block:a.block,page:a.id})}})}})}_openLinkSheet(t){this._openSubSheet("link",{page:t,url:"",name:"",error:""}),this.updateComplete.then(()=>{let e=this.renderRoot.querySelector('.sheet textarea[aria-label="Link"]');e&&e.focus()})}_renderLinkSheet(){let t=this._form;return c`
       ${this._sheetHead("Adicionar link")}
       <label class="field">
         <span class="flabel">Link</span>
-        <input type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" .value=${t.url} placeholder="https://…" @input=${e=>this._setForm({url:e.target.value,error:""})} @keydown=${e=>e.key==="Enter"&&this._addLink()} />
+        <textarea class="grow" rows="1" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" .value=${t.url} placeholder="https://…" aria-label="Link" @input=${e=>this._setForm({url:e.target.value,error:""})} @keydown=${e=>e.key==="Enter"&&(e.preventDefault(),this._addLink())}></textarea>
         ${t.error?c`<span class="field-error">${t.error}</span>`:d}
       </label>
       <label class="field">
         <span class="flabel">Nome (opcional)</span>
-        <input type="text" maxlength="120" .value=${t.name} placeholder="Ex.: Receita do bolo" @input=${e=>this._setForm({name:e.target.value})} @keydown=${e=>e.key==="Enter"&&this._addLink()} />
+        <textarea class="grow" rows="1" maxlength="120" .value=${t.name} placeholder="Ex.: Receita do bolo" aria-label="Nome do link" @input=${e=>this._setForm({name:e.target.value})} @keydown=${e=>e.key==="Enter"&&(e.preventDefault(),this._addLink())}></textarea>
       </label>
       <div class="sheet-actions">
         <button class="btn outline" @click=${()=>this._sheetBack()}>Cancelar</button>

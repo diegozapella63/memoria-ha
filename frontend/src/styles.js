@@ -1322,6 +1322,12 @@ export const styles = css`
     resize: none;
     line-height: 1.4;
   }
+  /* 1.22.0: a text of one line that can be long (a link, its name) shows all of it, growing with the text */
+  .field textarea.grow {
+    field-sizing: content;
+    min-height: 50px;
+    max-height: 40vh;
+  }
   .field textarea:focus,
   .field input:focus {
     border-color: var(--rv-accent);

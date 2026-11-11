@@ -1776,7 +1776,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
   _openLinkSheet(pageId) {
     this._openSubSheet("link", { page: pageId, url: "", name: "", error: "" });
     this.updateComplete.then(() => {
-      const input = this.renderRoot.querySelector(".sheet input[type=url]");
+      const input = this.renderRoot.querySelector('.sheet textarea[aria-label="Link"]');
       if (input) input.focus();
     });
   }
@@ -1787,12 +1787,12 @@ class MemoriaApp extends ChatMixin(LitElement) {
       ${this._sheetHead("Adicionar link")}
       <label class="field">
         <span class="flabel">Link</span>
-        <input type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" .value=${f.url} placeholder="https://…" @input=${(e) => this._setForm({ url: e.target.value, error: "" })} @keydown=${(e) => e.key === "Enter" && this._addLink()} />
+        <textarea class="grow" rows="1" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" .value=${f.url} placeholder="https://…" aria-label="Link" @input=${(e) => this._setForm({ url: e.target.value, error: "" })} @keydown=${(e) => e.key === "Enter" && (e.preventDefault(), this._addLink())}></textarea>
         ${f.error ? html`<span class="field-error">${f.error}</span>` : nothing}
       </label>
       <label class="field">
         <span class="flabel">Nome (opcional)</span>
-        <input type="text" maxlength="120" .value=${f.name} placeholder="Ex.: Receita do bolo" @input=${(e) => this._setForm({ name: e.target.value })} @keydown=${(e) => e.key === "Enter" && this._addLink()} />
+        <textarea class="grow" rows="1" maxlength="120" .value=${f.name} placeholder="Ex.: Receita do bolo" aria-label="Nome do link" @input=${(e) => this._setForm({ name: e.target.value })} @keydown=${(e) => e.key === "Enter" && (e.preventDefault(), this._addLink())}></textarea>
       </label>
       <div class="sheet-actions">
         <button class="btn outline" @click=${() => this._sheetBack()}>Cancelar</button>

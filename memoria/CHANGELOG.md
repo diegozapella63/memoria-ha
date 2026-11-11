@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.22.0
+
+- **Adicionar link mostra o texto todo**: o **Link** e o **Nome** crescem com o texto (nada cortado) e aumentam puxando o canto, como os outros campos de texto da família.
+
 ## 1.21.0
 
 - **Pronto**: escrevendo numa folha, o botão **Pronto** fica no alto, no lugar do número da folha. Um toque sai da escrita: o teclado fecha e as caixas e os links aparecem de novo.
