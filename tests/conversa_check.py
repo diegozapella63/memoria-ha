@@ -120,6 +120,13 @@ with sync_playwright() as p:
         a.locator(".chat-top").click()
         pg.wait_for_timeout(400)
         check(sheet.locator(".chat-msg").count() == 4, f"{tag}: the conversation is still there")
+        # 1.24.0: Perguntas prontas at any moment (the sparkles by the box), with Editar perguntas
+        sheet.locator(".chat-qbtn").click()
+        pg.wait_for_timeout(250)
+        qk = [t.strip() for t in sheet.locator(".chat-quick .chat-ex .pick").all_inner_texts()]
+        check(len(qk) >= 1 and sheet.locator(".chat-quick .chat-ed-open").count() == 1, f"{tag}: Perguntas prontas at any moment, with Editar perguntas ({qk})")
+        sheet.locator(".chat-qbtn").click()
+        pg.wait_for_timeout(200)
         nova = sheet.locator(".chat-head .text-btn")
         check(nova.inner_text().strip() == "Nova conversa", f"{tag}: Nova conversa, like the other apps")
         nova.click()

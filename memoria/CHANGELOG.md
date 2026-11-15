@@ -1,5 +1,10 @@
 # Mudanças
 
+## 1.24.0
+
+- **Conversa › Perguntas prontas**: as perguntas de exemplo viram suas. **Editar perguntas** tira (✕) e acrescenta as que você quiser; **Padrão** volta às de antes. Ficam guardadas no aparelho.
+- **Conversa**: o botão ✨ ao lado da caixa abre as perguntas prontas a qualquer momento, não só na conversa vazia.
+
 ## 1.23.1
 
 - **Escolhas do mesmo tamanho**, como nos outros apps: duas por linha (os blocos em **No bloco**, as categorias, De quem é…), sem o nome do bloco quebrado no meio.

@@ -1,15 +1,78 @@
-// Conversa: the chat with the AI beside the microphone (ResolvIA and CronologIA keep the same copy of
-// this file). Each app gives the messages, what the AI proposes to do (cards with a button: nothing
+// Conversa: the chat with the AI beside the microphone (ResolvIA, CronologIA and MemorIA keep the same copy
+// of this file). Each app gives the messages, what the AI proposes to do (cards with a button: nothing
 // is done without a tap) and what happens on each button.
 //
 // messages: [{role: "user"|"ia", text, actions?: [{label, icon, state: "todo"|"doing"|"done"|"failed", note?}]}]
+//
+// Perguntas prontas: the questions of the app (examples) until the person edits them (Editar perguntas, kept on the
+// device in <app>-perguntas); with an empty chat they are there, and the sparkles button by the box shows them at any
+// moment. The state of the panel is here (one chat per page); onRedraw draws the chat again.
+
+const UI = { quick: false, editing: null };
+
+/** The questions of the chat: the ones the person saved on this device, or the app's. */
+export function chatQuestions(app, examples = []) {
+  try {
+    const v = JSON.parse(localStorage.getItem(`${app}-perguntas`) || "null");
+    if (Array.isArray(v)) return v.filter((x) => typeof x === "string" && x.trim());
+  } catch (e) {
+    /* sem o armazenamento do aparelho: as do app */
+  }
+  return examples;
+}
+
+function saveQuestions(app, list) {
+  try {
+    if (list == null) localStorage.removeItem(`${app}-perguntas`);
+    else localStorage.setItem(`${app}-perguntas`, JSON.stringify(list));
+  } catch (e) {
+    /* modo privado: fica até fechar */
+  }
+}
 
 /** The chat. lit: {html, nothing}; icon(name). */
-export function renderChat({ lit, icon, messages = [], draft = "", busy = false, error = "", voice = null, examples = [], onDraft, onSend, onMic, onAction, onAll, onClear, onClose }) {
+export function renderChat({ lit, icon, app = "", messages = [], draft = "", busy = false, error = "", voice = null, examples = [], onDraft, onSend, onMic, onAction, onAll, onClear, onClose, onRedraw = () => {} }) {
   const { html, nothing } = lit;
   const send = () => {
     const t = (draft || "").trim();
     if (t && !busy) onSend(t);
+  };
+  const qs = app ? chatQuestions(app, examples) : examples;
+  const redraw = (changes) => (Object.assign(UI, changes), onRedraw());
+  const ask = (q) => {
+    redraw({ quick: false });
+    onSend(q);
+  };
+  // the questions: a tap asks; Editar perguntas (only with an app to keep them) turns them into a list to change
+  const quickBlock = () => {
+    const ed = UI.editing;
+    if (ed) {
+      const add = (el) => {
+        const t = (ed.draft || "").trim();
+        const box = el && el.closest(".chat-ed-new") && el.closest(".chat-ed-new").querySelector("input");
+        if (box) box.value = ""; // (o valor do campo não volta sozinho: ele muda sem desenhar de novo)
+        if (t) redraw({ editing: { list: [...ed.list, t], draft: "" } });
+      };
+      return html`<div class="chat-ed">
+        <span class="chat-ed-h">${icon("pencil")}Perguntas prontas</span>
+        ${ed.list.map((q, i) => html`<div class="chat-ed-row"><span>${q}</span><button type="button" class="icon-btn" aria-label=${`Tirar “${q}”`} @click=${() => redraw({ editing: { ...ed, list: ed.list.filter((_, j) => j !== i) } })}>${icon("x")}</button></div>`)}
+        <div class="chat-ed-new">
+          <input type="text" maxlength="120" .value=${ed.draft || ""} placeholder="Nova pergunta" aria-label="Nova pergunta" enterkeyhint="done"
+            @input=${(e) => (ed.draft = e.target.value)} @keydown=${(e) => { if (e.key === "Enter") { e.preventDefault(); add(e.target); } }} />
+          <button type="button" class="btn outline sm" @click=${(e) => add(e.currentTarget)}>${icon("plus")}Adicionar</button>
+        </div>
+        <div class="chat-ed-acts">
+          <button type="button" class="btn outline sm" @click=${() => (saveQuestions(app, null), redraw({ editing: { list: examples.slice(), draft: "" } }))}>${icon("rotate-ccw")}Padrão</button>
+          <button type="button" class="btn primary sm" @click=${() => {
+            const list = ed.list.concat((ed.draft || "").trim() ? [(ed.draft || "").trim()] : []);
+            saveQuestions(app, list.join("\n") === examples.join("\n") ? null : list); // as do app: seguem a tela
+            redraw({ editing: null });
+          }}>${icon("check")}Pronto</button>
+        </div>
+      </div>`;
+    }
+    return html`<div class="chat-ex">${qs.map((e) => html`<button type="button" class="pick" @click=${() => ask(e)}>${icon("sparkles")}<span>${e}</span></button>`)}</div>
+      ${app ? html`<button type="button" class="text-btn chat-ed-open" @click=${() => redraw({ editing: { list: qs.slice(), draft: "" } })}>${icon("pencil")}Editar perguntas</button>` : nothing}`;
   };
   const actionRow = (m, k, a, j) => html`<div class="chat-act ${a.state || "todo"}">
     <span class="chat-act-ic">${icon(a.state === "done" ? "check" : a.state === "failed" ? "circle-alert" : a.icon || "sparkles")}</span>
@@ -38,12 +101,13 @@ export function renderChat({ lit, icon, messages = [], draft = "", busy = false,
     <div class="chat-log">
       ${messages.length
         ? messages.map(bubble)
-        : examples.length
-          ? html`<div class="chat-empty"><div class="chat-ex">${examples.map((e) => html`<button type="button" class="pick" @click=${() => onSend(e)}>${icon("sparkles")}<span>${e}</span></button>`)}</div></div>`
+        : qs.length || app
+          ? html`<div class="chat-empty">${quickBlock()}</div>`
           : nothing}
       ${busy ? html`<div class="chat-msg ia"><div class="chat-bubble typing"><i></i><i></i><i></i></div></div>` : nothing}
       ${error ? html`<div class="chat-error">${icon("circle-alert")}<span>${error}</span></div>` : nothing}
     </div>
+    ${messages.length && (UI.quick || UI.editing) ? html`<div class="chat-quick">${quickBlock()}</div>` : nothing}
     <form class="chat-input" @submit=${(e) => (e.preventDefault(), send())}>
       <textarea rows="1" data-size="off" .value=${draft} placeholder=${rec ? "Ouvindo…" : "Pergunte o que quiser"} aria-label="Mensagem para a IA" ?disabled=${rec}
         @input=${(e) => onDraft(e.target.value)}
@@ -53,6 +117,9 @@ export function renderChat({ lit, icon, messages = [], draft = "", busy = false,
             send();
           }
         }}></textarea>
+      ${messages.length && (qs.length || app)
+        ? html`<button type="button" class="icon-btn chat-qbtn ${UI.quick || UI.editing ? "on" : ""}" aria-label="Perguntas prontas" aria-expanded=${UI.quick || UI.editing ? "true" : "false"} title="Perguntas prontas" @click=${() => redraw({ quick: !(UI.quick || UI.editing), editing: null })}>${icon("sparkles")}</button>`
+        : nothing}
       ${voice && voice.ready
         ? html`<button type="button" class="icon-btn chat-mic ${rec ? "on" : ""}" aria-label=${rec ? "Pronto: enviar o que falei" : "Falar"} ?disabled=${busy || voice.starting} @click=${() => onMic()}>${icon(rec ? "check" : "mic")}</button>`
         : nothing}
@@ -106,4 +173,20 @@ export const chatStyles = `
   .chat-send { background: var(--rv-accent); color: var(--rv-on-accent, #fff); }
   .chat-send:disabled { opacity: 0.4; }
   .chat-mic.on { background: var(--rv-late, #e5484d); color: #fff; }
+  .chat-qbtn.on { background: var(--rv-accent-soft); color: var(--rv-accent-ink, var(--rv-accent)); }
+  .chat-quick { max-height: 42vh; overflow-y: auto; padding: 10px 2px; border-top: 1px solid var(--rv-line); }
+  .chat-ed-open { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; }
+  .chat-ed-open .i { width: 16px; height: 16px; }
+  .chat-ed { display: grid; gap: 8px; color: var(--rv-text); }
+  .chat-ed-h { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+  .chat-ed-h .i { width: 18px; height: 18px; color: var(--rv-accent-ink, var(--rv-accent)); }
+  .chat-ed-row { display: flex; align-items: center; gap: 8px; padding: 4px 0 4px 12px; border-radius: 12px; border: 1.5px solid var(--rv-line); font-size: 14.5px; }
+  .chat-ed-row span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .chat-ed-row .icon-btn { width: 40px; height: 40px; flex: none; }
+  .chat-ed-new { display: flex; gap: 8px; }
+  .chat-ed-new input { flex: 1; min-width: 0; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1.5px solid var(--rv-line-strong, var(--rv-line)); background: var(--rv-input-bg, transparent); color: var(--rv-text); font: inherit; font-size: 15px; }
+  .chat-ed-new input:focus { outline: none; border-color: var(--rv-accent); }
+  .chat-ed-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .chat-ed .btn.sm { min-height: 44px; justify-content: center; gap: 6px; }
+  .chat-ed .btn.sm .i { width: 16px; height: 16px; }
 `;
