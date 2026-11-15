@@ -3866,4 +3866,221 @@ export const notebookStyles = css`
     font-family: ui-monospace, monospace;
     font-size: 14px;
   }
+  /* 1.23.0 (the family): the tabs that don't fit show an arrow at the end where there are more */
+  .tabs-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    margin: 0 0 14px;
+  }
+  .tabs-wrap > .more-tabs {
+    position: relative;
+    top: auto;
+    z-index: 0;
+    margin: 0;
+  }
+  .tabs-fim {
+    position: absolute;
+    top: 1px;
+    bottom: 1px;
+    z-index: 1;
+    width: 48px;
+    display: none;
+    align-items: center;
+    pointer-events: none;
+    color: var(--rv-text);
+  }
+  .tabs-fim.dir {
+    right: 1px;
+    justify-content: flex-end;
+    padding-right: 6px;
+    border-radius: 0 12px 12px 0;
+    background: linear-gradient(to right, transparent, var(--rv-surface-2) 62%);
+  }
+  .tabs-fim.esq {
+    left: 1px;
+    padding-left: 6px;
+    border-radius: 12px 0 0 12px;
+    background: linear-gradient(to left, transparent, var(--rv-surface-2) 62%);
+  }
+  .tabs-fim .i {
+    width: 18px;
+    height: 18px;
+    display: block !important;
+  }
+  .tabs-wrap.tem-dir > .tabs-fim.dir,
+  .tabs-wrap.tem-esq > .tabs-fim.esq {
+    display: flex;
+  }
+  /* every row with a title has its icon before it; no line between the options of a section (the icon marks where
+     each one starts); the lists of data (with the square of the icon) keep the line */
+  .label:has(> .lbl-ic),
+  .flabel:has(> .lbl-ic) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .lbl-ic {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--rv-accent-ink, var(--rv-accent));
+  }
+  .row .grow:has(> .label > .lbl-ic) > .hint {
+    padding-left: 26px;
+    white-space: normal;
+  }
+  .panel > .row:not(:has(> .tile)):not(:has(> .em-icon)),
+  #periodos > .row {
+    border-top: 0;
+  }
+  /* the sub-options (the state and the choice of the AI under Usar IA, the last use under the CorrerIA): in a box
+     under the switch, to see whose they are */
+  .sub-op {
+    padding: 0 0 14px 26px;
+  }
+  .sub-box {
+    padding: 12px 14px 14px;
+    border: 1px solid var(--rv-line);
+    border-radius: 14px;
+    background: var(--rv-surface-2);
+  }
+  .sub-box > .ai-state {
+    padding: 0;
+    margin: 0;
+    background: none;
+  }
+  .sub-box .steps-box {
+    margin-top: 14px;
+  }
+  .sub-box > .ai-actions {
+    margin-top: 12px;
+  }
+  @media (max-width: 360px) {
+    .sub-op {
+      padding-left: 10px;
+    }
+    .sub-box {
+      padding: 10px;
+    }
+  }
+  /* the title of each screen and each window with its icon */
+  .page-title:has(> .page-ic) {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .page-title > .page-ic {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+  }
+  .page-title > .page-ic .i {
+    width: 23px;
+    height: 23px;
+  }
+  .sheet-head h3:has(> .sh-ic) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sh-ic {
+    flex: none;
+    width: 30px;
+    height: 30px;
+    padding: 6px;
+    border-radius: 9px;
+    background: var(--rv-accent-soft);
+    color: var(--rv-accent-ink, var(--rv-accent));
+  }
+  .text-btn:has(> .i) {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .text-btn > .i {
+    width: 16px;
+    height: 16px;
+    flex: none;
+  }
+  .text-btn.inline:has(> .i) {
+    vertical-align: middle;
+  }
+  .pick > .i + span {
+    min-width: 0;
+  }
+  .toast button,
+  .cam-done {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .toast button .i,
+  .cam-done .i {
+    width: 18px;
+    height: 18px;
+  }
+  /* every card with a heading folds: a tap on the heading, the arrow at the end (kept on the device) */
+  .panel.dobra > .mais-head {
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .panel.dobra > .mais-head::after {
+    content: "";
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin-left: auto;
+    background: var(--rv-muted);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / 20px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / 20px no-repeat;
+    transition: transform 0.2s;
+  }
+  .panel.dobra > .mais-head:has(> .mh-count)::after {
+    margin-left: 0;
+  }
+  .panel.dobra.fechada > .mais-head::after {
+    transform: rotate(-90deg);
+  }
+  .panel.dobra.fechada > :not(.mais-head) {
+    display: none !important;
+  }
+  .panel.dobra.fechada > .mais-head {
+    padding-bottom: 16px;
+  }
+  .panel.dobra > .mais-head:focus-visible {
+    outline: 2px solid var(--rv-accent);
+    outline-offset: 2px;
+    border-radius: 10px;
+  }
+  /* Sensores no Home Assistant: the entities, one per line, in the box under Criar sensores (like the ResolvIA) */
+  .sensor-list {
+    display: grid;
+    gap: 2px;
+  }
+  .sub-box.sensor-list {
+    padding: 4px 14px;
+  }
+  .sensor-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 10px;
+    padding: 9px 0;
+    border-top: 1px solid var(--rv-line);
+    font-size: 13.5px;
+    color: var(--rv-muted);
+  }
+  .sensor-row:first-child {
+    border-top: 0;
+  }
+  .sensor-row code {
+    font-size: 13px;
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: var(--rv-bg);
+    color: var(--rv-text);
+    overflow-wrap: anywhere;
+  }
 `;

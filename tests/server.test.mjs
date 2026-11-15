@@ -210,7 +210,12 @@ test("1.17.0: Uso da IA counts the calls to the AI (the conversation and the rea
   assert.deepEqual(u.ultimas.slice(0, 2).map((c) => [c.tipo, c.resultado]), [["mensagem", "ok"], ["conversa", "ok"]]);
   assert.ok(u.hoje.tokens > 0);
   assert.equal(u.sensor, "sensor.memoria_ia_hoje");
-  assert.equal(u.sensor_on, false);
+  // 1.23.0: one switch, Criar sensores (on from the start), for MemorIA agora and Chamadas de IA hoje
+  assert.equal(u.sensor_on, true);
+  await a.call("memoria/settings/save", { app: { sensor: false } });
+  assert.equal((await a.call("memoria/usage")).sensor_on, false);
+  await a.call("memoria/settings/save", { app: { sensor: true } });
+  assert.equal((await a.call("memoria/usage")).sensor_on, true);
   a.ws.close();
 });
 

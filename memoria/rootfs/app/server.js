@@ -57,9 +57,11 @@ const voice = new Voice({ ha, rest: HA_REST, token: TOKEN, log, pick: () => stor
 // Mais › Configurações › Integrações › Usar IA: off, nothing goes to the AI
 const aiOff = () => store.data.app.ai_off === true;
 const offError = () => Object.assign(new Error("A IA está desligada em Mais › Configurações › Integrações."), { code: "ai_off" });
+// Criar sensores (1.23.0, like the ResolvIA): one switch for all of them (MemorIA agora and Chamadas de IA hoje)
+const sensorsOn = () => store.data.app.sensor !== false;
 const sensor = new Sensor({ store, log, restUrl: HA_REST, token: TOKEN, enabled: () => store.data.app.sensor !== false });
 // Uso da IA (1.17.0, like the other apps): the calls to ai_task counted here; sensor.memoria_ia_hoje only when turned on
-const usage = new AiUsage({ dir: DATA_DIR, sensor: "sensor.memoria_ia_hoje", label: "MemorIA", rest: HA_REST, token: TOKEN, log, enabled: () => store.data.app.sensor_ia === true });
+const usage = new AiUsage({ dir: DATA_DIR, sensor: "sensor.memoria_ia_hoje", label: "MemorIA", rest: HA_REST, token: TOKEN, log, enabled: () => sensorsOn() });
 /** One call to the AI, for Uso da IA: kind (mensagem, fotos, conversa), characters in and out, images, since when. */
 function countAi(kind, { entity = "", input = 0, output = 0, images = 0, started, err = null }) {
   usage.record({ kind, entity: entity || store.data.app.ai_entity || "", input, output, images, seconds: (Date.now() - started) / 1000, result: resultOf(err) });
@@ -296,9 +298,9 @@ class Session {
       case "memoria/settings/save": {
         if (msg.app && "voice_engine" in msg.app) voice.forget();
         const wasOn = correriaOn();
-        const iaWas = store.data.app.sensor_ia === true;
+        const iaWas = sensorsOn();
         const settings = store.saveSettings({ periods: msg.periods, app: msg.app });
-        if ((store.data.app.sensor_ia === true) !== iaWas) (iaWas ? usage.remove() : usage.publish()).catch(() => {});
+        if (sensorsOn() !== iaWas) (iaWas ? usage.remove() : usage.publish()).catch(() => {});
         if (correriaOn() !== wasOn) {
           correria.publish();
           log.info(`CorrerIA ${correriaOn() ? "ligado" : "desligado"}`);

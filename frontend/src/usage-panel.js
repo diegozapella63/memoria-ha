@@ -68,7 +68,7 @@ export function usagePanel({ u, day, onDay, head, app, using = "", names = {} })
           .map((k) => html`<li>${KIND[k] || k} <b>${tipos[k]}</b></li>`)}</ul>`
       : nothing}
     <details class="uso-last">
-      <summary>Últimas chamadas</summary>
+      <summary><svg class="uso-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></svg><span>Últimas chamadas${last.length ? ` (${last.length})` : ""}</span><svg class="uso-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></summary>
       <ul>
         ${last.length
           ? last.map(
@@ -101,7 +101,11 @@ export const usageStyles = `
   .uso-kinds li { font-size: 12.5px; padding: 2px 8px; border: 1px solid var(--rv-line); border-radius: 6px; color: var(--rv-muted); }
   .uso-kinds b { color: var(--rv-text); font-weight: 600; }
   .uso-last { padding: 2px 0 8px; }
-  .uso-last summary { font-size: 14.5px; font-weight: 600; color: var(--rv-accent-ink); cursor: pointer; padding: 6px 0; }
+  .uso-last summary { display: flex; align-items: center; gap: 8px; list-style: none; font-size: 14.5px; font-weight: 600; color: var(--rv-accent-ink); cursor: pointer; padding: 6px 0; }
+  .uso-last summary::-webkit-details-marker { display: none; }
+  .uso-last summary .uso-ic { width: 18px; height: 18px; flex: none; }
+  .uso-last summary .uso-chev { width: 18px; height: 18px; flex: none; margin-left: auto; color: var(--rv-muted); transition: transform 0.2s; }
+  .uso-last[open] summary .uso-chev { transform: rotate(180deg); }
   .uso-last ul { list-style: none; margin: 0; padding: 0; }
   .uso-last li { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; font-size: 13px; padding: 7px 0; border-top: 1px solid var(--rv-line); color: var(--rv-muted); }
   .uso-last li b { color: var(--rv-text); font-weight: 600; }

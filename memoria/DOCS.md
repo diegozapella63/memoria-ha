@@ -167,7 +167,7 @@ content: >
   {{ state_attr('sensor.memoria_agora', 'texto') }}
 ```
 
-Dá para desligar em **Mais › Configurações › Integrações › Sensores no Home Assistant**. Ali também dá para ligar `sensor.memoria_ia_hoje`, com as chamadas de IA do dia (os erros, os tokens estimados e os tipos nos atributos).
+Junto vem `sensor.memoria_ia_hoje`, com as chamadas de IA do dia (os erros, os tokens estimados e os tipos nos atributos). Os dois saem com **Criar sensores** desligado, em **Mais › Configurações › Integrações › Sensores no Home Assistant** (ligado, a lista dos sensores fica embaixo da chave).
 
 ## CorrerIA
 

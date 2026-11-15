@@ -119,7 +119,7 @@ with sync_playwright() as p:
         check(a.locator("#leitura-ia select").count() == 1, f"{tag}: IA usada pelo app in Integrações")
         uso = a.locator("#uso-ia")
         check(uso.locator(".uso-tile").count() == 3 and uso.locator(".uso-bar").count() == 7, f"{tag}: Uso da IA: today, 7 days, this month and a bar per day")
-        check(a.locator("#sensor input[role=switch]").count() == 2, f"{tag}: Sensores: MemorIA agora and Chamadas de IA hoje")
+        check(a.locator("#sensor input[role=switch]").count() == 1 and a.locator("#sensor > .sub-op > .sub-box.sensor-list .sensor-row code").all_inner_texts() == ["sensor.memoria_agora", "sensor.memoria_ia_hoje"], f"{tag}: Sensores: Criar sensores and, in the box under it, each sensor (like the ResolvIA)")
         check(not a.evaluate(OVER), f"{tag}: Integrações: nothing past the edge {a.evaluate(OVER)}")
         pg.screenshot(path=str(SHOTS / f"mais-config-integracoes-{scheme}-{w}.png"))
 

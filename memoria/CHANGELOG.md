@@ -1,5 +1,15 @@
 # Mudanças
 
+## 1.23.0
+
+- **Contrair e expandir**: toda seção de Configurações fecha e abre num toque no cabeçalho, com a seta no canto. O aparelho lembra as que ficaram fechadas.
+- **Ícones em tudo**, como nos outros apps: no título de cada tela e de cada janela (Novo bloco, Nova folha, as confirmações…), em cada opção (Usar IA, Cor do dia, Usar categorias…), em cada campo das janelas (Nome, Categoria, Cor da capa, Quando abrir sozinho…) e nos botões e escolhas que faltavam (Criar bloco, Salvar, Cancelar, Aplicar, Restaurar, Todos, Sem categoria, Fica no Agora…).
+- **Sem linhas entre as opções** de uma seção.
+- **Sub-opções num quadro**: o estado da IA, a IA usada pelo app e o Verificar de novo ficam embaixo de **Usar IA**; o último uso, embaixo de **Usar com o CorrerIA**.
+- **Sensores no Home Assistant** como no ResolvIA: uma chave só, **Criar sensores**, e embaixo dela cada sensor com o que mostra. `sensor.memoria_ia_hoje` vem junto com o `sensor.memoria_agora`.
+- **Configurações**: quando as abas não cabem, a ponta de onde há mais some aos poucos, com uma seta.
+- **Últimas chamadas** (Uso da IA) com o ícone e quantas são.
+
 ## 1.22.0
 
 - **Adicionar link mostra o texto todo**: o **Link** e o **Nome** crescem com o texto (nada cortado) e aumentam puxando o canto, como os outros campos de texto da família.

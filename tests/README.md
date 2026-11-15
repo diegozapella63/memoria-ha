@@ -25,6 +25,7 @@
 | `tests/links_check.py` | links nas folhas: etiquetas, abrir fora, tocar no texto para escrever, Adicionar link e Buscar |
 | `tests/relatorio_check.py` | Mais › Relatório pelo servidor (sobe o `dev/fake-ha.mjs` e o servidor com a casa inventada de `tests/fixtures/casa.mjs`): cabeçalho, escolhas guardadas, Baixar PDF e Voltar |
 | `tests/about_check.py` | Mais › Sobre (o mesmo dos outros apps) e a versão igual em todos os lugares |
+| `tests/secoes_check.py` | o padrão da família (1.23.0): ícone em cada título de tela, janela, opção, campo e botão; sem linha entre as opções; a IA e o CorrerIA num quadro embaixo da chave; a seta nas abas que não cabem; cada seção contrai e expande, guardado no aparelho; 390 e 320 px, claro e escuro |
 | `tests/selects_check.py` | as caixas de seleção no visual do app (`frontend/src/selectsheet.js`) |
 | `tests/horarios_check.py` | os horários no visual do app, sem o relógio do celular nem AM/PM: Períodos do dia numa caixa igual às outras (de meia em meia hora), Horário exato e Escolher horário (a hora e depois os minutos), o X e o Voltar; nenhum campo nativo de hora ou data nem `<datalist>` nas telas; 390 e 320 px, claro e escuro |
 

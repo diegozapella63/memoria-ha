@@ -53,6 +53,23 @@ const local = {
   },
 };
 
+/** The icon of each screen (the family: every title with its icon). */
+const PAGE_IC = { Agora: "clock-3", Blocos: "library", Buscar: "search", Mais: "ellipsis", Categorias: "tag", "Configurações": "sliders-horizontal", Sobre: "info" };
+/** The icon of each window, by its title. */
+export const sheetIc = (title = "") =>
+  /^Novo|^Nova/.test(title) ? "plus" : /^Folha/.test(title) ? "notebook-text" : /^Alterar/.test(title) ? "pencil" : /^Ajustes/.test(title) ? "sliders-horizontal" :
+  { "Adicionar link": "link", Categoria: "tag", "Colar mensagem": "clipboard-paste", Falar: "mic", "Lendo…": "scan-text", "Revisar folha": "list-checks", "Versões anteriores": "archive-restore" }[title] || "notebook";
+/** The icon of a confirmation (its title and its button), by what the button does. */
+export const confirmIc = (label = "") =>
+  /^Apagar/.test(label) ? "trash" : /^Restaurar/.test(label) ? "archive-restore" : /^Importar/.test(label) ? "upload" : "circle-alert";
+/** Where the closed sections of this device are kept, and the name of each one: its id, its card or its title. */
+const FOLD_KEY = "memoria-fechadas";
+export const foldKeyOf = (card) => {
+  if (!card) return "";
+  const h2 = card.querySelector(":scope > .mais-head h2");
+  return card.id || (card.dataset && card.dataset.card) || (h2 ? h2.textContent.trim() : "");
+};
+
 const byCreated = (a, b) => a.created - b.created || (a.id < b.id ? -1 : 1);
 const pad2 = (n) => String(n).padStart(2, "0");
 const periodOf = (id) => PERIODS.find((p) => p.id === id);
@@ -174,8 +191,89 @@ class MemoriaApp extends ChatMixin(LitElement) {
     if (this._data && this._cache.data !== this._data) this._reindex();
   }
 
+  /** When the tabs don't fit, the end where there are more fades, with an arrow. */
+  _markTabs() {
+    const t = this.renderRoot && this.renderRoot.querySelector(".tabs-wrap > .more-tabs");
+    if (!t) return;
+    t.parentElement.classList.toggle("tem-esq", t.scrollLeft > 2);
+    t.parentElement.classList.toggle("tem-dir", t.scrollLeft + t.clientWidth < t.scrollWidth - 2);
+    // the width of the tabs changes when the font of the app finishes loading: each one is watched
+    if (window.ResizeObserver && (!this._tabsRo || this._tabsRo.t !== t)) {
+      if (this._tabsRo) this._tabsRo.ro.disconnect();
+      const ro = new ResizeObserver(() => this._markTabs());
+      ro.observe(t);
+      t.querySelectorAll("button").forEach((b) => ro.observe(b));
+      this._tabsRo = { t, ro };
+    }
+  }
+
+  /** The sections closed on this device (a tap on the heading closes or opens; kept for the next time). */
+  _closedCards() {
+    if (!this._fechadas) {
+      try {
+        this._fechadas = new Set(JSON.parse(localStorage.getItem(FOLD_KEY) || "[]"));
+      } catch (e) {
+        this._fechadas = new Set();
+      }
+    }
+    return this._fechadas;
+  }
+
+  /** Each card with a heading folds: closed ones show only the heading (the arrow turns). */
+  _applyFolds() {
+    const root = this.renderRoot;
+    if (!root || !root.querySelectorAll) return;
+    const shut = this._closedCards();
+    for (const head of root.querySelectorAll(".panel > .mais-head")) {
+      const card = head.parentElement;
+      const key = foldKeyOf(card);
+      if (!key) continue;
+      const off = shut.has(key);
+      card.classList.add("dobra");
+      card.classList.toggle("fechada", off);
+      head.setAttribute("role", "button");
+      head.setAttribute("tabindex", "0");
+      head.setAttribute("aria-expanded", off ? "false" : "true");
+    }
+  }
+
+  _toggleFold(head) {
+    const key = foldKeyOf(head.parentElement);
+    if (!key) return;
+    const shut = this._closedCards();
+    if (shut.has(key)) shut.delete(key);
+    else shut.add(key);
+    try {
+      localStorage.setItem(FOLD_KEY, JSON.stringify([...shut]));
+    } catch (e) {
+      /* private window: only for now */
+    }
+    this._haptic("light");
+    this._applyFolds();
+  }
+
+  firstUpdated() {
+    const foldOf = (e) => {
+      const head = e.target.closest && e.target.closest(".panel.dobra > .mais-head");
+      return head && !e.target.closest("button, a, input, select, textarea, label") ? head : null;
+    };
+    this.renderRoot.addEventListener("click", (e) => {
+      const head = foldOf(e);
+      if (head) this._toggleFold(head);
+    });
+    this.renderRoot.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const head = foldOf(e);
+      if (!head) return;
+      e.preventDefault();
+      this._toggleFold(head);
+    });
+  }
+
   updated(changed) {
     this.toggleAttribute("dark", this._dark);
+    this._markTabs();
+    this._applyFolds();
     this._chatAfterRender();
     if (changed.has("_dark")) {
       // the page around the app too (behind the keyboard and the edges of the phone)
@@ -1240,7 +1338,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       </div>
       ${f.error ? html`<div class="imp-error">${icon("circle-alert")}<span>${f.error}</span></div>` : nothing}
       <div class="sheet-actions">
-        <button class="btn outline" @click=${() => (this._stopVoice(), this._closeSheet())}>Cancelar</button>
+        <button class="btn outline" @click=${() => (this._stopVoice(), this._closeSheet())}>${icon("x")}Cancelar</button>
         <button class="btn primary" ?disabled=${!on} @click=${() => this._finishVoice()}>${icon("sparkles")}Pronto</button>
       </div>
     `;
@@ -1267,7 +1365,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       <div class="ai-state ${tone}"><span class="dot"></span><div><b>${title}</b>${detail ? html`<span>${detail}</span>` : nothing}</div></div>
       ${opts.length || sel
         ? html`<label class="field" style="margin:14px 0 0">
-            <span class="flabel">Fala para texto</span>
+            <span class="flabel">${icon("mic", "lbl-ic")}Fala para texto</span>
             <select class="select" aria-label="Fala para texto" @change=${(e) => this._chooseVoice(e.target.value)}>
               <option value="" ?selected=${!sel}>Automático${v && v.auto ? `: ${v.auto.name}` : ""}</option>
               ${opts.map((o) => html`<option value=${o.id} ?selected=${o.id === sel}>${o.name}</option>`)}
@@ -1712,9 +1810,9 @@ class MemoriaApp extends ChatMixin(LitElement) {
    */
   _durPick(value, onPick) {
     return html`<div class="field">
-      <span class="flabel" id="dur-l">Fica no Agora</span>
+      <span class="flabel" id="dur-l">${icon("hourglass", "lbl-ic")}Fica no Agora</span>
       <div class="chip-row grid dur-pick" role="radiogroup" aria-labelledby="dur-l">
-        ${DURATIONS.map((d) => html`<button class="pick ${value === d ? "on" : ""}" role="radio" aria-checked=${value === d ? "true" : "false"} @click=${() => onPick(d)}><span>${d ? `${d / 60} h` : "Até o próximo"}</span></button>`)}
+        ${DURATIONS.map((d) => html`<button class="pick ${value === d ? "on" : ""}" role="radio" aria-checked=${value === d ? "true" : "false"} @click=${() => onPick(d)}>${icon(d ? "hourglass" : "arrow-right-left")}<span>${d ? `${d / 60} h` : "Até o próximo"}</span></button>`)}
       </div>
     </div>`;
   }
@@ -1786,12 +1884,12 @@ class MemoriaApp extends ChatMixin(LitElement) {
     return html`
       ${this._sheetHead("Adicionar link")}
       <label class="field">
-        <span class="flabel">Link</span>
+        <span class="flabel">${icon("link", "lbl-ic")}Link</span>
         <textarea class="grow" rows="1" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" .value=${f.url} placeholder="https://…" aria-label="Link" @input=${(e) => this._setForm({ url: e.target.value, error: "" })} @keydown=${(e) => e.key === "Enter" && (e.preventDefault(), this._addLink())}></textarea>
         ${f.error ? html`<span class="field-error">${f.error}</span>` : nothing}
       </label>
       <label class="field">
-        <span class="flabel">Nome (opcional)</span>
+        <span class="flabel">${icon("pencil", "lbl-ic")}Nome (opcional)</span>
         <textarea class="grow" rows="1" maxlength="120" .value=${f.name} placeholder="Ex.: Receita do bolo" aria-label="Nome do link" @input=${(e) => this._setForm({ name: e.target.value })} @keydown=${(e) => e.key === "Enter" && (e.preventDefault(), this._addLink())}></textarea>
       </label>
       <div class="sheet-actions">
@@ -2143,13 +2241,13 @@ class MemoriaApp extends ChatMixin(LitElement) {
   }
 
   /** The top of a screen; up: a screen of Mais, with "‹ Mais" above the title; fit: a name (it shrinks to fit, never broken). */
-  _renderHead(title, status, up = false, fit = false) {
+  _renderHead(title, status, up = false, fit = false, ic = "") {
     const name = this._userName();
     const st = !this._online ? { text: "Reconectando ao MemorIA…", tone: "off" } : status;
     return html`<header class="brand-head">
       <div class="head-row"><p class="eyebrow"><span class="brand">Memor<span>IA</span></span>${name ? ` · Olá, ${name}` : ""}</p>${this._renderChatBtn()}${this._renderMicBtn()}</div>
       ${up ? html`<button class="uplink" @click=${() => this._toMenu()}>${icon("chevron-left")}Mais</button>` : nothing}
-      <h1 class="page-title ${fit ? "fit-title" : ""}">${title}</h1>
+      <h1 class="page-title ${fit ? "fit-title" : ""}"><span class="mais-ic page-ic" aria-hidden="true">${icon(PAGE_IC[ic || title] || "notebook")}</span>${title}</h1>
       ${st ? html`<p class="status"><span class="dot ${st.tone || ""}" aria-hidden="true"></span><span>${st.text}</span>${st.extra || nothing}</p>` : nothing}
     </header>`;
   }
@@ -2222,7 +2320,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       status = {
         text: `Espiando ${fmtMin(this._peek.min)}`,
         tone: "off",
-        extra: html`<button class="text-btn now-btn" @click=${() => this._backToNow()}>Voltar para agora</button>`,
+        extra: html`<button class="text-btn now-btn" @click=${() => this._backToNow()}>${icon("clock-3")}Voltar para agora</button>`,
       };
     } else if (cur) {
       const nb = next ? this._block(next.main.block) : null;
@@ -2233,7 +2331,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     }
     return html`
       <section class="page">
-        ${this._renderHead(b.name, status, false, true)}
+        ${this._renderHead(b.name, status, false, true, "Agora")}
         ${this._renderTline(groups, cur)}
         ${active && active.entries.length > 1
           ? html`<div class="switcher">
@@ -2654,14 +2752,14 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const none = cats.length > 0 && all.some((b) => !this._cat(b.category));
     const groups = timeline(this._schedule());
     const { cur } = this._slot();
-    const chip = (v, label, c = null) => html`<button class="pick ${c ? "list" : ""} ${fcat === v ? "on" : ""}" style=${c ? colorVars(colorById(c.color) || colorById("grafite"), this._dark) : ""} aria-pressed=${fcat === v ? "true" : "false"} @click=${() => this._setShelfCat(v)}>${c ? html`<span class="dot"></span>` : nothing}<span>${label}</span></button>`;
+    const chip = (v, label, c = null, ic = "") => html`<button class="pick ${c ? "list" : ""} ${fcat === v ? "on" : ""}" style=${c ? colorVars(colorById(c.color) || colorById("grafite"), this._dark) : ""} aria-pressed=${fcat === v ? "true" : "false"} @click=${() => this._setShelfCat(v)}>${c ? html`<span class="dot"></span>` : icon(ic)}<span>${label}</span></button>`;
     return html`
       <section class="page">
         ${this._renderHead("Blocos", { text: `${plural(blocks.length, "bloco", "blocos")} · ${plural(pages, "folha", "folhas")}`, extra: this._renderViewToggle() })}
         ${this._renderWhoChips(who, WHO_KEY)}
         ${cats.length
           ? html`<div class="chip-row cat-filter" role="group" aria-label="Categoria"><div class="chip-track">
-              ${chip("", "Todos")} ${cats.map((c) => chip(c.id, clip(c.name, 22), c))} ${none ? chip("sem", "Sem categoria") : nothing}
+              ${chip("", "Todos", null, "layers")} ${cats.map((c) => chip(c.id, clip(c.name, 22), c))} ${none ? chip("sem", "Sem categoria", null, "x") : nothing}
             </div></div>`
           : nothing}
         ${this._shelfList()
@@ -2775,7 +2873,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     if (!b) {
       return html`<section class="page">
         <div class="panel"><div class="empty"><div class="em-icon">${icon("circle-alert")}</div><h3>Bloco não encontrado</h3><p>Ele pode ter sido excluído em outro aparelho.</p></div></div>
-        <button class="btn outline" style="width:100%" @click=${() => this._go("/blocos", true)}>Ver blocos</button>
+        <button class="btn outline" style="width:100%" @click=${() => this._go("/blocos", true)}>${icon("library")}Ver blocos</button>
       </section>`;
     }
     const parts = this._whenParts(b, false);
@@ -2801,7 +2899,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           </div>
         </div>
         ${b.archived
-          ? html`<div class="hint-card arch-card">${icon("archive")}<span>Arquivado ${this._day(b.archived)}. Não abre sozinho.</span><button class="text-btn" @click=${() => this._setArchived(b, false)}>Desarquivar</button></div>`
+          ? html`<div class="hint-card arch-card">${icon("archive")}<span>Arquivado ${this._day(b.archived)}. Não abre sozinho.</span><button class="text-btn" @click=${() => this._setArchived(b, false)}>${icon("archive-restore")}Desarquivar</button></div>`
           : html`<button class="when-line" @click=${() => this._openBlockSheet(b)}>
           ${when.length
             ? html`${icon("calendar-clock")}<span>Abre sozinho${this._owner(b) && !this._mine(b) ? ` no Agora de ${this._owner(b)}` : ""}: ${when.map((w, i) => html`${i ? " · " : ""}<b>${w}</b>`)}</span>`
@@ -2898,7 +2996,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       ? html`<div class="sel-head on">
           <button class="icon-btn" @click=${() => this._selEnd()} aria-label="Cancelar seleção">${icon("x")}</button>
           <span class="sel-n">${n ? plural(n, "selecionado", "selecionados") : "Selecionar"}</span>
-          <button class="text-btn" data-sel-all @click=${() => this._selAll(blocks, all)}>${all ? "Nenhum" : "Todos"}</button>
+          <button class="text-btn" data-sel-all @click=${() => this._selAll(blocks, all)}>${icon(all ? "x" : "square-check")}${all ? "Nenhum" : "Todos"}</button>
         </div>`
       : html`<div class="sel-head">
           <span class="sel-n">${plural(blocks.length, "bloco", "blocos")}</span>
@@ -2987,7 +3085,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       ${this._sheetHead(`Alterar ${n}`)}
       ${cats.length
         ? html`<div class="field">
-            <span class="flabel" id="bk-cat">Categoria</span>
+            <span class="flabel" id="bk-cat">${icon("tag", "lbl-ic")}Categoria</span>
             <div class="chip-row grid bulk-pick" role="radiogroup" aria-labelledby="bk-cat">
               ${pick("category", null, "Manter")}${cats.map((c) => pick("category", c.id, clip(c.name, 22), null, this._cv(c)))}${pick("category", "", "Sem categoria")}
             </div>
@@ -2995,14 +3093,14 @@ class MemoriaApp extends ChatMixin(LitElement) {
         : nothing}
       ${this._ownersOn()
         ? html`<div class="field">
-            <span class="flabel" id="bk-owner">De quem é</span>
+            <span class="flabel" id="bk-owner">${icon("user-round", "lbl-ic")}De quem é</span>
             <div class="chip-row grid bulk-pick" role="radiogroup" aria-labelledby="bk-owner">
               ${pick("owner", null, "Manter")}${pick("owner", "", "Todos", "users")}${people.map((p) => pick("owner", p, clip(p, 18), "user-round"))}
             </div>
           </div>`
         : nothing}
       <div class="sheet-actions">
-        <button class="btn primary" data-bulk-ok ?disabled=${!changed} @click=${() => this._applyBulk()}>Aplicar</button>
+        <button class="btn primary" data-bulk-ok ?disabled=${!changed} @click=${() => this._applyBulk()}>${icon("check")}Aplicar</button>
       </div>
     `;
   }
@@ -3154,9 +3252,9 @@ class MemoriaApp extends ChatMixin(LitElement) {
     return html`
       <section class="page">
         ${this._renderHead("Configurações", null, true)}
-        <div class="seg compact more-tabs" role="tablist" aria-label="Seções de Configurações">
+        <div class="tabs-wrap"><div class="seg compact more-tabs" role="tablist" aria-label="Seções de Configurações" @scroll=${() => this._markTabs()}>
           ${tabs.map(([k, label, ic]) => html`<button class=${tab === k ? "on" : ""} role="tab" aria-selected=${tab === k ? "true" : "false"} @click=${() => go(k)}>${icon(ic)}<span>${label}</span></button>`)}
-        </div>
+        </div><span class="tabs-fim esq" aria-hidden="true">${icon("chevron-left")}</span><span class="tabs-fim dir" aria-hidden="true">${icon("chevron-right")}</span></div>
         <div role="tabpanel" aria-label=${tabs.find((t) => t[0] === tab)[1]}>${body}</div>
         ${this._renderFoot()}
       </section>
@@ -3179,7 +3277,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       <div class="panel">
         ${this._secHead("palette", "Cor do app", "Em todos os aparelhos. Num bloco, vale a cor dele.")}
         <div class="row switch-row daily-row">
-          <div class="grow"><div class="label">Cor do dia</div><div class="hint">Muda a cor do app todo dia.</div></div>
+          <div class="grow"><div class="label">${icon("calendar-days", "lbl-ic")}Cor do dia</div><div class="hint">Muda a cor do app todo dia.</div></div>
           ${this._switch(daily, "Cor do dia", (e) => this._saveSettings({ app: { accent_daily: e.target.checked ? null : false } }))}
         </div>
         ${colorPicker({ palette: PALETTE, value: accent, onPick: (id) => this._saveSettings({ app: { accent: id, accent_daily: false } }) })}
@@ -3187,7 +3285,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       <div class="panel">
         ${this._secHead("pen-line", "Letra de mão")}
         <div class="row switch-row">
-          <div class="grow"><div class="label">Folhas com letra de mão</div><div class="hint" style="white-space:normal">Como num caderno de verdade.</div></div>
+          <div class="grow"><div class="label">${icon("pen-line", "lbl-ic")}Folhas com letra de mão</div><div class="hint" style="white-space:normal">Como num caderno de verdade.</div></div>
           ${this._switch(this._app("hand", true), "Letra de mão", (e) => this._saveSettings({ app: { hand: e.target.checked } }))}
         </div>
       </div>
@@ -3202,11 +3300,11 @@ class MemoriaApp extends ChatMixin(LitElement) {
     return html`<div class="panel" id="organizar">
       ${this._secHead("library", "Blocos")}
       <div class="row switch-row">
-        <div class="grow"><div class="label">Usar categorias</div><div class="hint" style="white-space:normal">${cats ? "A categoria de cada bloco e o filtro em Blocos." : "Desligado."}</div></div>
+        <div class="grow"><div class="label">${icon("tag", "lbl-ic")}Usar categorias</div><div class="hint" style="white-space:normal">${cats ? "A categoria de cada bloco e o filtro em Blocos." : "Desligado."}</div></div>
         ${this._switch(cats, "Usar categorias", (e) => this._saveSettings({ app: { cats_off: e.target.checked ? null : true } }))}
       </div>
       <div class="row switch-row">
-        <div class="grow"><div class="label">Controle por pessoa</div><div class="hint" style="white-space:normal">${owners ? "De quem é cada bloco, o Agora de cada pessoa e o filtro De quem." : "Desligado: todo bloco é de todos."}</div></div>
+        <div class="grow"><div class="label">${icon("users", "lbl-ic")}Controle por pessoa</div><div class="hint" style="white-space:normal">${owners ? "De quem é cada bloco, o Agora de cada pessoa e o filtro De quem." : "Desligado: todo bloco é de todos."}</div></div>
         ${this._switch(owners, "Controle por pessoa", (e) => this._saveSettings({ app: { owners_off: e.target.checked ? null : true } }))}
       </div>
     </div>
@@ -3236,7 +3334,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         <li>Em <b>Atalho fixado</b>, escolha o tipo <b>Painel</b> e cole o <b>Caminho</b> abaixo.</li>
       </ol>
       <label class="field">
-        <span class="flabel">Caminho</span>
+        <span class="flabel">${icon("smartphone", "lbl-ic")}Caminho</span>
         <span class="copy-row"
           ><input type="text" id="mm-atalho" readonly .value=${this._atalho} @focus=${(e) => e.target.select()} /><button
             type="button"
@@ -3283,30 +3381,31 @@ class MemoriaApp extends ChatMixin(LitElement) {
     return html`<div class="panel" id="correria">
       ${this._secHead("zap", "CorrerIA")}
       <div class="row switch-row">
-        <div class="grow"><div class="label">Usar com o CorrerIA</div><div class="hint" style="white-space:normal">${on ? "Ligado: pelo WhatsApp, o Claude e o Gemini leem e mudam os seus blocos." : "Desligado."}</div></div>
+        <div class="grow"><div class="label">${icon("zap", "lbl-ic")}Usar com o CorrerIA</div><div class="hint" style="white-space:normal">${on ? "Ligado: pelo WhatsApp, o Claude e o Gemini leem e mudam os seus blocos." : "Desligado."}</div></div>
         ${this._switch(on, "Usar com o CorrerIA", (e) => this._saveSettings({ app: { correria: e.target.checked ? true : null } }))}
       </div>
       ${on
-        ? html`<div class="ai-state ${used ? "ok" : "off"} correria-uso"><span class="dot"></span><div>${used ? html`<b>${used}</b>` : html`<b>Ainda não usado</b><span>No app CorrerIA, conecte o WhatsApp, o Claude ou o Gemini.</span>`}</div></div>`
+        ? html`<div class="sub-op"><div class="sub-box"><div class="ai-state ${used ? "ok" : "off"} correria-uso"><span class="dot"></span><div>${used ? html`<b>${used}</b>` : html`<b>Ainda não usado</b><span>No app CorrerIA, conecte o WhatsApp, o Claude ou o Gemini.</span>`}</div></div></div></div>`
         : nothing}
     </div>`;
   }
 
-  /** Mais › Configurações › Integrações › Sensores no Home Assistant: MemorIA agora and, with the AI, Chamadas de IA hoje. */
+  /** Mais › Configurações › Integrações › Sensores no Home Assistant: Criar sensores and, in the box under it, each one (like the ResolvIA). */
   _renderSensorPanel() {
     const on = this._app("sensor", true);
-    const ia = this._app("sensor_ia", false) === true;
     return html`<div class="panel" id="sensor">
       ${this._secHead("activity", "Sensores no Home Assistant", "Para usar em painéis e automações do Home Assistant.")}
       <div class="row switch-row">
-        <div class="grow"><div class="label">MemorIA agora</div><div class="hint" style="white-space:normal">${on ? html`<code>sensor.memoria_agora</code>, com o bloco e a folha do momento.` : "Desligado."}</div></div>
-        ${this._switch(on, "Sensor MemorIA agora", (e) => this._saveSettings({ app: { sensor: e.target.checked } }))}
+        <div class="grow"><div class="label">${icon("activity", "lbl-ic")}Criar sensores</div><div class="hint" style="white-space:normal">${on ? "Ligado." : "Desligado: nenhum sensor no Home Assistant."}</div></div>
+        ${this._switch(on, "Criar sensores", (e) => this._saveSettings({ app: { sensor: e.target.checked } }))}
       </div>
-      ${this._aiOn()
-        ? html`<div class="row switch-row">
-            <div class="grow"><div class="label">Chamadas de IA hoje</div><div class="hint" style="white-space:normal">${ia ? html`<code>sensor.memoria_ia_hoje</code>, com as chamadas, os erros e os tokens estimados.` : "Desligado."}</div></div>
-            ${this._switch(ia, "Sensor Chamadas de IA hoje", (e) => this._saveSettings({ app: { sensor_ia: e.target.checked ? true : null } }))}
-          </div>`
+      ${on
+        ? html`<div class="sub-op"><div class="sub-box sensor-list">
+            ${[
+              ["sensor.memoria_agora", "o bloco e a folha do momento"],
+              ["sensor.memoria_ia_hoje", "chamadas de IA hoje, com erros, cota e tokens estimados"],
+            ].map(([id, what]) => html`<div class="sensor-row"><code>${id}</code><span>${what}</span></div>`)}
+          </div></div>`
         : nothing}
     </div>`;
   }
@@ -3413,24 +3512,24 @@ class MemoriaApp extends ChatMixin(LitElement) {
     }
     if (ai.reason) detail = `${detail} ${ai.reason}`.trim();
     const on = this._aiOn();
-    const head = html`${this._secHead("sparkles", "IA do Home Assistant", "Lê mensagens coladas, prints e fotos de anotações em papel para criar folhas, com a IA configurada no Home Assistant. O app não guarda nenhuma chave.")}
+    const head = html`${this._secHead("sparkles", "IA do Home Assistant", "Lê mensagens, prints e fotos de anotações para criar folhas.")}
       <div class="row switch-row ai-switch">
-        <div class="grow"><div class="label">Usar IA</div><div class="hint" style="white-space:normal">${on ? "Ligado." : "Desligado: sem leitura por IA, sem Falar e sem Conversar."}</div></div>
+        <div class="grow"><div class="label">${icon("sparkles", "lbl-ic")}Usar IA</div><div class="hint" style="white-space:normal">${on ? "Ligado." : "Desligado: sem leitura por IA, sem Falar e sem Conversar."}</div></div>
         ${this._switch(on, "Usar IA", (e) => this._setAiOn(e.target.checked))}
       </div>`;
     if (!on) return html`<div class="panel" id="leitura-ia">${head}</div>`;
     return html`<div class="panel" id="leitura-ia">
       ${head}
+      <div class="sub-op"><div class="sub-box">
       <div class="ai-state ${tone}"><span class="dot"></span><div><b>${title}</b>${detail ? html`<span>${detail}</span>` : nothing}</div></div>
       ${ents.length || sel
         ? html`<label class="field" style="margin:14px 0 0">
-            <span class="flabel">IA usada pelo app</span>
+            <span class="flabel">${icon("sparkles", "lbl-ic")}IA usada pelo app</span>
             <select class="select" aria-label="IA usada pelo app" @change=${(e) => this._chooseAi(e.target.value)}>
               <option value="" ?selected=${!sel}>Padrão do Home Assistant</option>
               ${ents.map((e) => html`<option value=${e.id} ?selected=${e.id === sel}>${e.name}${e.images ? "" : " (só texto)"}${e.available ? "" : " (indisponível)"}</option>`)}
               ${sel && !ents.some((e) => e.id === sel) ? html`<option value=${sel} selected>${sel} (não encontrada)</option>` : nothing}
             </select>
-            <span class="field-hint">${icon("sparkles")}<span>“Padrão do Home Assistant” usa a IA preferida definida em Configurações › Sistema › Geral.</span></span>
           </label>`
         : nothing}
       <div class="ai-actions"><button class="btn outline" ?disabled=${this._aiChecking} @click=${() => this._refreshAi()}>${icon("rotate-ccw")}Verificar de novo</button></div>
@@ -3445,6 +3544,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
               <li>Volte aqui e escolha essa IA na lista.</li>
             </ol>
           </div>`}
+      </div></div>
     </div>`;
   }
 
@@ -3475,10 +3575,10 @@ class MemoriaApp extends ChatMixin(LitElement) {
     `;
   }
 
-  _sheetHead(title, back) {
+  _sheetHead(title, back, ic = "") {
     return html`<div class="sheet-head">
       ${back ? html`<button class="icon-btn back" @click=${back} aria-label="Voltar">${icon("chevron-left")}</button>` : nothing}
-      <h3 class="display">${title}</h3>
+      <h3 class="display">${icon(ic || sheetIc(title), "sh-ic")}${title}</h3>
       <button class="icon-btn" @click=${() => this._sheetBack()} aria-label="Fechar">${icon("x")}</button>
     </div>`;
   }
@@ -3535,13 +3635,13 @@ class MemoriaApp extends ChatMixin(LitElement) {
     return html`
       ${this._sheetHead(f.id ? "Ajustes do bloco" : "Novo bloco")}
       <label class="field">
-        <span class="flabel">Nome</span>
+        <span class="flabel">${icon("pencil", "lbl-ic")}Nome</span>
         <input type="text" maxlength="60" .value=${f.name} placeholder="Ex.: Diário, Treino, Trabalho" @input=${(e) => this._setForm({ name: e.target.value })} @keydown=${(e) => e.key === "Enter" && this._saveBlockSheet()} />
       </label>
       ${this._catsOn() ? html`<div class="field">
-        <span class="flabel">Categoria</span>
+        <span class="flabel">${icon("tag", "lbl-ic")}Categoria</span>
         <div class="chip-row grid cat-pick">
-          <button class="pick ${!f.category && f.newCat == null ? "on" : ""}" @click=${() => this._setForm({ category: "", newCat: null })}><span>Sem categoria</span></button>
+          <button class="pick ${!f.category && f.newCat == null ? "on" : ""}" @click=${() => this._setForm({ category: "", newCat: null })}>${icon("x")}<span>Sem categoria</span></button>
           ${this._cats().map(
             (c) => html`<button class="pick list ${f.category === c.id && f.newCat == null ? "on" : ""}" style=${colorVars(colorById(c.color) || colorById("grafite"), this._dark)} @click=${() => this._setForm({ category: c.id, newCat: null })}><span class="dot"></span><span>${clip(c.name, 22)}</span></button>`,
           )}
@@ -3559,19 +3659,19 @@ class MemoriaApp extends ChatMixin(LitElement) {
       </div>` : nothing}
       ${this._ownersOn() ? this._renderOwnerPick(f) : nothing}
       <div class="field">
-        <span class="flabel">Cor da capa</span>
+        <span class="flabel">${icon("palette", "lbl-ic")}Cor da capa</span>
         <div class="swatches">
           ${PALETTE.map((c) => html`<button class="sw ${f.color === c.id ? "on" : ""}" style="--c:${c.fill}" aria-label=${c.label} @click=${() => this._setForm({ color: c.id })}>${f.color === c.id ? icon("check") : nothing}</button>`)}
         </div>
       </div>
       <div class="field">
-        <span class="flabel">Folha</span>
+        <span class="flabel">${icon("notebook-text", "lbl-ic")}Folha</span>
         <div class="papers">
           ${PAPERS.map((p) => html`<button class="paper-opt ${f.paper === p ? "on" : ""}" @click=${() => this._setForm({ paper: p })}><span class="sw-paper ${p}"></span>${PAPER_LABEL[p]}</button>`)}
         </div>
       </div>
       <div class="field">
-        <span class="flabel">Quando abrir sozinho</span>
+        <span class="flabel">${icon("clock", "lbl-ic")}Quando abrir sozinho</span>
         <div class="chip-row grid periods-pick">
           ${PERIODS.map(
             (p) => html`<button class="pick ${f.periods.includes(p.id) ? "on" : ""}" aria-pressed=${f.periods.includes(p.id) ? "true" : "false"} @click=${() => toggle(p.id)}>${icon(p.icon)}<span>${p.label}</span><small class="pick-sub">${periods[p.id]}</small></button>`,
@@ -3594,7 +3694,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         : nothing}
       <div class="sheet-actions">
         ${f.id ? html`<button class="btn danger" @click=${() => this._confirmDeleteBlock()} aria-label="Apagar bloco">${icon("trash")}</button>` : nothing}
-        <button class="btn primary" @click=${() => this._saveBlockSheet()}>${f.id ? "Salvar" : "Criar bloco"}</button>
+        <button class="btn primary" @click=${() => this._saveBlockSheet()}>${icon(f.id ? "check" : "plus")}${f.id ? "Salvar" : "Criar bloco"}</button>
       </div>
     `;
   }
@@ -3610,14 +3710,14 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const hint = owner ? html`<span class="field-hint">${icon("info")}<span>Só aparece no Agora de ${owner}.</span></span>` : nothing;
     if (!people.length) {
       return html`<label class="field">
-        <span class="flabel">De quem é</span>
+        <span class="flabel">${icon("user-round", "lbl-ic")}De quem é</span>
         <input type="text" maxlength="80" .value=${f.owner || ""} placeholder="Todos" aria-label="De quem é" @input=${(e) => this._setForm({ owner: e.target.value })} />
         ${hint}
       </label>`;
     }
     const names = owner && !people.some((n) => sameName(n, owner)) ? [...people, owner] : people;
     return html`<div class="field">
-      <span class="flabel">De quem é</span>
+      <span class="flabel">${icon("user-round", "lbl-ic")}De quem é</span>
       <div class="chip-row grid owner-pick" role="radiogroup" aria-label="De quem é">
         ${["", ...names].map((n) => {
           const on = n ? sameName(owner, n) : !owner;
@@ -3634,18 +3734,18 @@ class MemoriaApp extends ChatMixin(LitElement) {
     return html`
       ${this._sheetHead(f.id ? "Categoria" : "Nova categoria")}
       <label class="field">
-        <span class="flabel">Nome</span>
+        <span class="flabel">${icon("pencil", "lbl-ic")}Nome</span>
         <input type="text" maxlength="40" .value=${f.name} placeholder="Ex.: Trabalho, Casa, Estudos" @input=${(e) => this._setForm({ name: e.target.value })} @keydown=${(e) => e.key === "Enter" && this._saveCategorySheet()} />
       </label>
       <div class="field">
-        <span class="flabel">Cor</span>
+        <span class="flabel">${icon("palette", "lbl-ic")}Cor</span>
         <div class="swatches">
           ${PALETTE.map((c) => html`<button class="sw ${f.color === c.id ? "on" : ""}" style="--c:${c.fill}" aria-label=${c.label} @click=${() => this._setForm({ color: c.id })}>${f.color === c.id ? icon("check") : nothing}</button>`)}
         </div>
       </div>
       <div class="sheet-actions">
         ${f.id ? html`<button class="btn danger" @click=${() => this._confirmDeleteCategory()} aria-label="Apagar categoria">${icon("trash")}</button>` : nothing}
-        <button class="btn primary" ?disabled=${!(f.name || "").trim() || f.busy} @click=${() => this._saveCategorySheet()}>${f.id ? "Salvar" : "Criar categoria"}</button>
+        <button class="btn primary" ?disabled=${!(f.name || "").trim() || f.busy} @click=${() => this._saveCategorySheet()}>${icon(f.id ? "check" : "plus")}${f.id ? "Salvar" : "Criar categoria"}</button>
       </div>
     `;
   }
@@ -3661,7 +3761,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     return html`
       ${this._sheetHead(`Folha ${idx + 1} de ${list.length}`)}
       <div class="field">
-        <span class="flabel">Mostrar esta folha às…</span>
+        <span class="flabel">${icon("clock", "lbl-ic")}Mostrar esta folha às…</span>
         <div class="time-list">
           ${times.map((t) => html`<span class="time-chip">${t}<button aria-label="Tirar ${t}" @click=${() => this._setPageTimes(page.id, times.filter((x) => x !== t))}>${icon("x")}</button></span>`)}
           ${this._timePicker((t) => this._setPageTimes(page.id, [...times, t]), times.length ? "Outro horário" : "Escolher horário")}
@@ -3671,7 +3771,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       ${times.length ? this._durPick(page.dur || 0, (d) => this._setPageDur(page.id, d)) : nothing}
       ${blocks.length > 1
         ? html`<div class="field">
-            <span class="flabel">Bloco</span>
+            <span class="flabel">${icon("notebook", "lbl-ic")}Bloco</span>
             <div class="chip-row grid block-pick">
               ${blocks.map((b) => html`<button class="pick list ${page.block === b.id ? "on" : ""}" style=${this._cv(b)} @click=${() => this._movePage(page.id, b.id)}><span class="dot"></span><span>${clip(b.name, 22)}</span></button>`)}
             </div>
@@ -3698,7 +3798,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const targets =
       blocks.length > 1
         ? html`<div class="field">
-            <span class="flabel">No bloco</span>
+            <span class="flabel">${icon("notebook", "lbl-ic")}No bloco</span>
             <div class="chip-row grid block-pick">
               ${blocks.map((b) => html`<button class="pick list ${f.target === b.id ? "on" : ""}" style=${this._cv(b)} @click=${() => this._setForm({ target: b.id })}><span class="dot"></span><span>${clip(b.name, 22)}</span></button>`)}
             </div>
@@ -3709,14 +3809,14 @@ class MemoriaApp extends ChatMixin(LitElement) {
       return html`
         ${this._sheetHead("Colar mensagem", toPick)}
         <label class="field">
-          <span class="flabel">Mensagem</span>
+          <span class="flabel">${icon("message-square-text", "lbl-ic")}Mensagem</span>
           <textarea rows="7" .value=${f.text} placeholder="Cole aqui a mensagem do WhatsApp, e-mail ou anotação…" @input=${(e) => this._setForm({ text: e.target.value, error: null })}></textarea>
         </label>
         ${error} ${targets}
         <div class="sheet-actions">
           <button class="btn outline" @click=${() => this._pasteClipboard()}>${icon("clipboard-paste")}Colar</button>
-          ${ai.ready ? html`<button class="btn outline" ?disabled=${!(f.text || "").trim()} @click=${() => this._readText(false)}>Como está</button>` : nothing}
-          <button class="btn primary" ?disabled=${!(f.text || "").trim()} @click=${() => this._readText(true)}>${ai.ready ? html`${icon("sparkles")}Organizar` : "Criar folha"}</button>
+          ${ai.ready ? html`<button class="btn outline" ?disabled=${!(f.text || "").trim()} @click=${() => this._readText(false)}>${icon("notebook-text")}Como está</button>` : nothing}
+          <button class="btn primary" ?disabled=${!(f.text || "").trim()} @click=${() => this._readText(true)}>${ai.ready ? html`${icon("sparkles")}Organizar` : html`${icon("plus")}Criar folha`}</button>
         </div>
         ${ai.ready || ai.off ? nothing : html`<p class="sheet-note">Sem IA configurada: a mensagem vira uma folha do jeito que está.</p>`}
       `;
@@ -3733,7 +3833,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           <button class="btn outline" @click=${() => {
             this._importToken = 0;
             this._setForm({ step: f.prevStep || "pick" });
-          }}>Cancelar</button>
+          }}>${icon("x")}Cancelar</button>
         </div>
       `;
     }
@@ -3755,7 +3855,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           : nothing}
         ${targets}
         <div class="sheet-actions">
-          <button class="btn primary" ?disabled=${!(f.result || "").trim()} @click=${() => this._createFromText(f.result)}>Criar folha${target ? ` em ${clip(target.name, 18)}` : ""}</button>
+          <button class="btn primary" ?disabled=${!(f.result || "").trim()} @click=${() => this._createFromText(f.result)}>${icon("plus")}Criar folha${target ? ` em ${clip(target.name, 18)}` : ""}</button>
         </div>
       `;
     }
@@ -3799,7 +3899,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       </div>
       ${!ai.images && !ai.off
         ? html`<div class="imp-error soft">${icon("sparkles")}<span>${ai.reason || "Para ler fotos, o Home Assistant precisa de uma integração de IA com tarefa de IA que entenda imagens."}
-            <button class="text-btn inline" @click=${() => this._openAiSettings()}>Ver IA do Home Assistant</button></span></div>`
+            <button class="text-btn inline" @click=${() => this._openAiSettings()}>${icon("sparkles")}Ver IA do Home Assistant</button></span></div>`
         : nothing}
       ${error}
     `;
@@ -3819,7 +3919,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
             : html`<div class="data-list">
                 ${f.list.map(
                   (v) => html`<div class="data-item"><div><b>${this._dateTime(v.when)}</b><span>${plural(v.blocks, "bloco", "blocos")} · ${plural(v.pages, "folha", "folhas")} · ${why[v.reason] || "automática"}</span></div>
-                    <button class="btn outline sm" @click=${() => this._confirmRestoreVersion(v)}>Restaurar</button></div>`,
+                    <button class="btn outline sm" @click=${() => this._confirmRestoreVersion(v)}>${icon("archive-restore")}Restaurar</button></div>`,
                 )}
               </div>`}
     `;
@@ -3827,12 +3927,13 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   _renderConfirm() {
     const f = this._form;
+    const ic = f.icon || confirmIc(f.label);
     return html`
-      <div class="sheet-head"><h3 class="display">${f.title}</h3></div>
+      <div class="sheet-head"><h3 class="display">${icon(ic, "sh-ic")}${f.title}</h3></div>
       <p class="confirm-text">${f.text}</p>
       <div class="sheet-actions">
-        <button class="btn outline" @click=${() => this._sheetBack()}>Cancelar</button>
-        <button class="btn ${f.danger ? "danger-fill" : "primary"}" @click=${() => f.run()}>${f.label}</button>
+        <button class="btn outline" @click=${() => this._sheetBack()}>${icon("x")}Cancelar</button>
+        <button class="btn ${f.danger ? "danger-fill" : "primary"}" @click=${() => f.run()}>${icon(ic)}${f.label}</button>
       </div>
     `;
   }
@@ -3861,7 +3962,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         <div class="cam-bottom">
           <div class="cam-shots">${c.shots.slice(-3).map((s) => html`<img src=${s.url} alt="" />`)}${n > 3 ? html`<span>+${n - 3}</span>` : nothing}</div>
           <button class="cam-shutter" aria-label="Fotografar" ?disabled=${c.status !== "live" || n >= 6} @click=${() => this._shoot()}><span></span></button>
-          <button class="cam-done" ?disabled=${!n} @click=${() => this._useShots()}>Pronto${n ? ` (${n})` : ""}</button>
+          <button class="cam-done" ?disabled=${!n} @click=${() => this._useShots()}>${icon("check")}Pronto${n ? ` (${n})` : ""}</button>
         </div>
       </div>
     `;
@@ -3876,7 +3977,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         ? html`<button @click=${() => {
             this._toast = null;
             t.action.run();
-          }}>${t.action.label}</button>`
+          }}>${icon(t.action.icon || (t.action.label === "Desfazer" ? "rotate-ccw" : "chevron-right"))}${t.action.label}</button>`
         : nothing}
     </div>`;
   }
