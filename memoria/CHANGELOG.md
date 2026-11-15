@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.30.1
+
+- **Tela cheia**: o Agora mostra os blocos de todos, como na TV da casa, não só os de quem está usando. O botão também aparece no Agora quando não há nada agora.
+
 ## 1.30.0
 
 - **Tela cheia** (telas largas): o botão ao lado do Conversar e do Falar deixa só o caderno, maior. A barra de baixo aparece ao passar o mouse na faixa fina embaixo, com **Sair da tela cheia**; o Esc também sai.

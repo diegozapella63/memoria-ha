@@ -94,11 +94,28 @@ with sync_playwright() as p:
         if a.locator(".pad").count():
             check(a.evaluate("(el) => el.hasAttribute('full')") and not a.evaluate(SEEN, ".brand-head .head-row"), f"{tag}: no Agora também (sem a linha do MemorIA, Conversar e Falar)")
             pg.screenshot(path=str(SHOTS / f"cheia-{scheme}-{w}-agora.png"))
+        # 1.30.1: na tela cheia, o Agora é da casa: os blocos de todos, não só os de quem está usando
+        a.evaluate("(el) => { el._data = { ...el._data, blocks: el._data.blocks.map((b) => b.id === 'treino00001' ? { ...b, owner: 'Beto', periods: [], times: ['00:00'] } : b.owner === 'Beto' ? b : { ...b, periods: [], times: [] }), pages: el._data.pages.map((p) => ({ ...p, times: [] })) }; el._fullAgora(); el.requestUpdate(); }")
+        pg.wait_for_timeout(500)
+        mine = a.evaluate("(el) => el._me()")
+        names = a.evaluate("(el) => el._schedule().map((e) => el._block(e.block).name)")
+        check(mine == "Ana" and "Treino" in names and a.evaluate("(el) => el._pad && el._block(el._pad.block).name") == "Treino", f"{tag}: na tela cheia, o Agora de Ana mostra o bloco de Beto ({names})")
+        pg.screenshot(path=str(SHOTS / f"cheia-{scheme}-{w}-todos.png"))
         # Esc sai
         pg.keyboard.press("Escape")
         pg.wait_for_timeout(400)
         check(not a.evaluate("(el) => el.hasAttribute('full')") and a.evaluate(NAV)[1] <= H + 1 and a.evaluate(NAV)[0] < H - 40, f"{tag}: Esc sai da tela cheia, a barra de volta")
         check(a.locator("nav .full-exit").count() == 0, f"{tag}: e o Sair some")
+        names = a.evaluate("(el) => el._schedule().map((e) => el._block(e.block).name)")
+        check("Treino" not in names and a.evaluate("(el) => el._pad") is None, f"{tag}: fora da tela cheia, o Agora volta a ser de Ana ({names})")
+        # no Agora sem nada agora, o mesmo botão liga e desliga
+        hb = a.locator(".brand-head .full-btn")
+        check(hb.count() == 1 and hb.get_attribute("aria-label") == "Tela cheia", f"{tag}: o Agora vazio também tem Tela cheia")
+        hb.click()
+        pg.wait_for_timeout(400)
+        check(a.evaluate("(el) => el._full") and a.evaluate("(el) => el._pad && el._block(el._pad.block).name") == "Treino", f"{tag}: ligada pelo Agora, o bloco de Beto")
+        pg.keyboard.press("Escape")
+        pg.wait_for_timeout(400)
         # pelo Sair da tela cheia também
         a.locator(".brand-head .full-btn").click() if a.locator(".brand-head .full-btn").count() else btn.click()
         pg.wait_for_timeout(300)

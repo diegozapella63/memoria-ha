@@ -189,6 +189,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       else if (this._fsOn) {
         this._fsOn = false;
         this._full = false;
+        this._fullAgora();
       }
     };
     this._onScheme = () => this._syncDark();
@@ -452,7 +453,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
     }
     for (const list of pages.values()) list.sort(byCreated);
     // the Agora of the person using this screen: their blocks and everyone's, never the archived ones
-    this._cache = { data: this._data, pages, schedule: buildSchedule(this._data, { person: this._ownersOn() ? this._me() : "" }) };
+    const person = this._agoraPerson();
+    this._cache = { data: this._data, person, pages, schedule: buildSchedule(this._data, { person }) };
   }
 
   /** Every block, archived too, in order. */
@@ -472,7 +474,15 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   /** Whether a block opens in this person's Agora (theirs or everyone's, not archived; every one without Controle por pessoa). */
   _mine(b) {
-    return opensFor(b, this._ownersOn() ? this._me() : "");
+    return opensFor(b, this._agoraPerson());
+  }
+
+  /**
+   * Whose Agora this is: the person using the screen ("" sees every block: a login that is not a person, Controle por
+   * pessoa off, or, 1.30.1, Tela cheia, the screen of the house, like a TV, with everyone's).
+   */
+  _agoraPerson() {
+    return this._ownersOn() && !(this._full && this._wide) ? this._me() : "";
   }
 
   /** Mais › Configurações › Opções › Usar categorias (1.11.0; on unless turned off): off, no category anywhere. */
@@ -516,7 +526,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
   }
 
   _schedule() {
-    if (this._data && this._cache.data !== this._data) this._reindex();
+    if (this._data && (this._cache.data !== this._data || this._cache.person !== this._agoraPerson())) this._reindex();
     return this._cache.schedule;
   }
 
@@ -2344,7 +2354,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
   /** Agora with no notebook to show: the reason, Ver blocos and Novo bloco (or Importar backup, the first time). */
   _renderNowEmpty(status, h3, text, first = false) {
     return html`<section class="page">
-      ${this._renderHead("Agora", status)}
+      ${this._renderHead("Agora", status, false, false, "", true)}
       <div class="panel now-empty"><div class="empty"><div class="em-icon">${icon(first ? "notebook-pen" : "calendar-clock")}</div><h3>${h3}</h3>${text}</div></div>
       <div class="sheet-actions" style="padding:0">
         ${first
@@ -2377,7 +2387,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       if (entries.length && !cur) {
         // 1.28.0: the times are in the line of the day; no text above it saying them again
         return html`<section class="page">
-          ${this._renderHead("Agora", null)}
+          ${this._renderHead("Agora", null, false, false, "", true)}
           ${this._renderTline(ahead(entries, min), null)}
           <div class="panel now-empty now-idle"><div class="empty"><div class="em-icon">${icon("calendar-clock")}</div><h3>Nada agora</h3><p>Toque num horário para espiar.</p></div></div>
         </section>`;
@@ -3303,9 +3313,20 @@ class MemoriaApp extends ChatMixin(LitElement) {
     return v.name === "block" || (v.name === "now" && !!this._pad);
   }
 
+  /** Tela cheia on or off: the Agora shows what is on for everyone (or again for this person). */
+  _fullAgora() {
+    if (this._view().name !== "now" || !this._data) return;
+    this._peek = null;
+    this._choice = null;
+    this._setPad(this._nowPad());
+  }
+
   /** The button of the top of the notebook (wide screens). */
   _renderFullBtn() {
-    return this._wide ? html`<button class="icon-btn full-btn" @click=${() => this._setFull(true)} aria-label="Tela cheia" title="Tela cheia">${icon("maximize")}</button>` : nothing;
+    if (!this._wide) return nothing;
+    // on already (an Agora with nothing now still shows its top): the same button leaves it
+    const label = this._full ? "Sair da tela cheia" : "Tela cheia";
+    return html`<button class="icon-btn full-btn ${this._full ? "on" : ""}" @click=${() => this._setFull(!this._full)} aria-label=${label} title=${label}>${icon(this._full ? "minimize" : "maximize")}</button>`;
   }
 
   /**
@@ -3315,6 +3336,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
   _setFull(on) {
     this._haptic("light");
     this._full = on;
+    this._fullAgora();
     let el = document.documentElement;
     try {
       // inside the Home Assistant, the frame of the app (the same origin): the whole screen is the app
