@@ -1154,6 +1154,7 @@ export const styles = css`
 
   /* ---------- bottom nav ---------- */
   nav {
+    position: relative;
     flex: none;
     background: var(--rv-nav);
     border-top: 1px solid var(--rv-line);
@@ -3348,6 +3349,59 @@ export const notebookStyles = css`
     .edge.next {
       width: 22px;
     }
+  }
+  /* 1.30.0: Tela cheia (telas largas): só o caderno. Somem a linha dos botões e a de quando abre sozinho; a barra de
+     baixo fica escondida, com uma faixa fina à vista, e aparece com o mouse nela */
+  :host([full]) .detail-head .dh-row,
+  :host([full]) .brand-head .head-row,
+  :host([full]) .when-line,
+  :host([full]) .arch-card {
+    display: none;
+  }
+  :host([full]) .page {
+    padding-top: 12px;
+  }
+  :host([full]) .pad {
+    --page-h: clamp(420px, calc(100vh - 220px), 1600px);
+  }
+  :host([full]) .pad.tall {
+    --page-h: clamp(420px, calc(100vh - 150px), 1600px);
+  }
+  :host([full]) nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    transform: translateY(calc(100% - 8px));
+    transition: transform 0.18s ease;
+  }
+  :host([full]) nav:hover,
+  :host([full]) nav:focus-within {
+    transform: none;
+  }
+  .full-exit {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 14px;
+    border: 1px solid var(--rv-line);
+    border-radius: 20px;
+    background: var(--rv-surface);
+    color: var(--rv-text);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .full-exit .i {
+    width: 18px;
+    height: 18px;
   }
   /* 1.29.1: numa tela larga, o caderno aberto: a página da esquerda não rola (as linhas que não cabem vão para a da
      direita, que rola); as duas com um número inteiro de linhas (a espiral no meio) */

@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.30.0
+
+- **Tela cheia** (telas largas): o botão ao lado do Conversar e do Falar deixa só o caderno, maior. A barra de baixo aparece ao passar o mouse na faixa fina embaixo, com **Sair da tela cheia**; o Esc também sai.
+
 ## 1.29.1
 
 - **Tela grande**: a página da esquerda do caderno aberto não rola mais. O que não cabe nela vai para a página da direita, que rola, sem repetir nada. Dá para escrever nas duas.

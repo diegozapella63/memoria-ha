@@ -124,6 +124,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     _cam: { state: true },
     _pad: { state: true },
     _wide: { state: true },
+    _full: { state: true },
     _turn: { state: true },
     _peek: { state: true },
     _choice: { state: true },
@@ -180,6 +181,16 @@ class MemoriaApp extends ChatMixin(LitElement) {
     this._wideMq = window.matchMedia ? window.matchMedia(`(min-width: ${WIDE_MIN}px)`) : null;
     this._wide = !!(this._wideMq && this._wideMq.matches);
     this._onWide = () => (this._wide = !!(this._wideMq && this._wideMq.matches));
+    // 1.30.0: Tela cheia: Esc leaves it (a window open over it closes first); leaving the fullscreen of the browser too
+    this._onFullKey = (e) => e.key === "Escape" && this._full && !this._sheet && this._setFull(false);
+    this._onFsChange = () => {
+      const d = this._fsDoc;
+      if (d && d.fullscreenElement) this._fsOn = true;
+      else if (this._fsOn) {
+        this._fsOn = false;
+        this._full = false;
+      }
+    };
     this._onScheme = () => this._syncDark();
   }
 
@@ -193,6 +204,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     window.addEventListener("resize", this._onResize);
     if (this._mql && this._mql.addEventListener) this._mql.addEventListener("change", this._onScheme);
     if (this._wideMq && this._wideMq.addEventListener) this._wideMq.addEventListener("change", this._onWide);
+    window.addEventListener("keydown", this._onFullKey);
     this._tickTimer = setInterval(() => this._tick(), 20000);
     // Sistema follows Home Assistant's light/dark mode while the app is open (and the system, and in the
     // preview the viewer's choice on the page)
@@ -212,6 +224,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
     window.removeEventListener("resize", this._onResize);
     if (this._mql && this._mql.removeEventListener) this._mql.removeEventListener("change", this._onScheme);
     if (this._wideMq && this._wideMq.removeEventListener) this._wideMq.removeEventListener("change", this._onWide);
+    window.removeEventListener("keydown", this._onFullKey);
+    if (this._fsDoc) this._fsDoc.removeEventListener("fullscreenchange", this._onFsChange);
     clearInterval(this._tickTimer);
     clearInterval(this._themeTimer);
     clearInterval(this._kbTimer);
@@ -311,6 +325,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   updated(changed) {
     this.toggleAttribute("dark", this._dark);
+    this.toggleAttribute("full", this._fullOn());
     for (const t of this.renderRoot.querySelectorAll("textarea.ink.live")) this._syncMirror(t);
     this._measureSplit();
     this._markTabs();
@@ -2307,16 +2322,17 @@ class MemoriaApp extends ChatMixin(LitElement) {
           </button>
           ${tab(["shelf", "block"], "/blocos", "Blocos", "library")} ${tab(["more", ...IN_MORE], "/mais", "Mais", "ellipsis")}
         </div>
+        ${this._full && this._wide ? html`<button class="full-exit" @click=${() => this._setFull(false)}>${icon("minimize")}<span>Sair da tela cheia</span></button>` : nothing}
       </nav>
     `;
   }
 
   /** The top of a screen; up: a screen of Mais, with "‹ Mais" above the title; fit: a name (it shrinks to fit, never broken). */
-  _renderHead(title, status, up = false, fit = false, ic = "") {
+  _renderHead(title, status, up = false, fit = false, ic = "", full = false) {
     const name = this._userName();
     const st = !this._online ? { text: "Reconectando ao MemorIA…", tone: "off" } : status;
     return html`<header class="brand-head">
-      <div class="head-row"><p class="eyebrow"><span class="brand">Memor<span>IA</span></span>${name ? ` · Olá, ${name}` : ""}</p>${this._renderChatBtn()}${this._renderMicBtn()}</div>
+      <div class="head-row"><p class="eyebrow"><span class="brand">Memor<span>IA</span></span>${name ? ` · Olá, ${name}` : ""}</p>${this._renderChatBtn()}${this._renderMicBtn()}${full ? this._renderFullBtn() : nothing}</div>
       ${up ? html`<button class="uplink" @click=${() => this._toMenu()}>${icon("chevron-left")}Mais</button>` : nothing}
       <h1 class="page-title ${fit ? "fit-title" : ""}"><span class="mais-ic page-ic" aria-hidden="true">${icon(PAGE_IC[ic || title] || "notebook")}</span>${title}</h1>
       ${st ? html`<p class="status"><span class="dot ${st.tone || ""}" aria-hidden="true"></span><span>${st.text}</span>${st.extra || nothing}</p>` : nothing}
@@ -2400,7 +2416,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     }
     return html`
       <section class="page">
-        ${this._renderHead(b.name, status, false, true, "Agora")}
+        ${this._renderHead(b.name, status, false, true, "Agora", true)}
         ${this._renderTline(groups, cur)}
         ${active && active.entries.length > 1
           ? html`<div class="switcher">
@@ -3258,7 +3274,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           <div class="dh-row">
             <button class="icon-btn" @click=${() => this._back()} aria-label="Voltar">${icon("chevron-left")}</button>
             <span class="grow"></span>
-            ${this._renderChatBtn()}${this._renderMicBtn()}
+            ${this._renderChatBtn()}${this._renderMicBtn()}${this._renderFullBtn()}
             <button class="icon-btn" @click=${() => this._openBlockSheet(b)} aria-label="Ajustes do bloco">${icon("sliders-horizontal")}</button>
           </div>
           <div class="dh-text">
@@ -3276,6 +3292,48 @@ class MemoriaApp extends ChatMixin(LitElement) {
         ${this._renderPad({ tall: true })}
       </section>
     `;
+  }
+
+  // ---------- Tela cheia (1.30.0)
+
+  /** Tela cheia is on and there is a notebook on screen (a wide screen: the block, or the Agora with one). */
+  _fullOn() {
+    if (!this._full || !this._wide) return false;
+    const v = this._view();
+    return v.name === "block" || (v.name === "now" && !!this._pad);
+  }
+
+  /** The button of the top of the notebook (wide screens). */
+  _renderFullBtn() {
+    return this._wide ? html`<button class="icon-btn full-btn" @click=${() => this._setFull(true)} aria-label="Tela cheia" title="Tela cheia">${icon("maximize")}</button>` : nothing;
+  }
+
+  /**
+   * Tela cheia: only the notebook (the top row and the line of when it opens go away; the bar at the bottom shows when
+   * the mouse goes down to it) and, when the browser lets, the whole screen (without the sidebar of the Home Assistant).
+   */
+  _setFull(on) {
+    this._haptic("light");
+    this._full = on;
+    let el = document.documentElement;
+    try {
+      // inside the Home Assistant, the frame of the app (the same origin): the whole screen is the app
+      if (window.frameElement) el = window.frameElement;
+    } catch {
+      // another origin around: only this page
+    }
+    const doc = el.ownerDocument;
+    if (this._fsDoc !== doc) {
+      if (this._fsDoc) this._fsDoc.removeEventListener("fullscreenchange", this._onFsChange);
+      this._fsDoc = doc;
+      doc.addEventListener("fullscreenchange", this._onFsChange);
+    }
+    try {
+      if (on && !doc.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
+      if (!on && doc.fullscreenElement && doc.exitFullscreen) doc.exitFullscreen().catch(() => {});
+    } catch {
+      // the browser doesn't let: only the app without its top
+    }
   }
 
   // ---------- Buscar

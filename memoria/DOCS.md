@@ -22,6 +22,10 @@ Na primeira vez já existem dois blocos de exemplo, **Diário** (abre à noite) 
 
 Numa tela larga (a partir de 1100 px, como um computador ou uma TV), o bloco aberto e o Agora mostram o caderno aberto, com a folha atual nas duas páginas. A página da esquerda não rola: as linhas que não cabem nela vão para a página da direita, que rola. Nada se repete, e uma linha nunca fica dividida entre as duas. Dá para escrever nas duas páginas: escrevendo, as linhas passam de uma para a outra e o cursor vai junto. As setas do teclado atravessam a espiral, e o Backspace no começo da direita junta a primeira linha dela com a última da esquerda. As caixas e os links funcionam nas duas, e as setas das bordas viram uma folha por vez.
 
+### Tela cheia
+
+Numa tela larga, o botão **Tela cheia** (ao lado do Conversar e do Falar, no bloco aberto e no Agora) deixa só o caderno: somem a linha dos botões e a de quando o bloco abre sozinho, e a folha cresce. A barra de baixo fica escondida, com uma faixa fina à vista; passe o mouse nela para a barra aparecer, com **Sair da tela cheia**. O **Esc** também sai. No navegador, a tela cheia ocupa o monitor todo (sem a barra lateral do Home Assistant), quando o navegador deixa.
+
 ### Caixas de marcar e Pronto
 
 Escrevendo, a barra de baixo (no lugar das abas, logo acima do teclado) vira a barra da escrita: **Caixa de marcar**, **Negrito**, **Maior**, **Cor**, **Emoji** e **Pronto**. Usar não fecha o teclado, e ali o menu do celular sobre uma seleção (Copiar, Colar…) não cobre os botões. **Pronto** sai da escrita (o teclado fecha, e as caixas e os links aparecem de novo). Fora da escrita, a **Caixa de marcar** fica no alto da folha, ao lado do número. No celular, a folha tem margens estreitas, para caber mais texto em cada linha.
