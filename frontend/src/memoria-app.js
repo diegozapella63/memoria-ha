@@ -174,7 +174,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     this._cache = { data: null, pages: new Map(), schedule: [] };
     this._onPopState = this._onPopState.bind(this);
     this._onVisible = this._onVisible.bind(this);
-    this._onResize = () => this._fitTitles();
+    this._onResize = () => (this._fitTitles(), this._syncCont());
     this._mql = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
     // 1.29.0: a wide screen (a computer): two sheets side by side, like an open notebook
     this._wideMq = window.matchMedia ? window.matchMedia(`(min-width: ${WIDE_MIN}px)`) : null;
@@ -312,6 +312,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
   updated(changed) {
     this.toggleAttribute("dark", this._dark);
     this._syncMirror(this.renderRoot.querySelector("textarea.ink.live"));
+    this._syncCont();
     this._markTabs();
     this._applyFolds();
     this._chatAfterRender();
@@ -914,40 +915,9 @@ class MemoriaApp extends ChatMixin(LitElement) {
     };
   }
 
-  /**
-   * 1.29.0: the two sheets on screen on a wide screen: (1, 2), (3, 4)… `from` is the index of the left one; `slots` the
-   * indexes shown (the one after the last page is the new sheet, there only when the last page has text); `prev` and
-   * `next` where the arrows go (a page id, "new" or null).
-   */
-  _spread(pad) {
-    const list = this._pagesOf(pad.block);
-    const page = pad.page !== "new" ? this._page(pad.page) : null;
-    const idx = page ? list.indexOf(page) : list.length;
-    const from = idx - (idx % 2);
-    const newOk = !list.length || !!list[list.length - 1].text.trim() || !page;
-    const at = (i) => (i < list.length ? list[i].id : i === list.length && newOk ? "new" : null);
-    return { list, from, slots: [from, from + 1].filter((i) => at(i)), prev: from > 0 ? list[from - 2].id : null, next: at(from + 2), at };
-  }
-
   _flip(dir) {
     if (this._turn || !this._pad) return;
     const pad = this._pad;
-    if (this._wide) {
-      const sp = this._spread(pad);
-      const target = dir > 0 ? sp.next : sp.prev;
-      if (!target) return this._haptic("light");
-      this._haptic("light");
-      const ta = this.renderRoot.querySelector("textarea.ink");
-      if (ta && this.renderRoot.activeElement === ta) ta.blur();
-      this._setPad({ block: pad.block, page: target });
-      if (target === "new") {
-        this.updateComplete.then(() => {
-          const t = this.renderRoot.querySelector("textarea.ink");
-          if (t) t.focus({ preventScroll: true });
-        });
-      }
-      return;
-    }
     const list = this._pagesOf(pad.block);
     const isNew = pad.page === "new" || !this._page(pad.page);
     const cur = isNew ? list.length : list.findIndex((p) => p.id === pad.page);
@@ -964,6 +934,14 @@ class MemoriaApp extends ChatMixin(LitElement) {
     }
     this._haptic("light");
     const to = { block: pad.block, page: target };
+    if (this._wide) {
+      // the open notebook of a wide screen: the sheet changes without the turning
+      const ta = this.renderRoot.querySelector("textarea.ink");
+      if (ta && this.renderRoot.activeElement === ta && target !== "new") ta.blur();
+      this._setPad(to);
+      if (target === "new") this.updateComplete.then(() => (this.renderRoot.querySelector("textarea.ink") || { focus() {} }).focus({ preventScroll: true }));
+      return;
+    }
     if (target === "new") {
       // Inside the tap, so the phone opens the keyboard.
       const ta = this.renderRoot.querySelector("textarea.ink");
@@ -2469,23 +2447,19 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const viewing = !!page && this._editing !== page.id && (hasLinks(page.text) || hasChecks(page.text) || hasFormat(page.text));
     // 1.28.0: writing a sheet with bold or colors, they show already (drawn over the editor, the marks faint)
     const liveFmt = !!page && this._editing === page.id && hasFormat(page.text);
-    // 1.29.0: on a wide screen, two sheets side by side (1 and 2, 3 and 4…); the one in use has the editor, a tap on the
-    // other one writes there; the arrows turn two at a time
-    const sp = this._wide ? this._spread(pad) : null;
-    const prevEdge = html`<button class="edge prev" @click=${() => this._flip(-1)} aria-label=${sp ? "Folhas anteriores" : "Folha anterior"}><span class="hint">${icon("chevron-left")}</span></button>`;
-    const nextEdge = (isNew) =>
-      html`<button class="edge next ${isNew ? "new" : ""}" @click=${() => this._flip(1)} aria-label=${isNew ? "Virar para uma folha nova" : sp ? "Próximas folhas" : "Próxima folha"}><span class="hint">${icon(isNew ? "plus" : "chevron-right")}</span></button>`;
-    const edgesOf = (i) =>
-      sp
-        ? html`${i === sp.from && sp.prev ? prevEdge : nothing}${i === sp.from + 1 || (i === sp.from && sp.slots.length === 1) ? (sp.next ? nextEdge(sp.next === "new") : nothing) : nothing}`
-        : html`${idx > 0 ? prevEdge : nothing}${canNext ? nextEdge(last) : nothing}`;
-    const active = html`<div class="leaf ${b.paper} ${sp ? (idx === sp.from ? "left" : "right") : ""}">
+    // 1.28.1: on a wide screen, the notebook open: the sheet on the left page and its text going on on the right one
+    const wide = this._wide;
+    const prevEdge = idx > 0 ? html`<button class="edge prev" @click=${() => this._flip(-1)} aria-label="Folha anterior"><span class="hint">${icon("chevron-left")}</span></button>` : nothing;
+    const nextEdge = canNext
+      ? html`<button class="edge next ${last ? "new" : ""}" @click=${() => this._flip(1)} aria-label=${last ? "Virar para uma folha nova" : "Próxima folha"}><span class="hint">${icon(last ? "plus" : "chevron-right")}</span></button>`
+      : nothing;
+    const active = html`<div class="leaf ${b.paper} ${wide ? "left" : ""}">
       ${this._renderLeafTop({ created: page ? page.created : null, times: page ? page.times : [], num: idx + 1, total }, !!page, true, this._editing != null && this._editing === pad.page)}
       ${viewing ? this._renderInkView(page, hand, `Folha ${idx + 1} de ${total} do bloco ${b.name}`) : nothing}
       <textarea
         class="ink ${hand ? "" : "normal"} ${viewing ? "behind" : ""} ${liveFmt ? "live" : ""}"
         data-size="off"
-        @scroll=${(e) => this._syncMirror(e.target)}
+        @scroll=${(e) => (this._syncMirror(e.target), this._syncCont())}
         .value=${live(page ? page.text : "")}
         placeholder=${page ? "" : idx === 0 ? "Escreva a primeira folha deste bloco…" : "Folha nova. Escreva aqui…"}
         spellcheck="true"
@@ -2502,16 +2476,16 @@ class MemoriaApp extends ChatMixin(LitElement) {
         }}
       ></textarea>
       ${liveFmt ? this._renderMirror(page.text, hand) : nothing}
-      ${edgesOf(idx)}
+      ${prevEdge}${wide ? nothing : nextEdge}
     </div>`;
-    const leaves = sp ? sp.slots.map((i) => (i === idx ? active : this._renderStillLeaf(b, list, i, total, hand, edgesOf(i), i === sp.from ? "left" : "right"))) : [active];
+    const leaves = wide ? [active, this._renderContLeaf(b, page, hand, viewing, nextEdge)] : [active];
     return html`
-      <div class="pad ${opts.tall ? "tall" : ""} ${sp ? "spread" : ""}" style=${this._cv(b)} @touchstart=${(e) => this._touchStart(e)} @touchend=${(e) => this._touchEnd(e)}>
+      <div class="pad ${opts.tall ? "tall" : ""} ${wide ? "spread" : ""}" style=${this._cv(b)} @touchstart=${(e) => this._touchStart(e)} @touchend=${(e) => this._touchEnd(e)}>
         <div class="pad-cover"></div>
         <div class="pad-stack"></div>
         ${leaves}
         <div class="spiral" aria-hidden="true">${RINGS}</div>
-        ${this._turn && !sp
+        ${this._turn && !wide
           ? html`<div class="turn ${this._turn.dir}" aria-hidden="true">
               <div class="face front leaf ${this._turn.snap.paper}">
                 ${this._renderLeafTop(this._turn.snap, false)}
@@ -2526,43 +2500,71 @@ class MemoriaApp extends ChatMixin(LitElement) {
   }
 
   /**
-   * 1.29.0: the other sheet of the two on a wide screen: as it reads (the boxes tick, the links open); a tap on the text
-   * writes there, with the cursor where it was tapped. After the last page, the new sheet.
+   * 1.28.1: the right page of the open notebook (a wide screen): the same sheet going on, from the line after the last one
+   * on the left page (it follows the left one when it scrolls). Written the same way as the left page (the editor's
+   * text with its marks, or the sheet as it reads), so the lines break in the same places. A tap writes there (the cursor
+   * goes to that point, on the left page); the boxes tick and the links open.
    */
-  _renderStillLeaf(b, list, i, total, hand, edges, side) {
-    const p = i < list.length ? list[i] : null;
+  _renderContLeaf(b, page, hand, viewing, edge) {
     const agora = this._view().name === "now";
-    const onCheck = p ? (agora ? (n) => this._markLine(p, n) : (n) => this._tickLine(p.id, n)) : null;
-    const rich = p && (hasLinks(p.text) || hasChecks(p.text) || hasFormat(p.text));
-    const n = p ? i + 1 : list.length + 1;
-    return html`<div class="leaf ${b.paper} still ${side}">
-      ${this._renderLeafTop({ created: p ? p.created : null, times: p ? p.times : [], num: n, total: p ? total : n }, false)}
+    const text = page ? page.text : "";
+    const onCheck = page ? (agora ? (n) => this._markLine(page, n) : (n) => this._tickLine(page.id, n)) : null;
+    return html`<div class="leaf ${b.paper} right cont">
+      <div class="leaf-top"></div>
       <div
-        class="ink ink-view ${hand ? "" : "normal"}"
-        role="textbox"
-        aria-readonly="true"
-        tabindex="0"
-        aria-label=${p ? `Folha ${n} do bloco ${b.name}` : "Folha nova"}
-        @click=${(e) => this._writeAt(e, p)}
-        @keydown=${(e) => e.key === "Enter" && !e.target.closest("a, .chk") && this._writeAt(e, p)}
-      >${p ? (rich ? this._inkParts(p.text, true, onCheck, agora ? this._marksOf(p.id) : null) : html`<span data-o="0">${p.text}</span>`) : html`<span class="ink-ph">Folha nova. Escreva aqui…</span>`}</div>
-      ${edges}
+        class="ink ink-view cont ${hand ? "" : "normal"}"
+        aria-hidden="true"
+        @click=${(e) => this._writeAt(e, page)}
+        @wheel=${(e) => this._contWheel(e)}
+      >${!page ? nothing : viewing ? this._inkParts(text, true, onCheck, agora ? this._marksOf(page.id) : null) : this._renderRuns(text)}</div>
+      ${edge}
     </div>`;
   }
 
-  /** 1.29.0: a tap on the other sheet of the two: it becomes the one being written, with the cursor where it was tapped. */
-  _writeAt(e, p) {
+  /** The left page of the open notebook: the editor, or the sheet as it reads. */
+  _contLeft() {
+    return this.renderRoot.querySelector(".pad.spread .leaf.left .ink-view") || this.renderRoot.querySelector(".pad.spread .leaf.left textarea.ink");
+  }
+
+  /** The right page goes on from the first line that isn't whole on the left one. */
+  _syncCont() {
+    const r = this.renderRoot.querySelector(".pad.spread .ink.cont");
+    const l = r && this._contLeft();
+    if (!l) return;
+    const cs = getComputedStyle(l);
+    const lh = parseFloat(cs.lineHeight) || 32;
+    const top = parseFloat(cs.paddingTop) || 0;
+    const j = Math.max(0, Math.floor((l.scrollTop + l.clientHeight - top) / lh));
+    const want = j * lh;
+    if (Math.abs(r.scrollTop - want) > 0.5) r.scrollTop = want;
+  }
+
+  /** The wheel over the right page scrolls the sheet (the left page; the right one follows). */
+  _contWheel(e) {
+    const l = this._contLeft();
+    if (!l || !e.deltaY) return;
+    e.preventDefault();
+    const lh = parseFloat(getComputedStyle(l).lineHeight) || 32;
+    l.scrollTop = Math.max(0, Math.round((l.scrollTop + e.deltaY) / lh) * lh);
+    this._syncCont();
+  }
+
+  /** A tap on the right page: writing at that point (on the left page, which scrolls to it). */
+  _writeAt(e, page) {
     if (e.target.closest && e.target.closest("a, .chk")) return;
-    const pad = this._pad;
-    if (!pad) return;
-    const at = p ? this._offsetAt(e, p) : 0;
-    this._setPad({ block: pad.block, page: p ? p.id : "new" });
+    const ta = this.renderRoot.querySelector("textarea.ink");
+    if (!ta) return;
+    const at = page ? this._offsetAt(e, page) : 0;
+    ta.focus({ preventScroll: true });
+    ta.setSelectionRange(at, at);
     this.updateComplete.then(() => {
-      const ta = this.renderRoot.querySelector("textarea.ink");
-      if (!ta) return;
-      ta.focus({ preventScroll: true });
+      if (this.renderRoot.activeElement !== ta) return;
       ta.setSelectionRange(at, at);
       this._scrollToCaret(ta, at);
+      // whole lines on the left page, so the right one starts on the next line
+      const lh = parseFloat(getComputedStyle(ta).lineHeight) || 32;
+      ta.scrollTop = Math.round(ta.scrollTop / lh) * lh;
+      this._syncCont();
     });
   }
 
@@ -2613,10 +2615,17 @@ class MemoriaApp extends ChatMixin(LitElement) {
    * the letters here (an outline), so everything stays aligned.
    */
   _renderMirror(text, hand) {
-    const runs = markRuns(text);
-    return html`<div class="ink ink-mirror ${hand ? "" : "normal"}" aria-hidden="true">${runs.map((r) =>
-      r.mark || r.bold || r.color ? html`<span class="${r.mark ? "mk" : ""} ${r.bold ? "lb" : ""} ${r.color ? `lc c-${r.color}` : ""}">${r.text}</span>` : r.text,
-    )}${/\n$/.test(text) ? " " : ""}</div>`;
+    return html`<div class="ink ink-mirror ${hand ? "" : "normal"}" aria-hidden="true">${this._renderRuns(text)}</div>`;
+  }
+
+  /** The text as the editor has it, with the bold and the colors (the marks faint); data-o: where each part starts. */
+  _renderRuns(text) {
+    let at = 0;
+    return html`${markRuns(text).map((r) => {
+      const o = at;
+      at += r.text.length;
+      return html`<span data-o=${o} class="${r.mark ? "mk" : ""} ${r.bold ? "lb" : ""} ${r.color ? `lc c-${r.color}` : ""}">${r.text}</span>`;
+    })}${/\n$/.test(text) ? " " : ""}`;
   }
 
   _syncMirror(ta) {
@@ -2628,7 +2637,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     // in the Agora, ticking is only for this time of the sheet (the text stays as it is); in Blocos, it writes the box
     const agora = this._view().name === "now";
     const onCheck = agora ? (n) => this._markLine(page, n) : (n) => this._tickLine(page.id, n);
-    return html`<div class="ink ink-view ${hand ? "" : "normal"}" role="textbox" aria-readonly="true" aria-label=${label} tabindex="0" @click=${(e) => this._editFromView(e, page)} @keydown=${(e) => e.key === "Enter" && !e.target.closest("a, .chk") && this._editFromView(e, page)}>${this._inkParts(page.text, true, onCheck, agora ? this._marksOf(page.id) : null)}</div>`;
+    return html`<div class="ink ink-view ${hand ? "" : "normal"}" role="textbox" aria-readonly="true" aria-label=${label} tabindex="0" @scroll=${() => this._syncCont()} @click=${(e) => this._editFromView(e, page)} @keydown=${(e) => e.key === "Enter" && !e.target.closest("a, .chk") && this._editFromView(e, page)}>${this._inkParts(page.text, true, onCheck, agora ? this._marksOf(page.id) : null)}</div>`;
   }
 
   /** The time of the Agora on screen ("AAAA-MM-DDTHH:MM"): the one holding now, or the next time of one peeked at. */

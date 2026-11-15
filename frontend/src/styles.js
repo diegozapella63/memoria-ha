@@ -3291,13 +3291,16 @@ export const notebookStyles = css`
     background: none;
     color: var(--ink);
   }
-  .ink-mirror .mk {
+  .ink-mirror .mk,
+  .ink.cont .mk {
     opacity: 0.3;
   }
-  .ink-mirror .lb {
+  .ink-mirror .lb,
+  .ink.cont .lb {
     -webkit-text-stroke: 0.04em currentColor;
   }
-  .ink-mirror .lc {
+  .ink-mirror .lc,
+  .ink.cont .lc {
     color: var(--fc);
   }
   /* escrevendo, um arrasto passa do alto do app: a página do Home Assistant em volta, que o teclado empurrou, volta */
@@ -3326,8 +3329,8 @@ export const notebookStyles = css`
       width: 22px;
     }
   }
-  /* 1.29.0: numa tela larga, duas folhas lado a lado, como um caderno aberto (a espiral no meio); a outra folha mostra o
-     texto como ele fica, e um toque nela escreve ali */
+  /* 1.28.1: numa tela larga, o caderno aberto: a folha na página da esquerda e o texto dela continuando na da direita (a
+     espiral no meio); as duas com um número inteiro de linhas, para a direita começar na linha seguinte */
   .page:has(.pad.spread) {
     max-width: 1320px;
   }
@@ -3337,18 +3340,29 @@ export const notebookStyles = css`
     column-gap: 30px;
     margin-left: 8px;
   }
+  .pad.spread .leaf {
+    min-height: 0;
+    height: calc(48px + round(down, var(--page-h) - 48px, 32px));
+  }
   .pad.spread .leaf.left {
     border-radius: 11px 4px 4px 11px;
   }
   .pad.spread .spiral {
     left: calc(50% - 22px);
   }
-  .leaf.still .ink-view {
-    cursor: text;
+  .pad.spread .ink {
+    scrollbar-gutter: stable;
   }
-  .ink-ph {
-    color: var(--ink-soft);
-    opacity: 0.7;
+  .leaf.cont .ink.cont {
+    overflow: hidden;
+    cursor: text;
+    clip-path: inset(4px 0 0 0);
+  }
+  /* room to go on to the last line (the right page scrolls past the end of the text) */
+  .leaf.cont .ink.cont::after {
+    content: "";
+    display: block;
+    height: 200vh;
   }
   .edge.next::after {
     /* turned-up page corner */

@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.28.1
+
+- **Tela grande**: o caderno aberto mostra a folha atual nas duas páginas, com o texto continuando na da direita, em vez de duas folhas diferentes. Um toque na direita escreve naquele ponto; as setas viram uma folha por vez.
+
 ## 1.28.0
 
 - **Folha › barra da escrita**: escrevendo, a barra de baixo vira a da escrita, logo acima do teclado: **Caixa de marcar**, **Negrito**, **Cor**, **Emoji** e **Pronto**. O menu do celular sobre uma seleção (Copiar, Colar…) não cobre mais os botões.

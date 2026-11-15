@@ -18,9 +18,9 @@ Na primeira vez já existem dois blocos de exemplo, **Diário** (abre à noite) 
 - Folhas deixadas em branco somem sozinhas.
 - No **⋯** da folha: horário próprio, mover para outro bloco, **Adicionar link**, copiar o texto ou arrancar a folha (com **Desfazer**).
 
-### Duas folhas lado a lado
+### Caderno aberto na tela grande
 
-Numa tela larga (a partir de 1100 px, como um computador), o bloco aberto e o Agora mostram duas folhas lado a lado, como um caderno aberto: 1 e 2, 3 e 4… A folha em uso tem a escrita; um toque no texto da outra passa a escrever nela, com o cursor onde você tocou (as caixas e os links da outra continuam funcionando). As setas viram de duas em duas, e depois da última folha com texto aparece a folha nova ao lado.
+Numa tela larga (a partir de 1100 px, como um computador ou uma TV), o bloco aberto e o Agora mostram o caderno aberto: a folha atual na página da esquerda e o texto dela continuando na página da direita, a partir da linha seguinte. Ao rolar a folha (na esquerda, ou com a roda do mouse sobre a direita), a direita acompanha. A escrita fica na página da esquerda; um toque no texto da direita escreve naquele ponto (a folha rola até ele). As caixas e os links da direita continuam funcionando, e as setas viram uma folha por vez.
 
 ### Caixas de marcar e Pronto
 
