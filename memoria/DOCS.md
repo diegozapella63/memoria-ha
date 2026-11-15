@@ -20,7 +20,7 @@ Na primeira vez já existem dois blocos de exemplo, **Diário** (abre à noite) 
 
 ### Caderno aberto na tela grande
 
-Numa tela larga (a partir de 1100 px, como um computador ou uma TV), o bloco aberto e o Agora mostram o caderno aberto: a folha atual na página da esquerda e o texto dela continuando na página da direita, a partir da linha seguinte. Ao rolar a folha (na esquerda, ou com a roda do mouse sobre a direita), a direita acompanha. A escrita fica na página da esquerda; um toque no texto da direita escreve naquele ponto (a folha rola até ele). As caixas e os links da direita continuam funcionando, e as setas viram uma folha por vez.
+Numa tela larga (a partir de 1100 px, como um computador ou uma TV), o bloco aberto e o Agora mostram o caderno aberto, com a folha atual nas duas páginas. A página da esquerda não rola: as linhas que não cabem nela vão para a página da direita, que rola. Nada se repete, e uma linha nunca fica dividida entre as duas. Dá para escrever nas duas páginas: escrevendo, as linhas passam de uma para a outra e o cursor vai junto. As setas do teclado atravessam a espiral, e o Backspace no começo da direita junta a primeira linha dela com a última da esquerda. As caixas e os links funcionam nas duas, e as setas das bordas viram uma folha por vez.
 
 ### Caixas de marcar e Pronto
 

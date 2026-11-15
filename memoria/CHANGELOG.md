@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.29.1
+
+- **Tela grande**: a página da esquerda do caderno aberto não rola mais. O que não cabe nela vai para a página da direita, que rola, sem repetir nada. Dá para escrever nas duas.
+
 ## 1.29.0
 
 - **Folha › Maior**: na barra da escrita, deixa maior a linha do cursor (um título), ou a parte selecionada. Combina com o negrito e a cor; o tamanho aparece no **Pronto**.

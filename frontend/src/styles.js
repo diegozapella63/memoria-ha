@@ -3160,8 +3160,7 @@ export const notebookStyles = css`
   }
   /* escrevendo, o tamanho só aparece no Pronto (as letras desenhadas por cima do editor têm a largura das dele): até lá,
      a parte maior fica sublinhada */
-  .ink-mirror .lg,
-  .ink.cont .lg {
+  .ink-mirror .lg {
     text-decoration: underline dotted;
     text-decoration-thickness: 1.5px;
     text-underline-offset: 5px;
@@ -3315,16 +3314,13 @@ export const notebookStyles = css`
     background: none;
     color: var(--ink);
   }
-  .ink-mirror .mk,
-  .ink.cont .mk {
+  .ink-mirror .mk {
     opacity: 0.3;
   }
-  .ink-mirror .lb,
-  .ink.cont .lb {
+  .ink-mirror .lb {
     -webkit-text-stroke: 0.04em currentColor;
   }
-  .ink-mirror .lc,
-  .ink.cont .lc {
+  .ink-mirror .lc {
     color: var(--fc);
   }
   /* escrevendo, um arrasto passa do alto do app: a página do Home Assistant em volta, que o teclado empurrou, volta */
@@ -3353,8 +3349,8 @@ export const notebookStyles = css`
       width: 22px;
     }
   }
-  /* 1.28.1: numa tela larga, o caderno aberto: a folha na página da esquerda e o texto dela continuando na da direita (a
-     espiral no meio); as duas com um número inteiro de linhas, para a direita começar na linha seguinte */
+  /* 1.29.1: numa tela larga, o caderno aberto: a página da esquerda não rola (as linhas que não cabem vão para a da
+     direita, que rola); as duas com um número inteiro de linhas (a espiral no meio) */
   .page:has(.pad.spread) {
     max-width: 1320px;
   }
@@ -3377,16 +3373,24 @@ export const notebookStyles = css`
   .pad.spread .ink {
     scrollbar-gutter: stable;
   }
-  .leaf.cont .ink.cont {
+  .pad.spread .leaf.left .ink {
     overflow: hidden;
-    cursor: text;
-    clip-path: inset(4px 0 0 0);
+    padding-bottom: 0;
   }
-  /* room to go on to the last line (the right page scrolls past the end of the text) */
-  .leaf.cont .ink.cont::after {
-    content: "";
-    display: block;
-    height: 200vh;
+  .pad.spread .ink.blank {
+    cursor: text;
+  }
+  /* a cópia escondida da folha toda, linha por linha, que diz quantas cabem na esquerda */
+  .leaf .ink.measure {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 44px;
+    height: auto;
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
+    background: none;
   }
   .edge.next::after {
     /* turned-up page corner */

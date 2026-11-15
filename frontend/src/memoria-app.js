@@ -174,7 +174,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     this._cache = { data: null, pages: new Map(), schedule: [] };
     this._onPopState = this._onPopState.bind(this);
     this._onVisible = this._onVisible.bind(this);
-    this._onResize = () => (this._fitTitles(), this._syncCont());
+    this._onResize = () => (this._fitTitles(), this._measureSplit());
     this._mql = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
     // 1.29.0: a wide screen (a computer): two sheets side by side, like an open notebook
     this._wideMq = window.matchMedia ? window.matchMedia(`(min-width: ${WIDE_MIN}px)`) : null;
@@ -311,8 +311,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   updated(changed) {
     this.toggleAttribute("dark", this._dark);
-    this._syncMirror(this.renderRoot.querySelector("textarea.ink.live"));
-    this._syncCont();
+    for (const t of this.renderRoot.querySelectorAll("textarea.ink.live")) this._syncMirror(t);
+    this._measureSplit();
     this._markTabs();
     this._applyFolds();
     this._chatAfterRender();
@@ -652,7 +652,12 @@ class MemoriaApp extends ChatMixin(LitElement) {
   // ------------------------------------------------------------ saving
 
   _onInk(ev) {
-    const text = ev.target.value;
+    const spread = this._spreadText();
+    if (spread != null) this._caretAbs = this._absOf(ev.target, ev.target.selectionStart);
+    this._onInkText(spread != null ? spread : ev.target.value);
+  }
+
+  _onInkText(text) {
     const pad = this._pad;
     if (!pad) return;
     this._lastTyped = Date.now();
@@ -2445,27 +2450,32 @@ class MemoriaApp extends ChatMixin(LitElement) {
     // a sheet with links or boxes, not being written: the links as short chips and the boxes to tick (tap the text to write)
     // 1.27.0: also with a part in bold or in a color (the marks show only while writing)
     const viewing = !!page && this._editing !== page.id && (hasLinks(page.text) || hasChecks(page.text) || hasFormat(page.text));
-    // 1.28.0: writing a sheet with bold or colors, they show already (drawn over the editor, the marks faint)
-    const liveFmt = !!page && this._editing === page.id && hasFormat(page.text);
-    // 1.28.1: on a wide screen, the notebook open: the sheet on the left page and its text going on on the right one
+    const writing = !!page && this._editing === page.id;
+    const label = `Folha ${idx + 1} de ${total} do bloco ${b.name}`;
+    // 1.29.1: on a wide screen, the notebook open: the left page doesn't scroll, what doesn't fit on it goes on on the right
+    // page (which scrolls); each page has its own part of the sheet to write in (whole lines: a line is never split)
     const wide = this._wide;
+    const sp = wide ? this._splitOf(page, viewing) : null;
     const prevEdge = idx > 0 ? html`<button class="edge prev" @click=${() => this._flip(-1)} aria-label="Folha anterior"><span class="hint">${icon("chevron-left")}</span></button>` : nothing;
     const nextEdge = canNext
       ? html`<button class="edge next ${last ? "new" : ""}" @click=${() => this._flip(1)} aria-label=${last ? "Virar para uma folha nova" : "Próxima folha"}><span class="hint">${icon(last ? "plus" : "chevron-right")}</span></button>`
       : nothing;
-    const active = html`<div class="leaf ${b.paper} ${wide ? "left" : ""}">
-      ${this._renderLeafTop({ created: page ? page.created : null, times: page ? page.times : [], num: idx + 1, total }, !!page, true, this._editing != null && this._editing === pad.page)}
-      ${viewing ? this._renderInkView(page, hand, `Folha ${idx + 1} de ${total} do bloco ${b.name}`) : nothing}
+    // the text of a page (all of it, or a part of the open notebook): the sheet as it reads, the editor and, writing with
+    // bold or colors, the letters drawn over it
+    const ink = (text, base, n0, part) => html`
+      ${viewing ? this._renderInkView(page, hand, label, text, base, n0) : nothing}
       <textarea
-        class="ink ${hand ? "" : "normal"} ${viewing ? "behind" : ""} ${liveFmt ? "live" : ""}"
+        class="ink ${hand ? "" : "normal"} ${viewing ? "behind" : ""} ${writing && hasFormat(text) ? "live" : ""}"
         data-size="off"
-        @scroll=${(e) => (this._syncMirror(e.target), this._syncCont())}
-        .value=${live(page ? page.text : "")}
-        placeholder=${page ? "" : idx === 0 ? "Escreva a primeira folha deste bloco…" : "Folha nova. Escreva aqui…"}
+        data-part=${part}
+        @scroll=${(e) => this._syncMirror(e.target)}
+        .value=${live(text)}
+        placeholder=${page || part === "r" ? "" : idx === 0 ? "Escreva a primeira folha deste bloco…" : "Folha nova. Escreva aqui…"}
         spellcheck="true"
-        aria-label="Folha ${idx + 1} de ${total} do bloco ${b.name}"
+        aria-label=${part === "r" ? `${label}, continuação` : label}
         @input=${(e) => this._onInk(e)}
         @beforeinput=${(e) => this._onBeforeInk(e)}
+        @keydown=${(e) => sp && this._inkKeys(e)}
         @focus=${() => ((this._editing = pad.page), this._writing(true))}
         @blur=${() => {
           this._editing = null;
@@ -2475,10 +2485,24 @@ class MemoriaApp extends ChatMixin(LitElement) {
           setTimeout(() => this._tick(), 400);
         }}
       ></textarea>
-      ${liveFmt ? this._renderMirror(page.text, hand) : nothing}
-      ${prevEdge}${wide ? nothing : nextEdge}
-    </div>`;
-    const leaves = wide ? [active, this._renderContLeaf(b, page, hand, viewing, nextEdge)] : [active];
+      ${writing && hasFormat(text) ? this._renderMirror(text, hand) : nothing}
+    `;
+    const top = this._renderLeafTop({ created: page ? page.created : null, times: page ? page.times : [], num: idx + 1, total }, !!page, true, this._editing != null && this._editing === pad.page);
+    const leaves = sp
+      ? [
+          html`<div class="leaf ${b.paper} left">
+            ${top}${ink(sp.left, 0, 0, "l")}${this._renderMeasure(page, hand, viewing)}${prevEdge}
+          </div>`,
+          html`<div class="leaf ${b.paper} right">
+            <div class="leaf-top"></div>
+            ${sp.right != null ? ink(sp.right, sp.left.length + 1, sp.L, "r") : html`<div class="ink blank" @click=${() => this._inkReady()}></div>`}${nextEdge}
+          </div>`,
+        ]
+      : [
+          html`<div class="leaf ${b.paper}">
+            ${top}${ink(page ? page.text : "", 0, 0, "")}${prevEdge}${nextEdge}
+          </div>`,
+        ];
     return html`
       <div class="pad ${opts.tall ? "tall" : ""} ${wide ? "spread" : ""}" style=${this._cv(b)} @touchstart=${(e) => this._touchStart(e)} @touchend=${(e) => this._touchEnd(e)}>
         <div class="pad-cover"></div>
@@ -2500,78 +2524,132 @@ class MemoriaApp extends ChatMixin(LitElement) {
   }
 
   /**
-   * 1.28.1: the right page of the open notebook (a wide screen): the same sheet going on, from the line after the last one
-   * on the left page (it follows the left one when it scrolls). Written the same way as the left page (the editor's
-   * text with its marks, or the sheet as it reads), so the lines break in the same places. A tap writes there (the cursor
-   * goes to that point, on the left page); the boxes tick and the links open.
+   * 1.29.1: the open notebook: the lines of the sheet on the left page (as many as fit, whole) and the rest on the right
+   * one. How many fit is measured after each drawing (_measureSplit) and kept for that sheet and that way of showing it.
    */
-  _renderContLeaf(b, page, hand, viewing, edge) {
-    const agora = this._view().name === "now";
-    const text = page ? page.text : "";
-    const onCheck = page ? (agora ? (n) => this._markLine(page, n) : (n) => this._tickLine(page.id, n)) : null;
-    return html`<div class="leaf ${b.paper} right cont">
-      <div class="leaf-top"></div>
-      <div
-        class="ink ink-view cont ${hand ? "" : "normal"}"
-        aria-hidden="true"
-        @click=${(e) => this._writeAt(e, page)}
-        @wheel=${(e) => this._contWheel(e)}
-      >${!page ? nothing : viewing ? this._inkParts(text, true, onCheck, agora ? this._marksOf(page.id) : null) : this._renderRuns(text)}</div>
-      ${edge}
-    </div>`;
+  _splitOf(page, viewing) {
+    const lines = (page ? page.text : "").split("\n");
+    const key = `${page ? page.id : "new"}|${viewing ? "v" : "e"}`;
+    // the same sheet shown the other way (starting to write, or done): the split of before until it is measured again
+    const same = this._split && this._split.key.split("|")[0] === key.split("|")[0];
+    const L = same ? Math.max(1, Math.min(lines.length, this._split.L)) : lines.length;
+    return { key, L, left: lines.slice(0, L).join("\n"), right: L < lines.length ? lines.slice(L).join("\n") : null };
   }
 
-  /** The left page of the open notebook: the editor, or the sheet as it reads. */
-  _contLeft() {
-    return this.renderRoot.querySelector(".pad.spread .leaf.left .ink-view") || this.renderRoot.querySelector(".pad.spread .leaf.left textarea.ink");
+  /**
+   * The whole sheet, hidden, on the left page, line by line: how far down each line goes says how many fit there (the
+   * editor's text with its marks while writing, or the sheet as it reads).
+   */
+  _renderMeasure(page, hand, viewing) {
+    const lines = (page ? page.text : "").split("\n");
+    return html`<div class="ink measure ${viewing ? "ink-view" : ""} ${hand ? "" : "normal"}" aria-hidden="true">${lines.map(
+      (line, i) => html`<span class="ln">${viewing ? this._inkParts(line) : line}\u200b</span>${i < lines.length - 1 ? "\n" : ""}`,
+    )}</div>`;
   }
 
-  /** The right page goes on from the first line that isn't whole on the left one. */
-  _syncCont() {
-    const r = this.renderRoot.querySelector(".pad.spread .ink.cont");
-    const l = r && this._contLeft();
-    if (!l) return;
-    const cs = getComputedStyle(l);
-    const lh = parseFloat(cs.lineHeight) || 32;
-    const top = parseFloat(cs.paddingTop) || 0;
-    const j = Math.max(0, Math.floor((l.scrollTop + l.clientHeight - top) / lh));
-    const want = j * lh;
-    if (Math.abs(r.scrollTop - want) > 0.5) r.scrollTop = want;
+  /** After drawing the open notebook: how many lines fit on the left page; then the cursor where it was in the sheet. */
+  _measureSplit() {
+    const leaf = this.renderRoot.querySelector(".pad.spread .leaf.left");
+    const m = leaf && leaf.querySelector(".measure");
+    const pad = this._pad;
+    if (!m || !pad) return;
+    const left = leaf.querySelector(".ink-view:not(.measure)") || leaf.querySelector("textarea.ink");
+    const page = pad.page !== "new" ? this._page(pad.page) : null;
+    const viewing = !!left && left.classList.contains("ink-view");
+    const key = `${page ? page.id : "new"}|${viewing ? "v" : "e"}`;
+    const room = left.getBoundingClientRect().top + left.clientHeight + 0.5;
+    const spans = [...m.querySelectorAll(".ln")];
+    let L = 0;
+    for (const sp of spans) {
+      const rs = sp.getClientRects();
+      const bottom = rs.length ? rs[rs.length - 1].bottom : 0;
+      if (bottom > room) break;
+      L++;
+    }
+    L = Math.max(1, L);
+    if (!this._split || this._split.key !== key || this._split.L !== L) {
+      this._split = { key, L };
+      this.requestUpdate();
+      return;
+    }
+    // the cursor where it was in the sheet (a line that went to the other page takes the cursor with it)
+    const at = this._caretAbs;
+    this._caretAbs = null;
+    if (at == null) return;
+    const tas = [...this.renderRoot.querySelectorAll(".pad.spread textarea.ink")];
+    // the editor with the cursor may have gone (its lines went to the other page): the cursor goes to the new one
+    const act = this.renderRoot.activeElement;
+    if (!tas.length || (act && !tas.includes(act))) return;
+    const l = tas[0];
+    const ta = at <= l.value.length || tas.length < 2 ? l : tas[1];
+    const pos = ta === l ? Math.min(at, l.value.length) : Math.min(at - l.value.length - 1, ta.value.length);
+    if (this.renderRoot.activeElement !== ta) ta.focus({ preventScroll: true });
+    if (ta.selectionStart !== pos || ta.selectionEnd !== pos) ta.setSelectionRange(pos, pos);
+    if (ta !== l) this._scrollToCaret(ta, pos);
   }
 
-  /** The wheel over the right page scrolls the sheet (the left page; the right one follows). */
-  _contWheel(e) {
-    const l = this._contLeft();
-    if (!l || !e.deltaY) return;
-    e.preventDefault();
-    const lh = parseFloat(getComputedStyle(l).lineHeight) || 32;
-    l.scrollTop = Math.max(0, Math.round((l.scrollTop + e.deltaY) / lh) * lh);
-    this._syncCont();
+  /** The editors of the open notebook: the text of the sheet is theirs together, a line break between them. */
+  _spreadText() {
+    const tas = [...this.renderRoot.querySelectorAll(".pad.spread textarea.ink")];
+    return tas.length ? tas.map((t) => t.value).join("\n") : null;
   }
 
-  /** A tap on the right page: writing at that point (on the left page, which scrolls to it). */
-  _writeAt(e, page) {
-    if (e.target.closest && e.target.closest("a, .chk")) return;
-    const ta = this.renderRoot.querySelector("textarea.ink");
-    if (!ta) return;
-    const at = page ? this._offsetAt(e, page) : 0;
-    ta.focus({ preventScroll: true });
-    ta.setSelectionRange(at, at);
-    this.updateComplete.then(() => {
-      if (this.renderRoot.activeElement !== ta) return;
-      ta.setSelectionRange(at, at);
-      this._scrollToCaret(ta, at);
-      // whole lines on the left page, so the right one starts on the next line
-      const lh = parseFloat(getComputedStyle(ta).lineHeight) || 32;
-      ta.scrollTop = Math.round(ta.scrollTop / lh) * lh;
-      this._syncCont();
-    });
+  /** Where a place of an editor is in the whole sheet. */
+  _absOf(ta, pos) {
+    if (ta.dataset.part !== "r") return pos;
+    const l = this.renderRoot.querySelector('.pad.spread textarea.ink[data-part="l"]');
+    return (l ? l.value.length + 1 : 0) + pos;
+  }
+
+  /**
+   * The keys between the two pages: the arrows go on to the other page, Backspace at the start of the right page joins
+   * its first line to the last one of the left page, Delete at the end of the left page the other way round.
+   */
+  _inkKeys(e) {
+    const ta = e.target;
+    const tas = [...this.renderRoot.querySelectorAll(".pad.spread textarea.ink")];
+    if (tas.length < 2 || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    const [l, r] = tas;
+    const s = ta.selectionStart;
+    if (s !== ta.selectionEnd) return;
+    const go = (to, pos) => {
+      e.preventDefault();
+      to.focus({ preventScroll: true });
+      to.setSelectionRange(pos, pos);
+      if (to === r) this._scrollToCaret(r, pos);
+    };
+    if (ta === l) {
+      const lastStart = l.value.lastIndexOf("\n") + 1;
+      if (e.key === "ArrowRight" && s === l.value.length) return go(r, 0);
+      if (e.key === "ArrowDown" && s >= lastStart) return go(r, Math.min(s - lastStart, r.value.split("\n")[0].length));
+      if (e.key === "Delete" && s === l.value.length) {
+        e.preventDefault();
+        return this._inkPutAbs(`${l.value}${r.value}`, s);
+      }
+    } else {
+      const firstEnd = r.value.indexOf("\n") < 0 ? r.value.length : r.value.indexOf("\n");
+      const lastStart = l.value.lastIndexOf("\n") + 1;
+      if (e.key === "ArrowLeft" && s === 0) return go(l, l.value.length);
+      if (e.key === "ArrowUp" && s <= firstEnd) return go(l, Math.min(lastStart + s, l.value.length));
+      if (e.key === "Backspace" && s === 0) {
+        e.preventDefault();
+        return this._inkPutAbs(`${l.value}${r.value}`, l.value.length);
+      }
+    }
+  }
+
+  /** A new text of the sheet from the open notebook, with the cursor at `abs` in it (saved like the rest). */
+  _inkPutAbs(text, abs) {
+    this._caretAbs = abs;
+    this._onInkText(text);
+    this.requestUpdate();
   }
 
   /** The text of a sheet with each link as a chip (the name, or the site and a bit of the address) and each box to tick
    * (onCheck(n): the line n was ticked). */
-  _inkParts(text, live = false, onCheck = null, flips = null) {
-    if (!hasLinks(text) && !hasChecks(text) && !hasFormat(text)) return text;
+  _inkParts(text, live = false, onCheck = null, flips = null, base = 0, n0 = 0) {
+    // base and n0 (1.29.1): a part of the sheet (the right page of the open notebook) starts there and on that line
+    if (!hasLinks(text) && !hasChecks(text) && !hasFormat(text)) return base ? html`<span data-o=${base}>${text}</span>` : text;
     // no spaces between the parts: the text keeps its line breaks (pre-wrap); a part in bold or in a color without its
     // marks (data-o: where its text starts in the sheet, so a tap puts the cursor in the right place)
     const fmt = (t, at) =>
@@ -2587,7 +2665,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           : fmt(p.text, base + p.start),
       );
     const out = [];
-    let at = 0;
+    let at = base;
     const lines = String(text).split("\n");
     lines.forEach((line, n) => {
       const c = checkOf(line);
@@ -2598,7 +2676,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         const done = flips && flips.has(rest.replace(/\s+/g, " ").trim()) ? !c.done : c.done;
         const tick = (e) => {
           e.stopPropagation();
-          if (onCheck) onCheck(n);
+          if (onCheck) onCheck(n + n0);
         };
         out.push(html`<span class="chk-line ${done ? "done" : ""}"><span data-o=${at}>${c.indent}</span><button class="chk" role="checkbox" aria-checked=${done ? "true" : "false"} aria-label=${`${done ? "Desmarcar" : "Marcar como feito"}: ${rest.trim() || "item"}`} tabindex=${live ? "0" : "-1"} @click=${tick}>${icon("check")}</button>${parts(rest, at + c.len)}</span>`);
       }
@@ -2633,11 +2711,11 @@ class MemoriaApp extends ChatMixin(LitElement) {
     if (m && m.scrollTop !== ta.scrollTop) m.scrollTop = ta.scrollTop;
   }
 
-  _renderInkView(page, hand, label) {
+  _renderInkView(page, hand, label, text = page.text, base = 0, n0 = 0) {
     // in the Agora, ticking is only for this time of the sheet (the text stays as it is); in Blocos, it writes the box
     const agora = this._view().name === "now";
     const onCheck = agora ? (n) => this._markLine(page, n) : (n) => this._tickLine(page.id, n);
-    return html`<div class="ink ink-view ${hand ? "" : "normal"}" role="textbox" aria-readonly="true" aria-label=${label} tabindex="0" @scroll=${() => this._syncCont()} @click=${(e) => this._editFromView(e, page)} @keydown=${(e) => e.key === "Enter" && !e.target.closest("a, .chk") && this._editFromView(e, page)}>${this._inkParts(page.text, true, onCheck, agora ? this._marksOf(page.id) : null)}</div>`;
+    return html`<div class="ink ink-view ${hand ? "" : "normal"}" role="textbox" aria-readonly="true" aria-label=${label} tabindex="0" @click=${(e) => this._editFromView(e, page)} @keydown=${(e) => e.key === "Enter" && !e.target.closest("a, .chk") && this._editFromView(e, page)}>${this._inkParts(text, true, onCheck, agora ? this._marksOf(page.id) : null, base, n0)}</div>`;
   }
 
   /** The time of the Agora on screen ("AAAA-MM-DDTHH:MM"): the one holding now, or the next time of one peeked at. */
@@ -2730,12 +2808,14 @@ class MemoriaApp extends ChatMixin(LitElement) {
   /** The editor ready to take something: with the focus (inside the tap, so the phone opens the keyboard) and the cursor
    * at the end when it had no focus. */
   _inkReady() {
-    const ta = this.renderRoot.querySelector("textarea.ink");
-    if (!ta) return null;
-    if (this.renderRoot.activeElement !== ta) {
-      ta.focus({ preventScroll: true });
-      ta.setSelectionRange(ta.value.length, ta.value.length);
-    }
+    const tas = [...this.renderRoot.querySelectorAll(".pad textarea.ink")];
+    if (!tas.length) return null;
+    const on = tas.find((t) => t === this.renderRoot.activeElement);
+    if (on) return on;
+    // out of the editor: the end of the sheet (on the open notebook, the last page that has text)
+    const ta = tas[tas.length - 1];
+    ta.focus({ preventScroll: true });
+    ta.setSelectionRange(ta.value.length, ta.value.length);
     return ta;
   }
 
@@ -2749,7 +2829,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   /** Caixa de marcar: the line of the cursor becomes a box (or stops being one); out of the editor, a new box at the end. */
   _inkCheck() {
-    const focused = this.renderRoot.activeElement === this.renderRoot.querySelector("textarea.ink");
+    const focused = [...this.renderRoot.querySelectorAll(".pad textarea.ink")].includes(this.renderRoot.activeElement);
     const ta = this._inkReady();
     if (!ta) return;
     this._haptic("light");
@@ -2787,7 +2867,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   /** Pronto: out of the editor (the keyboard closes; a sheet with boxes or links shows them again). */
   _inkDone() {
-    const ta = this.renderRoot.querySelector("textarea.ink");
+    const ta = [...this.renderRoot.querySelectorAll(".pad textarea.ink")].find((t) => t === this.renderRoot.activeElement) || this.renderRoot.querySelector("textarea.ink");
     if (!ta) return;
     this._haptic("light");
     ta.blur();
@@ -2795,9 +2875,14 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   _editFromView(e, page) {
     if (e.target.closest && e.target.closest("a, .chk")) return;
-    const at = this._offsetAt(e, page);
-    const ta = this.renderRoot.querySelector("textarea.ink");
-    if (!ta) return;
+    const abs = this._offsetAt(e, page);
+    const tas = [...this.renderRoot.querySelectorAll(".pad textarea.ink")];
+    if (!tas.length) return;
+    // the open notebook (1.29.1): the page of that place; the lines may change pages while writing, the cursor goes along
+    const second = tas.length > 1 && abs > tas[0].value.length;
+    const ta = second ? tas[1] : tas[0];
+    const at = second ? abs - tas[0].value.length - 1 : abs;
+    if (tas.length > 1 || this._wide) this._caretAbs = abs;
     // inside the tap, so the phone opens the keyboard
     ta.focus({ preventScroll: true });
     ta.setSelectionRange(at, at);

@@ -1,7 +1,8 @@
-# MemorIA 1.28.1: numa tela larga (o computador, a TV), o caderno aberto: a folha atual na página da esquerda e o texto
-# dela continuando na da direita, a partir da linha seguinte (a direita acompanha quando a esquerda rola). Um toque na
-# direita escreve naquele ponto; a roda do mouse sobre ela rola a folha. As setas viram uma folha por vez. Abaixo de
-# 1100 px, uma página só, como antes. 1660 e 1100 px (claro e escuro) e 1099 px.
+# MemorIA 1.29.1: numa tela larga (o computador, a TV), o caderno aberto: a página da esquerda não rola; as linhas da
+# folha que não cabem nela vão para a página da direita, que rola. Cada página tem a sua parte da folha para escrever
+# (linhas inteiras), sem repetir nada: a da esquerda e depois a da direita são a folha. Escrevendo, as linhas passam de
+# uma página para a outra e o cursor vai junto; as setas e o Backspace atravessam a espiral. Abaixo de 1100 px, uma
+# página só, como antes. 1660 e 1100 px (claro e escuro) e 1099 px.
 #
 # Usa a prévia (sem servidor): cd frontend && npm run build, depois
 #   python3 tests/folhas_check.py [pasta das capturas]
@@ -29,19 +30,31 @@ def check(c, label):
 OVER = """(el) => {
   const W = window.innerWidth, bad = [];
   for (const e of el.renderRoot.querySelectorAll(".page *")) {
-    if (e.closest(".cat-filter, .who-filter, .tline")) continue;
+    if (e.closest(".cat-filter, .who-filter, .tline, .measure")) continue;
     const r = e.getBoundingClientRect();
     if (r.width && (r.right > W + 1 || r.left < -1)) bad.push(e.tagName.toLowerCase() + "." + [...e.classList].join(".") + " " + Math.round(r.left) + ".." + Math.round(r.right));
   }
   if (document.documentElement.scrollWidth > W) bad.push("page " + document.documentElement.scrollWidth);
   return bad.slice(0, 4);
 }"""
-TEXT = "Café da manhã\n\n" + "\n".join(f"Item {i} - 2 unidades" for i in range(1, 41))
-# the left page (the editor or the sheet as it reads) and the right one: [left scrollTop, left clientHeight, right
-# scrollTop, the line on top of the right page, widths]
-PAGES = """(el) => { const l = el._contLeft(), r = el.renderRoot.querySelector('.ink.cont');
-  const lh = parseFloat(getComputedStyle(l).lineHeight);
-  return { ls: l.scrollTop, lc: l.clientHeight, rs: r.scrollTop, lh, line: Math.round(r.scrollTop / lh), lw: l.clientWidth, rw: r.clientWidth, tag: l.tagName }; }"""
+# a sheet with a title in green and bold, a long paragraph and many short lines
+TEXT = "{verde:**☕ Café da manhã**}\n\n" + "\n".join(f"Item {i} - 2 unidades" for i in range(1, 15)) + "\n\nO café da manhã é a principal refeição: consuma alimentos que dão saciedade a longo prazo, com uma fonte de proteína.\n\n" + "\n".join(f"Linha final {i}" for i in range(1, 31))
+SHORT = "\n".join(f"Linha {i}" for i in range(1, 41))
+# the two pages: the editors (their text and whether they scroll) or the sheet as it reads
+PAGES = """(el) => { const q = (s) => el.renderRoot.querySelector(s);
+  const t = [...el.renderRoot.querySelectorAll('.pad.spread textarea.ink')];
+  const lv = q('.pad.spread .leaf.left .ink-view:not(.measure)'), rv = q('.pad.spread .leaf.right .ink-view');
+  const left = lv || t[0], right = rv || t[1];
+  return { l: t[0] ? t[0].value : null, r: t[1] ? t[1].value : null, lscroll: left.scrollHeight > left.clientHeight + 1,
+    rscroll: right ? right.scrollHeight > right.clientHeight + 1 : null, view: !!lv, focus: el.renderRoot.activeElement && el.renderRoot.activeElement.dataset ? el.renderRoot.activeElement.dataset.part || null : null,
+    pos: el.renderRoot.activeElement && el.renderRoot.activeElement.selectionStart }; }"""
+PUT = "(el, [id, t]) => { const p = el._page(id); el._putPage({ ...p, text: t }); el.requestUpdate(); }"
+TEXT_OF = "(el, id) => el._page(id).text"
+
+
+def focus(a, part, pos):
+    a.evaluate(f"(el) => {{ const t = el.renderRoot.querySelector('.pad.spread textarea.ink[data-part=\"{part}\"]'); t.focus(); t.setSelectionRange({pos}, {pos}); }}")
+
 
 with sync_playwright() as p:
     b = p.chromium.launch()
@@ -58,78 +71,103 @@ with sync_playwright() as p:
         a.evaluate("(el) => el._go('/bloco/ideias00001')")
         pg.wait_for_timeout(800)
         pages = a.evaluate("(el) => el._pagesOf('ideias00001').map((p) => p.id)")
+        pid = pages[1]
         if w < 1100:
-            check(a.locator(".pad.spread").count() == 0 and a.locator(".pad > .leaf").count() == 1, f"{tag}: abaixo de 1100 px, uma página só")
+            check(a.locator(".pad.spread").count() == 0 and a.locator(".pad > .leaf").count() == 1 and a.locator(".pad textarea.ink").count() == 1, f"{tag}: abaixo de 1100 px, uma página só")
             check(a.evaluate(OVER) == [], f"{tag}: nada passa da largura {a.evaluate(OVER)}")
             pg.screenshot(path=str(SHOTS / f"folhas-{scheme}-{w}.png"))
             check(not errs, f"{tag}: sem erros {errs}")
             ctx.close()
             continue
 
-        # ---- o caderno aberto: a folha atual dos dois lados, a espiral no meio
+        # ---- o caderno aberto: duas páginas da folha atual, a espiral no meio
         lv = a.evaluate("(el) => [...el.renderRoot.querySelectorAll('.pad > .leaf')].map((x) => { const r = x.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right), Math.round(r.top), Math.round(r.height)]; })")
         check(a.locator(".pad.spread").count() == 1 and len(lv) == 2 and lv[0][1] < lv[1][0] and lv[0][2] == lv[1][2] and lv[0][3] == lv[1][3], f"{tag}: duas páginas lado a lado, na mesma altura ({lv})")
-        box = a.evaluate("(el) => { const r = el.renderRoot.querySelector('.ink.cont').getBoundingClientRect(), f = el.renderRoot.querySelector('.leaf.cont').getBoundingClientRect(); return [Math.round(r.bottom), Math.round(f.bottom)]; }")
-        check(box[0] <= box[1], f"{tag}: o texto da direita (e as linhas do papel) não passa da página ({box})")
-        nums = a.locator(".pad .leaf .num").all_inner_texts()
-        check(nums == ["2/2"], f"{tag}: as duas páginas são da mesma folha, a atual (um número só: {nums})")
+        check(a.locator(".pad .leaf .num").all_inner_texts() == ["2/2"], f"{tag}: as duas são da folha atual (um número só)")
         sp = a.locator(".pad .spiral").bounding_box()
         check(lv[0][1] - 20 <= sp["x"] and sp["x"] + sp["width"] <= lv[1][0] + 30, f"{tag}: a espiral no meio")
-        check(lv[1][1] - lv[0][0] > 0.6 * w, f"{tag}: o caderno aproveita a largura ({lv[1][1] - lv[0][0]} de {w})")
 
-        # ---- uma folha comprida: a direita continua da linha seguinte à última da esquerda
-        a.evaluate(f"(el, t) => {{ const p = el._page('{pages[1]}'); el._putPage({{ ...p, text: t }}); el.requestUpdate(); }}", TEXT)
-        pg.wait_for_timeout(500)
+        # ---- uma folha comprida, lendo: a esquerda não rola; a direita continua, sem repetir, e rola
+        a.evaluate(PUT, [pid, TEXT])
+        pg.wait_for_timeout(600)
         g = a.evaluate(PAGES)
-        whole = (g["lc"] - 4) / g["lh"]
-        check(g["lw"] == g["rw"], f"{tag}: as duas páginas com a mesma largura de texto (as linhas quebram igual) ({g['lw']}, {g['rw']})")
-        check(abs(whole - round(whole)) < 0.01 and g["line"] == round(whole), f"{tag}: a esquerda com linhas inteiras e a direita começando na seguinte ({g})")
+        check(g["view"] and not g["lscroll"] and g["rscroll"], f"{tag}: lendo, a esquerda sem rolagem e a direita com ({g['lscroll']}, {g['rscroll']})")
+        check(g["l"] + "\n" + g["r"] == TEXT, f"{tag}: a esquerda e depois a direita são a folha, sem repetir nada")
+        left_lines = g["l"].split("\n")
+        check(10 < len(left_lines) < 30 and g["r"].split("\n")[0] == TEXT.split("\n")[len(left_lines)], f"{tag}: a direita começa na linha seguinte à última da esquerda ({left_lines[-1]!r} | {g['r'].split(chr(10))[0]!r})")
+        check(a.evaluate(OVER) == [], f"{tag}: nada passa da largura {a.evaluate(OVER)}")
         pg.screenshot(path=str(SHOTS / f"folhas-{scheme}-{w}.png"))
-        a.evaluate("(el) => { el._contLeft().scrollTop = 96; }")
-        pg.wait_for_timeout(300)
-        g2 = a.evaluate(PAGES)
-        check(g2["line"] == g["line"] + 3, f"{tag}: a esquerda rola 3 linhas, a direita acompanha ({g2['line']})")
-        r = a.locator(".ink.cont").bounding_box()
-        pg.mouse.move(r["x"] + 100, r["y"] + 100)
-        pg.mouse.wheel(0, -96)
-        pg.wait_for_timeout(300)
-        g3 = a.evaluate(PAGES)
-        check(g3["ls"] == 0 and g3["line"] == g["line"], f"{tag}: a roda do mouse sobre a direita rola a folha ({g3})")
 
-        # ---- um toque na direita escreve naquele ponto (a esquerda rola até lá)
-        pg.mouse.click(r["x"] + 140, r["y"] + 4 + g["lh"] * 2 + 12)
-        pg.wait_for_timeout(500)
-        st = a.evaluate("(el) => { const ta = el.renderRoot.querySelector('textarea.ink'); return [el._editing, ta.value.slice(0, ta.selectionStart).split('\\n').length]; }")
-        check(st[0] == pages[1] and st[1] == g["line"] + 3, f"{tag}: o toque na direita escreve na linha tocada ({st}, esperada {g['line'] + 3})")
-        g4 = a.evaluate(PAGES)
-        check(g4["tag"] == "TEXTAREA" and g4["ls"] % g4["lh"] == 0 and g4["line"] * g4["lh"] == g4["ls"] + round(whole) * g4["lh"], f"{tag}: a esquerda mostra o cursor, em linhas inteiras, e a direita continua dela ({g4})")
-        pg.keyboard.type("Novo ")
-        pg.wait_for_timeout(300)
-        check("Novo " in a.evaluate(f"(el) => el._page('{pages[1]}').text"), f"{tag}: escreve na folha atual")
+        # ---- um toque na direita escreve nela, ali
+        rv = a.locator(".pad.spread .leaf.right .ink-view").bounding_box()
+        pg.mouse.click(rv["x"] + 120, rv["y"] + 4 + 32 * 2 + 14)
+        pg.wait_for_timeout(600)
+        g = a.evaluate(PAGES)
+        check(g["focus"] == "r" and not g["view"] and not g["lscroll"], f"{tag}: o toque na direita escreve nela ({g['focus']})")
+        check(g["l"] + "\n" + g["r"] == TEXT, f"{tag}: escrevendo, também sem repetir nada")
+        row = g["r"][: g["pos"]].count("\n")
+        check(1 <= row <= 4, f"{tag}: o cursor na linha tocada ({row})")
+        pg.keyboard.type("Ok ")
+        pg.wait_for_timeout(400)
+        check("Ok " in a.evaluate(TEXT_OF, pid) and a.evaluate(PAGES)["focus"] == "r", f"{tag}: escreve na folha, pela direita")
         check(a.locator("nav.write").count() == 1, f"{tag}: com a barra da escrita embaixo")
         pg.screenshot(path=str(SHOTS / f"folhas-{scheme}-{w}-escrevendo.png"))
-        check(a.evaluate(OVER) == [], f"{tag}: nada passa da largura {a.evaluate(OVER)}")
         a.locator("nav.write .ink-done").click()
         pg.wait_for_timeout(400)
 
-        # ---- as setas viram uma folha por vez: a anterior (na esquerda) e a nova (na direita)
+        # ---- linhas curtas, a esquerda cheia: o Enter no fim dela leva a linha nova (e o cursor) para a direita
+        a.evaluate(PUT, [pid, SHORT])
+        pg.wait_for_timeout(600)
+        a.locator(".pad.spread .leaf.left textarea.ink").click()
+        pg.wait_for_timeout(300)
+        g = a.evaluate(PAGES)
+        n = len(g["l"].split("\n"))
+        check(g["l"].split("\n")[-1] == f"Linha {n}" and g["r"].split("\n")[0] == f"Linha {n + 1}" and not g["lscroll"], f"{tag}: a esquerda cheia, linhas inteiras ({n} linhas)")
+        focus(a, "l", len(g["l"]))
+        pg.keyboard.press("Enter")
+        pg.keyboard.type("x")
+        pg.wait_for_timeout(500)
+        g = a.evaluate(PAGES)
+        check(g["focus"] == "r" and g["pos"] == 1 and g["r"].split("\n")[0] == "x" and not g["lscroll"], f"{tag}: a linha nova não cabe: vai para a direita, com o cursor ({g['focus']}, {g['pos']}, {g['r'][:12]!r})")
+        check(a.evaluate(TEXT_OF, pid).startswith(g["l"] + "\nx\nLinha"), f"{tag}: e a folha é a mesma, com o x no lugar")
+        # Backspace no começo da direita junta com a última linha da esquerda
+        focus(a, "r", 0)
+        pg.keyboard.press("Backspace")
+        pg.wait_for_timeout(500)
+        g = a.evaluate(PAGES)
+        check(g["focus"] == "l" and g["l"].endswith(f"Linha {n}x") and g["pos"] == len(g["l"]) - 1, f"{tag}: o Backspace no começo da direita junta com a esquerda ({g['l'][-12:]!r}, {g['pos']})")
+        # as setas atravessam a espiral
+        focus(a, "l", len(g["l"]))
+        pg.keyboard.press("ArrowRight")
+        pg.wait_for_timeout(200)
+        g = a.evaluate(PAGES)
+        check(g["focus"] == "r" and g["pos"] == 0, f"{tag}: a seta para a direita no fim da esquerda vai para a direita")
+        pg.keyboard.press("ArrowLeft")
+        pg.wait_for_timeout(200)
+        g = a.evaluate(PAGES)
+        check(g["focus"] == "l" and g["pos"] == len(g["l"]), f"{tag}: e a seta para a esquerda volta")
+        # a Caixa de marcar na direita: a linha do cursor de lá
+        focus(a, "r", 2)
+        a.locator("nav.write .wbtn[aria-label='Caixa de marcar']").click()
+        pg.wait_for_timeout(400)
+        g = a.evaluate(PAGES)
+        check(g["focus"] == "r" and g["r"].split("\n")[0].startswith("☐ "), f"{tag}: a Caixa de marcar na linha do cursor da direita ({g['r'][:14]!r})")
+        a.locator("nav.write .ink-done").click()
+        pg.wait_for_timeout(400)
+
+        # ---- as setas das bordas viram uma folha por vez
         a.locator(".leaf.left .edge.prev").click()
         pg.wait_for_timeout(500)
-        check(a.evaluate("(el) => el._pad.page") == pages[0] and a.locator(".pad .leaf .num").all_inner_texts() == ["1/2"], f"{tag}: a seta da esquerda volta uma folha")
-        a.locator(".leaf.cont .edge.next").click()
+        check(a.evaluate("(el) => el._pad.page") == pages[0], f"{tag}: a seta da esquerda volta uma folha")
+        a.locator(".leaf.right .edge.next").click()
         pg.wait_for_timeout(500)
-        check(a.evaluate("(el) => el._pad.page") == pages[1], f"{tag}: a da direita vai para a próxima")
-        a.locator(".leaf.cont .edge.next").click()
-        pg.wait_for_timeout(500)
-        check(a.evaluate("(el) => [el._pad.page, el._editing]") == ["new", "new"], f"{tag}: depois da última, a folha nova, já escrevendo")
-        a.locator("nav.write .ink-done").click()
-        pg.wait_for_timeout(400)
+        check(a.evaluate("(el) => el._pad.page") == pid, f"{tag}: a da direita vai para a próxima")
 
-        # ---- o Agora também, com o caderno aberto
+        # ---- o Agora também
         a.locator("nav .tab", has_text="Agora").click()
         pg.wait_for_timeout(600)
         if a.locator(".pad").count():
-            check(a.locator(".pad.spread").count() == 1 and len(a.locator(".pad .leaf .num").all_inner_texts()) == 1, f"{tag}: no Agora também, a folha de agora nas duas páginas")
+            check(a.locator(".pad.spread").count() == 1 and len(a.locator(".pad .leaf .num").all_inner_texts()) == 1, f"{tag}: no Agora também, o caderno aberto da folha de agora")
             check(a.evaluate(OVER) == [], f"{tag}: Agora: nada passa da largura {a.evaluate(OVER)}")
             pg.screenshot(path=str(SHOTS / f"folhas-{scheme}-{w}-agora.png"))
         check(not errs, f"{tag}: sem erros {errs}")
