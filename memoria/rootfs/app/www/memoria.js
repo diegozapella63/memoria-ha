@@ -3470,13 +3470,16 @@ dialog.ss-wrap::backdrop{background:transparent}
   .pad.spread .ink.blank {
     cursor: text;
   }
-  /* a cópia escondida da folha toda, linha por linha, que diz quantas cabem na esquerda */
+  /* a cópia escondida da folha toda, linha por linha, que diz quantas cabem na esquerda (sem altura: o texto dela, por
+     mais comprido, não estica a tela) */
   .leaf .ink.measure {
     position: absolute;
     left: 0;
     right: 0;
     top: 44px;
-    height: auto;
+    height: 0;
+    min-height: 0;
+    padding-bottom: 0;
     overflow: hidden;
     visibility: hidden;
     pointer-events: none;

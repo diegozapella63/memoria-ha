@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.30.3
+
+- **Tela grande** e **Tela cheia**: uma folha comprida não deixa mais a tela rolando para um espaço vazio embaixo do caderno.
+
 ## 1.30.2
 
 - **Tela cheia**: o caderno ocupa a largura toda da tela, sem as bordas grandes dos lados.

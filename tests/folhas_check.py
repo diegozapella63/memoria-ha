@@ -48,6 +48,8 @@ PAGES = """(el) => { const q = (s) => el.renderRoot.querySelector(s);
   return { l: t[0] ? t[0].value : null, r: t[1] ? t[1].value : null, lscroll: left.scrollHeight > left.clientHeight + 1,
     rscroll: right ? right.scrollHeight > right.clientHeight + 1 : null, view: !!lv, focus: el.renderRoot.activeElement && el.renderRoot.activeElement.dataset ? el.renderRoot.activeElement.dataset.part || null : null,
     pos: el.renderRoot.activeElement && el.renderRoot.activeElement.selectionStart }; }"""
+# how far the screen scrolls past the bottom of the notebook
+TAIL = "(el) => { const m = el.renderRoot.querySelector('main'), p = el.renderRoot.querySelector('.pad'); return Math.round(m.scrollHeight - (p.getBoundingClientRect().bottom - m.getBoundingClientRect().top + m.scrollTop)); }"
 PUT = "(el, [id, t]) => { const p = el._page(id); el._putPage({ ...p, text: t }); el.requestUpdate(); }"
 TEXT_OF = "(el, id) => el._page(id).text"
 
@@ -96,6 +98,7 @@ with sync_playwright() as p:
         left_lines = g["l"].split("\n")
         check(10 < len(left_lines) < 30 and g["r"].split("\n")[0] == TEXT.split("\n")[len(left_lines)], f"{tag}: a direita começa na linha seguinte à última da esquerda ({left_lines[-1]!r} | {g['r'].split(chr(10))[0]!r})")
         check(a.evaluate(OVER) == [], f"{tag}: nada passa da largura {a.evaluate(OVER)}")
+        check(a.evaluate(TAIL) < 120, f"{tag}: a tela não rola além do caderno (a folha comprida não estica a página: {a.evaluate(TAIL)} px)")
         pg.screenshot(path=str(SHOTS / f"folhas-{scheme}-{w}.png"))
 
         # ---- um toque na direita escreve nela, ali
@@ -110,6 +113,7 @@ with sync_playwright() as p:
         pg.keyboard.type("Ok ")
         pg.wait_for_timeout(400)
         check("Ok " in a.evaluate(TEXT_OF, pid) and a.evaluate(PAGES)["focus"] == "r", f"{tag}: escreve na folha, pela direita")
+        check(a.evaluate(TAIL) < 120, f"{tag}: escrevendo, a tela também não rola além do caderno ({a.evaluate(TAIL)} px)")
         check(a.locator("nav.write").count() == 1, f"{tag}: com a barra da escrita embaixo")
         pg.screenshot(path=str(SHOTS / f"folhas-{scheme}-{w}-escrevendo.png"))
         a.locator("nav.write .ink-done").click()

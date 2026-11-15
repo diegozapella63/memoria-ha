@@ -82,6 +82,12 @@ with sync_playwright() as p:
         pg.mouse.move(w / 2, H / 2)
         pg.wait_for_timeout(400)
         check(a.evaluate(NAV)[0] >= H - 10, f"{tag}: o mouse sai, a barra se esconde")
+        # a tela cheia não rola: nada além do caderno, mesmo com uma folha comprida
+        a.evaluate("(el) => { const p = el._pagesOf('ideias00001')[1]; el._putPage({ ...p, text: Array.from({ length: 90 }, (_, i) => 'Linha ' + (i + 1)).join('\\n') }); el.requestUpdate(); }")
+        pg.wait_for_timeout(500)
+        tail = a.evaluate("(el) => { const m = el.renderRoot.querySelector('main'); return [m.scrollHeight, m.clientHeight]; }")
+        check(tail[0] <= tail[1] + 2, f"{tag}: a tela cheia não rola, mesmo com uma folha comprida ({tail})")
+        pg.screenshot(path=str(SHOTS / f"cheia-{scheme}-{w}-comprida.png"))
         # 1.30.2: só leitura: o clique no texto (nas duas páginas, numa folha sem links também) não entra na escrita
         a.evaluate("(el) => { const p = el._pagesOf('ideias00001')[1]; el._putPage({ ...p, text: 'Texto simples\\nsem links' }); el.requestUpdate(); }")
         pg.wait_for_timeout(400)

@@ -1,2 +1,2 @@
 // Written by frontend/build.mjs from memoria/config.yaml (the only place to change the version).
-export const VERSION = "1.30.2";
+export const VERSION = "1.30.3";
