@@ -3358,11 +3358,13 @@ export const notebookStyles = css`
   :host([full]) .arch-card {
     display: none;
   }
-  :host([full]) .page {
-    padding-top: 12px;
+  :host([full]) .page,
+  :host([full]) .page:has(.pad.spread) {
+    max-width: none;
+    padding: 12px 24px 24px;
   }
   :host([full]) .pad {
-    --page-h: clamp(420px, calc(100vh - 220px), 1600px);
+    --page-h: clamp(420px, calc(100vh - 200px), 1600px);
   }
   :host([full]) .pad.tall {
     --page-h: clamp(420px, calc(100vh - 150px), 1600px);
@@ -3379,6 +3381,11 @@ export const notebookStyles = css`
   :host([full]) nav:hover,
   :host([full]) nav:focus-within {
     transform: none;
+  }
+  /* só leitura: o texto não chama para escrever */
+  :host([full]) .pad .ink-view,
+  :host([full]) .pad .ink.blank {
+    cursor: default;
   }
   .full-exit {
     position: absolute;

@@ -2475,8 +2475,10 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const canNext = page && !(last && !page.text.trim());
     // a sheet with links or boxes, not being written: the links as short chips and the boxes to tick (tap the text to write)
     // 1.27.0: also with a part in bold or in a color (the marks show only while writing)
-    const viewing = !!page && this._editing !== page.id && (hasLinks(page.text) || hasChecks(page.text) || hasFormat(page.text));
-    const writing = !!page && this._editing === page.id;
+    // 1.30.2: Tela cheia is for reading (the TV of the house): a tap never starts writing; the boxes and the links still work
+    const readOnly = this._fullOn();
+    const viewing = !!page && (readOnly || (this._editing !== page.id && (hasLinks(page.text) || hasChecks(page.text) || hasFormat(page.text))));
+    const writing = !readOnly && !!page && this._editing === page.id;
     const label = `Folha ${idx + 1} de ${total} do bloco ${b.name}`;
     // 1.29.1: on a wide screen, the notebook open: the left page doesn't scroll, what doesn't fit on it goes on on the right
     // page (which scrolls); each page has its own part of the sheet to write in (whole lines: a line is never split)
@@ -2502,7 +2504,9 @@ class MemoriaApp extends ChatMixin(LitElement) {
         @input=${(e) => this._onInk(e)}
         @beforeinput=${(e) => this._onBeforeInk(e)}
         @keydown=${(e) => sp && this._inkKeys(e)}
-        @focus=${() => ((this._editing = pad.page), this._writing(true))}
+        ?readonly=${readOnly}
+        tabindex=${readOnly ? "-1" : "0"}
+        @focus=${(e) => (readOnly ? e.target.blur() : ((this._editing = pad.page), this._writing(true)))}
         @blur=${() => {
           this._editing = null;
           this._wpop = "";
@@ -2513,7 +2517,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       ></textarea>
       ${writing && hasFormat(text) ? this._renderMirror(text, hand) : nothing}
     `;
-    const top = this._renderLeafTop({ created: page ? page.created : null, times: page ? page.times : [], num: idx + 1, total }, !!page, true, this._editing != null && this._editing === pad.page);
+    const top = this._renderLeafTop({ created: page ? page.created : null, times: page ? page.times : [], num: idx + 1, total }, !!page, !readOnly, this._editing != null && this._editing === pad.page);
     const leaves = sp
       ? [
           html`<div class="leaf ${b.paper} left">
@@ -2521,7 +2525,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           </div>`,
           html`<div class="leaf ${b.paper} right">
             <div class="leaf-top"></div>
-            ${sp.right != null ? ink(sp.right, sp.left.length + 1, sp.L, "r") : html`<div class="ink blank" @click=${() => this._inkReady()}></div>`}${nextEdge}
+            ${sp.right != null ? ink(sp.right, sp.left.length + 1, sp.L, "r") : html`<div class="ink blank" @click=${() => !readOnly && this._inkReady()}></div>`}${nextEdge}
           </div>`,
         ]
       : [
@@ -2901,6 +2905,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   _editFromView(e, page) {
     if (e.target.closest && e.target.closest("a, .chk")) return;
+    if (this._fullOn()) return; // Tela cheia: only reading
     const abs = this._offsetAt(e, page);
     const tas = [...this.renderRoot.querySelectorAll(".pad textarea.ink")];
     if (!tas.length) return;
@@ -3335,6 +3340,10 @@ class MemoriaApp extends ChatMixin(LitElement) {
    */
   _setFull(on) {
     this._haptic("light");
+    if (on) {
+      const ta = [...this.renderRoot.querySelectorAll(".pad textarea.ink")].find((t) => t === this.renderRoot.activeElement);
+      if (ta) ta.blur();
+    }
     this._full = on;
     this._fullAgora();
     let el = document.documentElement;

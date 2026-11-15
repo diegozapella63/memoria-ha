@@ -1,5 +1,10 @@
 # Mudanças
 
+## 1.30.2
+
+- **Tela cheia**: o caderno ocupa a largura toda da tela, sem as bordas grandes dos lados.
+- **Tela cheia** é só para ler: um clique no texto não entra mais na escrita. As caixas de marcar e os links continuam funcionando, e as setas viram as folhas.
+
 ## 1.30.1
 
 - **Tela cheia**: o Agora mostra os blocos de todos, como na TV da casa, não só os de quem está usando. O botão também aparece no Agora quando não há nada agora.
