@@ -3333,7 +3333,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
   _fullOn() {
     if (!this._full || !this._wide) return false;
     const v = this._view();
-    return v.name === "block" || (v.name === "now" && !!this._pad);
+    // 1.31.1: the Agora also with nothing now (only the next times): the top and the bar hide as well
+    return v.name === "block" || v.name === "now";
   }
 
   /** Tela cheia on or off: the Agora shows what is on for everyone (or again for this person). */
@@ -3347,7 +3348,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
   /** The button of the top of the notebook (wide screens). */
   _renderFullBtn() {
     if (!this._wide) return nothing;
-    // on already (an Agora with nothing now still shows its top): the same button leaves it
+    // on already: the same button leaves it (in Tela cheia the top hides; Sair da tela cheia is in the bar, and Esc)
     const label = this._full ? "Sair da tela cheia" : "Tela cheia";
     return html`<button class="icon-btn full-btn ${this._full ? "on" : ""}" @click=${() => this._setFull(!this._full)} aria-label=${label} title=${label}>${icon(this._full ? "minimize" : "maximize")}</button>`;
   }

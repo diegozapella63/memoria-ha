@@ -148,6 +148,14 @@ with sync_playwright() as p:
         hb.click()
         pg.wait_for_timeout(400)
         check(a.evaluate("(el) => el._full") and a.evaluate("(el) => el._pad && el._block(el._pad.block).name") == "Treino", f"{tag}: ligada pelo Agora, o bloco de Beto")
+        # 1.31.1: nada agora para ninguém (só os próximos horários): a tela cheia também esconde o alto e a barra
+        a.evaluate("(el) => { el._data = { ...el._data, blocks: el._data.blocks.map((b) => ({ ...b, periods: [], times: [] })), pages: el._data.pages.map((p) => ({ ...p, times: [] })) }; el._fullAgora(); el.requestUpdate(); }")
+        pg.mouse.move(w / 2, H / 2)
+        pg.wait_for_timeout(500)
+        check(a.evaluate("(el) => !el._pad") and a.evaluate(SEEN, ".now-empty"), f"{tag}: nada agora")
+        check(a.evaluate("(el) => el.hasAttribute('full')") and not a.evaluate(SEEN, ".brand-head .head-row"), f"{tag}: nada agora: sem a linha do MemorIA, Conversar e Falar")
+        check(a.evaluate(NAV)[0] >= H - 10, f"{tag}: nada agora: a barra de baixo escondida")
+        pg.screenshot(path=str(SHOTS / f"cheia-{scheme}-{w}-nada.png"))
         pg.keyboard.press("Escape")
         pg.wait_for_timeout(400)
         # pelo Sair da tela cheia também

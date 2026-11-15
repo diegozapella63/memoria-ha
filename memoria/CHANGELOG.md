@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.31.1
+
+- **Tela cheia** no **Agora** sem nada agora (só os próximos horários): a linha do alto e a barra de baixo também ficam escondidas, como quando há uma folha. Para sair, passe o mouse embaixo (**Sair da tela cheia**) ou aperte **Esc**.
+
 ## 1.31.0
 
 - **Tela cheia**: as setas **←** e **→** do teclado passam as folhas do bloco. As folhas vão em roda: depois da última vem a primeira, e antes da primeira, a última (as setas das bordas também).
