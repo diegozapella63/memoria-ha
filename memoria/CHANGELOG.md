@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.27.1
+
+- **Buscar › Filtros**: fechado, mostra só o título, sem o nome ao lado.
+
 ## 1.27.0
 
 - **Folha › Negrito e cor**: escrevendo, o botão **T** no alto da folha abre **Negrito**, cinco cores e **Sem cor** para a parte selecionada do texto. Fora da escrita, ela aparece em negrito ou na cor.

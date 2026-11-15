@@ -3038,12 +3038,11 @@ class MemoriaApp extends ChatMixin(LitElement) {
    */
   _renderSearchFilters(who, withArch) {
     const shut = local.get(SEARCH_FOLD_KEY, false) === true;
-    const sum = [this._whoOn() ? (who === "*" ? "Todos" : clip(who, 18)) : "", withArch ? "com arquivados" : ""].filter(Boolean).join(" · ");
     return html`<button type="button" class="filters-label" id="filtros" aria-expanded=${shut ? "false" : "true"} @click=${() => {
         this._haptic("light");
         local.set(SEARCH_FOLD_KEY, !shut);
         this.requestUpdate();
-      }}>${icon("sliders-horizontal", "lbl-ic")}<span>Filtros</span>${shut && sum ? html`<span class="flt-sum">${sum}</span>` : nothing}</button>
+      }}>${icon("sliders-horizontal", "lbl-ic")}<span>Filtros</span></button>
       ${shut
         ? nothing
         : html`<div class="filtros" role="group" aria-labelledby="filtros">

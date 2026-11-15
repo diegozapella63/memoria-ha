@@ -2276,15 +2276,6 @@ export const styles = css`
     color: var(--rv-text);
     cursor: pointer;
   }
-  .filters-label .flt-sum {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-weight: 400;
-    font-size: 14px;
-    color: var(--rv-muted);
-  }
   .filters-label::after {
     content: "";
     flex: none;
