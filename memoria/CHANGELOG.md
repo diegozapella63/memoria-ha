@@ -1,5 +1,11 @@
 # Mudanças
 
+## 1.27.0
+
+- **Folha › Negrito e cor**: escrevendo, o botão **T** no alto da folha abre **Negrito**, cinco cores e **Sem cor** para a parte selecionada do texto. Fora da escrita, ela aparece em negrito ou na cor.
+- **Folha** no celular: margens menores, para caber mais texto em cada linha. Escrevendo, o alto da folha fica só com as ferramentas; a data volta no **Pronto**.
+- **Conversa**: o **Nova conversa** não quebra mais em duas linhas; num celular bem estreito, fica só o **+**.
+
 ## 1.26.0
 
 - **Nova folha › Escolher fotos ou PDF**: um PDF também vira texto da folha, lido pela IA (uma ata, um texto).

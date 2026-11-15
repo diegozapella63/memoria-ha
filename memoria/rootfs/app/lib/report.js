@@ -4,6 +4,7 @@
 // Voltar and Baixar PDF, the charts (by category, by block), a part per block with its sheets and, at the end, the
 // mark of CorrerIA Code as in Mais › Sobre. The PDF is made here (the app Home Assistant on the phone doesn't print
 // a page): the same parts, and the mark and the page at the foot of each page.
+import { stripFormat } from "./format.js";
 import { Pdf, wrap, textWidth } from "./pdf.js";
 import { parseLinks, linksToText, domainOf } from "./links.js";
 
@@ -41,7 +42,7 @@ export const readable = (text) =>
 /** A line of a sheet in the page: each link as its name and site, a link that opens outside. */
 export function lineHtml(text) {
   return parseLinks(text)
-    .map((p) => (p.type === "text" ? esc(p.text) : `<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.name ? `${p.name} (${domainOf(p.url)})` : p.label)}</a>`))
+    .map((p) => (p.type === "text" ? esc(stripFormat(p.text)) : `<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.name ? `${p.name} (${domainOf(p.url)})` : p.label)}</a>`))
     .join("");
 }
 

@@ -20,9 +20,10 @@ Na primeira vez já existem dois blocos de exemplo, **Diário** (abre à noite) 
 
 ### Caixas de marcar e Pronto
 
-No alto da folha, ao lado do número, fica **Caixa de marcar**; usar não fecha o teclado. Escrevendo, o **Pronto** fica no lugar do número: um toque sai da escrita (o teclado fecha, e as caixas e os links aparecem de novo). Os emojis são os do teclado do celular.
+No alto da folha, ao lado do número, fica **Caixa de marcar** (e, escrevendo, **Negrito e cor**); usar não fecha o teclado. No celular, a folha tem margens estreitas, para caber mais texto em cada linha. Escrevendo, o **Pronto** fica no lugar do número: um toque sai da escrita (o teclado fecha, e as caixas e os links aparecem de novo). Os emojis são os do teclado do celular.
 
 - **Caixa de marcar** transforma a linha onde está o cursor num item com caixa (☐); tocar de novo tira a caixa. Fora da escrita, ela põe um item novo no fim da folha.
+- **Negrito e cor** (o T, só escrevendo) abre uma barra com **Negrito**, cinco cores (vermelho, laranja, verde, azul e lilás) e **Sem cor**. Selecione uma parte do texto e toque: ela ganha as marcas (`**negrito**` ou `{azul:texto}`), que só aparecem enquanto você escreve; fora da escrita, a parte fica em negrito ou na cor. Tocar de novo no Negrito ou na mesma cor tira; outra cor troca. No relatório, nos títulos e nos outros apps vai só o texto.
 - Num item, o **Enter** já faz outro item embaixo. Enter num item vazio acaba a lista.
 - Fora da escrita, cada item mostra uma caixa: um toque marca como feito (o texto fica riscado), outro toque desmarca. Tocar no texto abre a escrita, como sempre.
 - No **Agora**, marcar vale só para aquela vez do trecho: a folha não muda (em **Blocos** ela aparece como está) e, na próxima vez que o trecho aparecer, as caixas voltam desmarcadas. Serve para listas de todo dia, como as refeições ou os remédios. Fora do Agora, em **Blocos**, marcar grava na folha.

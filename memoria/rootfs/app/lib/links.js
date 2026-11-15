@@ -2,6 +2,7 @@
 // (https://…, www.…) or one added with a name, kept as [Nome](https://…). Outside the editor, each link shows as a
 // short chip (the name, or the site and a bit of the address) instead of the long address. Only http and https.
 // Shared by the screen (frontend), the report and the sensor.
+import { stripFormat } from "./format.js";
 
 const MAX_NAME = 120;
 const TRAIL = /[.,;:!?…'"»”’*]$/;
@@ -129,8 +130,9 @@ export const hasLinks = (text) => parseLinks(text).some((p) => p.type === "link"
  * the PDF), "Nome (site)".
  */
 export function linksToText(text, { domain = false } = {}) {
+  // 1.27.0: without the marks of the bold and of the colors (format.js)
   return parseLinks(text)
-    .map((p) => (p.type === "text" ? p.text : p.name ? (domain ? `${p.name} (${domainOf(p.url)})` : p.name) : p.label))
+    .map((p) => (p.type === "text" ? stripFormat(p.text) : p.name ? (domain ? `${p.name} (${domainOf(p.url)})` : p.name) : p.label))
     .join("");
 }
 

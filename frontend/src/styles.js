@@ -3153,6 +3153,94 @@ export const notebookStyles = css`
     width: 18px;
     height: 18px;
   }
+  /* 1.27.0: Negrito e cor numa parte do texto (as marcas só aparecem ao escrever) e a barra do Formatar */
+  .fmt.b {
+    font-weight: 700;
+  }
+  .ink.normal .fmt.b {
+    font-weight: 700;
+  }
+  .fmt[class*="c-"] {
+    color: var(--fc);
+  }
+  .c-vermelho { --fc: #c42a1f; }
+  .c-laranja { --fc: #b45309; }
+  .c-verde { --fc: #3f7a17; }
+  .c-azul { --fc: #0b67a8; }
+  .c-lilas { --fc: #6d3fd6; }
+  :host([dark]) .c-vermelho { --fc: #ff7a70; }
+  :host([dark]) .c-laranja { --fc: #ffa23e; }
+  :host([dark]) .c-verde { --fc: #8bd45f; }
+  :host([dark]) .c-azul { --fc: #62b5ff; }
+  :host([dark]) .c-lilas { --fc: #b99bff; }
+  .fmt-bar {
+    flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    padding: 0 6px 6px 64px;
+    position: relative;
+    z-index: 5;
+  }
+  .fmt-bar button {
+    width: 38px;
+    height: 38px;
+    border: 0;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    background: none;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .fmt-bar button:active {
+    background: var(--rv-accent-soft);
+  }
+  .fmt-bar .i {
+    width: 20px;
+    height: 20px;
+  }
+  .fmt-bar .fmt-c span {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--fc);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  }
+  /* 1.27.0: no celular, as margens da folha menores, para caber mais texto em cada linha (a espiral e as bordas de virar
+     a folha continuam onde estavam) */
+  @media (max-width: 600px) {
+    .pad {
+      margin: 4px 2px 26px 10px;
+    }
+    .ink {
+      padding: 4px 22px 40px 42px;
+    }
+    .leaf-top {
+      padding-left: 40px;
+    }
+    .fmt-bar {
+      padding-left: 40px;
+    }
+    .leaf.pautado::before {
+      left: 34px;
+    }
+    .edge.prev {
+      width: 32px;
+    }
+    .edge.next {
+      width: 22px;
+    }
+  }
+  /* escrevendo num celular, o alto da folha é das ferramentas (a caixa, o Negrito e cor e o Pronto): a data e os horários
+     voltam no Pronto, em vez de ficarem cortados ("h…") */
+  @media (max-width: 440px) {
+    .leaf-top.editing .when,
+    .leaf-top.editing .pin {
+      display: none;
+    }
+  }
   .edge.next::after {
     /* turned-up page corner */
     content: "";

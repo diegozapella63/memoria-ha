@@ -63,7 +63,8 @@ with sync_playwright() as p:
         a.evaluate("(el) => el._openPage('ideias00001', 'new')")
         pg.wait_for_timeout(900)
         tools = a.locator(".leaf-top .tool")
-        check([tools.nth(i).get_attribute("aria-label") for i in range(tools.count())] == ["Caixa de marcar"], f"{tag}: no alto da folha, Caixa de marcar (sem os Emojis)")
+        got = [tools.nth(i).get_attribute("aria-label") for i in range(tools.count())]
+        check(got[:1] == ["Caixa de marcar"] and "Emojis" not in got, f"{tag}: no alto da folha, Caixa de marcar (sem os Emojis; 1.27.0: escrevendo, também Negrito e cor) ({got})")
         done = a.locator(".leaf-top .ink-done")
 
         # ---- Caixa de marcar e o Enter

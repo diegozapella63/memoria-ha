@@ -149,7 +149,10 @@ with sync_playwright() as p:
         check(arq == ["ata.pdf"] and sheet.locator(".chat-file").count() == 0, f"{tag}: the PDF goes with the message, its name in it ({arq})")
         check("o arquivo" in sheet.locator(".chat-msg.ia .chat-bubble").last.inner_text(), f"{tag}: and the AI answers about it")
         nova = sheet.locator(".chat-head .text-btn")
-        check(nova.inner_text().strip() == "Nova conversa", f"{tag}: Nova conversa, like the other apps")
+        check(nova.get_attribute("aria-label") == "Nova conversa" and nova.inner_text().strip() == ("" if w < 340 else "Nova conversa"), f"{tag}: Nova conversa, like the other apps (only the + at 320 px)")
+        kids = a.evaluate("""(el) => { const h = el.renderRoot.querySelector('.chat-head'); const r = h.getBoundingClientRect();
+          return [...h.children].map((x) => { const b = x.getBoundingClientRect(); return [Math.round(b.height), b.left >= r.left - 1 && b.right <= r.right + 1]; }); }""")
+        check(all(ok for _, ok in kids) and kids[1][0] <= 44, f"{tag}: the head in one line ({kids})")
         nova.click()
         pg.wait_for_timeout(300)
         check(sheet.locator(".chat-msg").count() == 0, f"{tag}: Nova conversa clears it")

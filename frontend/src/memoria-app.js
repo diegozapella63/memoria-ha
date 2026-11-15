@@ -12,6 +12,7 @@ import { Recorder, micError, VOICE_RATE, VOICE_MAX_S } from "./voice.js";
 import { PALETTE, colorById, colorVars, hexToRgba, fold, foldKeepLength, plural, clip, writtenAt, hm, newId, firstLine, prepareImage } from "./util.js";
 import { parentHass, detectDark } from "./api.js";
 import { parseLinks, hasLinks, linksToText, normalizeUrl } from "../../memoria/rootfs/app/lib/links.js";
+import { hasFormat, parseFormat, formatText, FORMAT_COLORS } from "../../memoria/rootfs/app/lib/format.js";
 import { appendLink, freeColor, checkOf, hasChecks, toggleCheck, CHECK_TODO } from "../../memoria/rootfs/app/lib/writing.js";
 import { PERIODS, PAPERS, DURATIONS, buildSchedule, currentAt, nextAfter, timeline, ahead, occurrence, minutesOf, fmtMin, periodAt, periodTimes, normTime, opensFor, sameName, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
 
@@ -2398,7 +2399,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const last = page && idx === list.length - 1;
     const canNext = page && !(last && !page.text.trim());
     // a sheet with links or boxes, not being written: the links as short chips and the boxes to tick (tap the text to write)
-    const viewing = !!page && this._editing !== page.id && (hasLinks(page.text) || hasChecks(page.text));
+    // 1.27.0: also with a part in bold or in a color (the marks show only while writing)
+    const viewing = !!page && this._editing !== page.id && (hasLinks(page.text) || hasChecks(page.text) || hasFormat(page.text));
     return html`
       <div class="pad ${opts.tall ? "tall" : ""}" style=${this._cv(b)} @touchstart=${(e) => this._touchStart(e)} @touchend=${(e) => this._touchEnd(e)}>
         <div class="pad-cover"></div>
@@ -2418,6 +2420,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
             @focus=${() => (this._editing = pad.page)}
             @blur=${() => {
               this._editing = null;
+              this._fmtOpen = false;
               if (page && this._saving.has(page.id)) this._flushSave(page.id);
               setTimeout(() => this._tick(), 400);
             }}
@@ -2445,13 +2448,20 @@ class MemoriaApp extends ChatMixin(LitElement) {
   /** The text of a sheet with each link as a chip (the name, or the site and a bit of the address) and each box to tick
    * (onCheck(n): the line n was ticked). */
   _inkParts(text, live = false, onCheck = null, flips = null) {
-    if (!hasLinks(text) && !hasChecks(text)) return text;
-    // no spaces between the parts: the text keeps its line breaks (pre-wrap)
+    if (!hasLinks(text) && !hasChecks(text) && !hasFormat(text)) return text;
+    // no spaces between the parts: the text keeps its line breaks (pre-wrap); a part in bold or in a color without its
+    // marks (data-o: where its text starts in the sheet, so a tap puts the cursor in the right place)
+    const fmt = (t, at) =>
+      parseFormat(t, at).map((f) =>
+        f.bold || f.color
+          ? html`<span data-o=${f.start} class="fmt ${f.bold ? "b" : ""} ${f.color ? `c-${f.color}` : ""}">${f.text}</span>`
+          : html`<span data-o=${f.start}>${f.text}</span>`,
+      );
     const parts = (s, base) =>
       parseLinks(s).map((p) =>
         p.type === "link"
           ? html`<a class="lnk" href=${p.url} target="_blank" rel="noopener noreferrer" title=${p.url} tabindex=${live ? "0" : "-1"} @click=${(e) => this._openLink(e, p.url)}>${icon("link")}<span>${p.label}</span></a>`
-          : html`<span data-o=${base + p.start}>${p.text}</span>`,
+          : fmt(p.text, base + p.start),
       );
     const out = [];
     let at = 0;
@@ -2676,11 +2686,36 @@ class MemoriaApp extends ChatMixin(LitElement) {
       ${tools
         ? html`<button type="button" class="icon-btn tool" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkCheck()} aria-label="Caixa de marcar" title="Caixa de marcar">${icon("square-check")}</button>`
         : nothing}
+      ${tools && editing
+        ? html`<button type="button" class="icon-btn tool ${this._fmtOpen ? "on" : ""}" @pointerdown=${keep} @mousedown=${keep} @click=${() => ((this._fmtOpen = !this._fmtOpen), this.requestUpdate())} aria-label="Negrito e cor" title="Negrito e cor" aria-expanded=${this._fmtOpen ? "true" : "false"}>${icon("type")}</button>`
+        : nothing}
       ${editing
         ? html`<button type="button" class="ink-done" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkDone()}>${icon("check")}Pronto</button>`
         : html`<span class="num">${s.num}/${s.total}</span>`}
       ${menu ? html`<button class="icon-btn" @click=${() => this._openPageMenu()} aria-label="Opções da folha">${icon("ellipsis")}</button>` : html`<span class="icon-btn ghost"></span>`}
-    </div>`;
+    </div>
+    ${tools && editing && this._fmtOpen
+      ? html`<div class="fmt-bar" role="toolbar" aria-label="Negrito e cor">
+          <button type="button" class="fmt-b" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkFormat("negrito")} aria-label="Negrito" title="Negrito">${icon("bold")}</button>
+          ${FORMAT_COLORS.map((c) => {
+            const col = colorById(c);
+            return html`<button type="button" class="fmt-c c-${c}" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkFormat(c)} aria-label=${col ? col.label : c} title=${col ? col.label : c}><span></span></button>`;
+          })}
+          <button type="button" class="fmt-x" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkFormat("sem-cor")} aria-label="Sem cor" title="Sem cor">${icon("eraser")}</button>
+        </div>`
+      : nothing}`;
+  }
+
+  /** Negrito e cor (1.27.0): the selection of the editor in bold, in a color, or back to the color of the ink. */
+  _inkFormat(kind) {
+    const ta = this._inkReady();
+    if (!ta) return;
+    this._haptic("light");
+    const r = formatText(ta.value, ta.selectionStart, ta.selectionEnd, kind);
+    if (r.text === ta.value) return;
+    ta.value = r.text;
+    ta.setSelectionRange(r.s, r.e);
+    ta.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
   }
 
   // ---------- Blocos
