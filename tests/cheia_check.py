@@ -104,6 +104,23 @@ with sync_playwright() as p:
         a.locator(".pad .edge.prev").click()
         pg.wait_for_timeout(400)
         check(a.evaluate("(el) => el._pagesOf('ideias00001').findIndex((p) => p.id === el._pad.page)") == 0 and a.evaluate("(el) => el._editing") is None, f"{tag}: as setas das bordas viram a folha, sem escrever")
+        # 1.31.0: as setas do teclado viram as folhas, em roda: depois da última, a primeira; antes da primeira, a última
+        IDX = "(el) => el._pagesOf('ideias00001').findIndex((p) => p.id === el._pad.page)"
+        n = a.evaluate("(el) => el._pagesOf('ideias00001').length")
+        seen = [a.evaluate(IDX)]
+        for _ in range(n):
+            pg.keyboard.press("ArrowRight")
+            pg.wait_for_timeout(250)
+            seen.append(a.evaluate(IDX))
+        check(n > 1 and seen == list(range(n)) + [0], f"{tag}: → passa as folhas e, depois da última, volta à primeira ({seen})")
+        pg.keyboard.press("ArrowLeft")
+        pg.wait_for_timeout(250)
+        check(a.evaluate(IDX) == n - 1, f"{tag}: ← na primeira vai à última")
+        check(a.locator(".pad .edge.next.new").count() == 0 and a.locator(".pad .edge.next").get_attribute("aria-label") == "Primeira folha", f"{tag}: na última, a borda leva à primeira (sem folha nova)")
+        a.locator(".pad .edge.next").click()
+        pg.wait_for_timeout(300)
+        check(a.evaluate(IDX) == 0 and a.evaluate("(el) => el._editing") is None, f"{tag}: a borda também volta à primeira, sem escrever")
+        check(a.locator(".pad .edge.prev").get_attribute("aria-label") == "Última folha", f"{tag}: na primeira, a borda da esquerda leva à última")
         pg.mouse.move(w / 2, H / 2)
         # o Agora também
         a.locator("nav .tab", has_text="Agora").evaluate("(e) => e.click()")

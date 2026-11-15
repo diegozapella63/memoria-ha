@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.31.0
+
+- **Tela cheia**: as setas **←** e **→** do teclado passam as folhas do bloco. As folhas vão em roda: depois da última vem a primeira, e antes da primeira, a última (as setas das bordas também).
+
 ## 1.30.3
 
 - **Tela grande** e **Tela cheia**: uma folha comprida não deixa mais a tela rolando para um espaço vazio embaixo do caderno.

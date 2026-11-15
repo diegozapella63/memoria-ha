@@ -182,7 +182,16 @@ class MemoriaApp extends ChatMixin(LitElement) {
     this._wide = !!(this._wideMq && this._wideMq.matches);
     this._onWide = () => (this._wide = !!(this._wideMq && this._wideMq.matches));
     // 1.30.0: Tela cheia: Esc leaves it (a window open over it closes first); leaving the fullscreen of the browser too
-    this._onFullKey = (e) => e.key === "Escape" && this._full && !this._sheet && this._setFull(false);
+    // Tela cheia: Esc leaves it; the arrows ← → go through the sheets (1.31.0)
+    this._onFullKey = (e) => {
+      if (!this._full || this._sheet || e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.key === "Escape") return this._setFull(false);
+      if ((e.key !== "ArrowRight" && e.key !== "ArrowLeft") || !this._fullOn()) return;
+      const t = e.composedPath()[0];
+      if (t && /^(INPUT|SELECT)$/.test(t.tagName || "")) return;
+      e.preventDefault();
+      this._flip(e.key === "ArrowRight" ? 1 : -1);
+    };
     this._onFsChange = () => {
       const d = this._fsDoc;
       if (d && d.fullscreenElement) this._fsOn = true;
@@ -951,8 +960,13 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const list = this._pagesOf(pad.block);
     const isNew = pad.page === "new" || !this._page(pad.page);
     const cur = isNew ? list.length : list.findIndex((p) => p.id === pad.page);
+    // Tela cheia (1.31.0): round, no new sheet
+    const ring = this._fullOn() && list.length > 1;
     let target;
-    if (dir > 0) {
+    if (ring && !isNew && dir > 0 && cur >= list.length - 1) target = list[0].id;
+    else if (ring && dir < 0 && cur <= 0) target = list[list.length - 1].id;
+    else if (this._fullOn() && dir > 0 && (isNew || cur >= list.length - 1)) return this._haptic("light");
+    else if (dir > 0) {
       if (isNew) return this._haptic("light");
       if (cur >= list.length - 1) {
         if (!list[cur].text.trim()) return this._showToast("Esta folha ainda está em branco");
@@ -2484,8 +2498,12 @@ class MemoriaApp extends ChatMixin(LitElement) {
     // page (which scrolls); each page has its own part of the sheet to write in (whole lines: a line is never split)
     const wide = this._wide;
     const sp = wide ? this._splitOf(page, viewing) : null;
-    const prevEdge = idx > 0 ? html`<button class="edge prev" @click=${() => this._flip(-1)} aria-label="Folha anterior"><span class="hint">${icon("chevron-left")}</span></button>` : nothing;
-    const nextEdge = canNext
+    // 1.31.0: in Tela cheia the sheets go round (after the last, the first; before the first, the last), no new sheet
+    const ring = readOnly && !!page && list.length > 1;
+    const prevEdge = idx > 0 || ring ? html`<button class="edge prev" @click=${() => this._flip(-1)} aria-label=${idx > 0 ? "Folha anterior" : "Última folha"}><span class="hint">${icon("chevron-left")}</span></button>` : nothing;
+    const nextEdge = ring
+      ? html`<button class="edge next" @click=${() => this._flip(1)} aria-label=${last ? "Primeira folha" : "Próxima folha"}><span class="hint">${icon("chevron-right")}</span></button>`
+      : canNext && !readOnly
       ? html`<button class="edge next ${last ? "new" : ""}" @click=${() => this._flip(1)} aria-label=${last ? "Virar para uma folha nova" : "Próxima folha"}><span class="hint">${icon(last ? "plus" : "chevron-right")}</span></button>`
       : nothing;
     // the text of a page (all of it, or a part of the open notebook): the sheet as it reads, the editor and, writing with
