@@ -127,6 +127,27 @@ with sync_playwright() as p:
         check(len(qk) >= 1 and sheet.locator(".chat-quick .chat-ed-open").count() == 1, f"{tag}: Perguntas prontas at any moment, with Editar perguntas ({qk})")
         sheet.locator(".chat-qbtn").click()
         pg.wait_for_timeout(200)
+        # 1.26.0: the round button (the microphone with the box empty, Enviar writing) and the clip
+        check(sheet.locator(".chat-mic").count() == 1 and sheet.locator(".chat-send").count() == 0, f"{tag}: empty box: the microphone, no Enviar beside it")
+        sheet.locator(".chat-input textarea").fill("oi")
+        check(sheet.locator(".chat-send").count() == 1 and sheet.locator(".chat-mic").count() == 0, f"{tag}: writing: Enviar in the place of the microphone")
+        sheet.locator(".chat-input textarea").fill("")
+        sheet.locator(".chat-clip").click()
+        pg.wait_for_timeout(200)
+        ops = [t.strip() for t in sheet.locator(".chat-menu .chat-op").all_inner_texts()]
+        check(ops == ["Tirar foto", "Escolher fotos", "Escolher arquivo"], f"{tag}: the clip: Tirar foto, Escolher fotos, Escolher arquivo ({ops})")
+        check(a.evaluate(OVER) == [] if "OVER" in globals() else True, f"{tag}: the clip inside the screen")
+        pg.screenshot(path=str(SHOTS / f"conversa-{scheme}-{w}-clipe.png"))
+        with pg.expect_file_chooser() as fc:
+            sheet.locator(".chat-op", has_text="Escolher arquivo").click()
+        fc.value.set_files(files=[{"name": "ata.pdf", "mimeType": "application/pdf", "buffer": b"%PDF-1.4 ata"}])
+        pg.wait_for_timeout(500)
+        check(sheet.locator(".chat-file .chat-pdf").count() == 1 and sheet.locator(".chat-file-n").inner_text().strip() == "ata.pdf", f"{tag}: the PDF chosen, before sending")
+        sheet.locator(".chat-send").click()
+        pg.wait_for_timeout(1300)
+        arq = [t.strip() for t in sheet.locator(".chat-msg.me .chat-arq").all_inner_texts()]
+        check(arq == ["ata.pdf"] and sheet.locator(".chat-file").count() == 0, f"{tag}: the PDF goes with the message, its name in it ({arq})")
+        check("o arquivo" in sheet.locator(".chat-msg.ia .chat-bubble").last.inner_text(), f"{tag}: and the AI answers about it")
         nova = sheet.locator(".chat-head .text-btn")
         check(nova.inner_text().strip() == "Nova conversa", f"{tag}: Nova conversa, like the other apps")
         nova.click()

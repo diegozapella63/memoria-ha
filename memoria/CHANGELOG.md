@@ -1,5 +1,11 @@
 # Mudanças
 
+## 1.26.0
+
+- **Nova folha › Escolher fotos ou PDF**: um PDF também vira texto da folha, lido pela IA (uma ata, um texto).
+- **Conversa › Clipe**: manda junto uma foto ou um PDF: **Tirar foto**, **Escolher fotos** (a galeria) ou **Escolher arquivo**. A IA olha o arquivo para responder e pode propor criar a folha com o que leu.
+- **Conversa**: o microfone e o Enviar dividem o mesmo botão, como no WhatsApp: com a caixa vazia, o microfone; escrevendo, o Enviar.
+
 ## 1.25.0
 
 - **Buscar › Filtros**: o De quem e o Incluir arquivados fecham e abrem num toque no título. Fechado, ele mostra o que está valendo e continua fechado ao voltar.

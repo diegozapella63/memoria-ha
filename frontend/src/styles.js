@@ -1565,6 +1565,17 @@ export const styles = css`
     flex: none;
     border: 1px solid var(--rv-line);
   }
+  /* 1.26.0: o PDF lido (Escolher fotos ou PDF) */
+  .thumbs .thumb-pdf {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--rv-line);
+    color: var(--rv-accent-ink, var(--rv-accent));
+  }
   .imp-loading {
     display: flex;
     flex-direction: column;

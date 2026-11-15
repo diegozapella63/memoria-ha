@@ -277,8 +277,9 @@ export class MockApi {
   }
 
   // Conversa, simulated: "crie uma folha no BLOCO com TEXTO" and "acrescente TEXTO na folha N do BLOCO" propose actions
-  async chat(messages, context) {
+  async chat(messages, context, files = []) {
     await wait(700);
+    if (files.length) return { reply: `Na prévia eu só simulo: no app, a IA do Home Assistant olha ${files.length > 1 ? `os ${files.length} arquivos` : "o arquivo"} e responde.`, actions: [], provider: "Google AI Task" };
     const last = (messages[messages.length - 1] || {}).text || "";
     const block = (name) => (context.blocos || []).find((b) => b.nome.toLowerCase() === String(name).trim().toLowerCase());
     let m;

@@ -196,6 +196,31 @@ test("Conversa: the answer and the actions, checked against the blocks", async (
   a.ws.close();
 });
 
+test("1.26.0: the clip of the Conversa: photos or a PDF with the last message (POST /api/chat), removed after; counted", async () => {
+  const a = await screen();
+  const before = await a.call("memoria/usage");
+  const jpg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]).toString("base64");
+  const chat = async (body) => {
+    const res = await fetch(`${base}/api/chat`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    return { status: res.status, body: await res.json() };
+  };
+  const one = await chat({ messages: [{ role: "user", text: "passa a limpo" }], context: {}, files: [{ data: jpg, mime: "image/jpeg", nome: "anotacao.jpg" }] });
+  assert.equal(one.status, 200, JSON.stringify(one.body));
+  assert.equal(one.body.reply, "Li o arquivo (image/jpeg).");
+  const pdf = await chat({ messages: [{ role: "user", text: "", anexos: ["ata.pdf"] }], context: {}, files: [{ data: Buffer.from("%PDF-1.4 x").toString("base64"), mime: "application/pdf", nome: "ata.pdf" }] });
+  assert.equal(pdf.body.reply, "Li o arquivo (application/pdf).", "only the file, no text");
+  assert.deepEqual(fs.readdirSync(path.join(dir, "media", "memoria", "ia-temp")), [], "the files are removed after");
+  const bad = await chat({ messages: [{ role: "user", text: "oi" }], context: {}, files: [{ data: "eA==", mime: "text/plain" }] });
+  assert.deepEqual([bad.status, bad.body.code], [400, "invalid_format"]);
+  const u = await a.call("memoria/usage");
+  assert.equal(u.hoje.tipos.conversa, (before.hoje.tipos.conversa || 0) + 2, "each one counted as conversa");
+  assert.equal(u.hoje.imagens, (before.hoje.imagens || 0) + 2);
+  // the PDF in the reading (Escolher fotos ou PDF)
+  const res = await fetch(`${base}/api/extract`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ images: [{ data: Buffer.from("%PDF-1.4 y").toString("base64"), mime: "application/pdf" }] }) });
+  assert.equal(res.status, 200);
+  a.ws.close();
+});
+
 test("1.17.0: Uso da IA counts the calls to the AI (the conversation and the reading), not the ones refused", async () => {
   const a = await screen();
   const before = await a.call("memoria/usage");

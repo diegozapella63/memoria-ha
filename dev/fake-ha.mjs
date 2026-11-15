@@ -31,7 +31,17 @@ function fakeAI(msg) {
   // Conversa: answers the last thing the person said; "crie uma folha no BLOCO com TEXTO" and
   // "acrescente TEXTO na folha N do BLOCO" become actions
   if (/: conversa$/.test(d.task_name || "") && d.structure && d.structure.resposta) {
-    aiCalls.push({ entity_id: d.entity_id, files: [], chat: d.instructions });
+    // the clip of the Conversa: the files must be where Home Assistant looks for them
+    const sent = (d.attachments || []).map((a) => {
+      const p = path.join(MEDIA_DIR, String(a.media_content_id || "").replace("media-source://media_source/local/", ""));
+      if (!fs.existsSync(p)) fail("service_validation_error", `attachment not found: ${p}`);
+      return { path: p, bytes: fs.statSync(p).size, type: a.media_content_type };
+    });
+    aiCalls.push({ entity_id: d.entity_id, files: sent, chat: d.instructions });
+    if (sent.length) {
+      console.log("fake AI chat", JSON.stringify({ entity_id: d.entity_id, files: sent }));
+      return { context: { id: "ctx" }, response: { conversation_id: "c1", data: { resposta: `Li ${sent.length === 1 ? "o arquivo" : `os ${sent.length} arquivos`} (${sent.map((f) => f.type).join(", ")}).`, acoes: [] } } };
+    }
     if (process.env.FAKE_AI_CHAT_FAIL) fail("home_assistant_error", "IA fora do ar");
     const last = ((d.instructions || "").match(/Pessoa: (.*)$/) || [])[1] || "";
     console.log("fake AI chat", JSON.stringify({ entity_id: d.entity_id, last }));

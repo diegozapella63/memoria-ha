@@ -5,7 +5,7 @@ import { styles, notebookStyles } from "./styles.js";
 import { aboutPage, aboutStyles } from "./about.js";
 import { themePicker, colorPicker, lookStyles, colorOfDay } from "./look.js";
 import { swipeStart, swipeEnd, slideIn } from "./swipe.js";
-import { chatStyles } from "./chat.js";
+import { chatStyles, chatFiles } from "./chat.js";
 import { usagePanel, usageStyles } from "./usage-panel.js";
 import { ChatMixin } from "./chat-panel.js";
 import { Recorder, micError, VOICE_RATE, VOICE_MAX_S } from "./voice.js";
@@ -1990,14 +1990,22 @@ class MemoriaApp extends ChatMixin(LitElement) {
   }
 
   async _onFiles(ev) {
-    const files = [...(ev.target.files || [])].filter((f) => !f.type || f.type.startsWith("image/")).slice(0, 6);
+    // 1.26.0: a PDF too (Escolher fotos ou PDF), as it is; one PDF goes alone
+    const isPdf = (f) => f.type === "application/pdf" || /\.pdf$/i.test(f.name || "");
+    let files = [...(ev.target.files || [])].filter((f) => !f.type || f.type.startsWith("image/") || isPdf(f)).slice(0, 6);
     ev.target.value = "";
+    if (files.some(isPdf)) files = [files.find(isPdf)];
     if (!files.length) return;
     if (this._sheet !== "new") await this._openNew("pick");
     const appending = this._form.step === "review";
     this._setForm({ step: "loading", error: null, loadingText: "Preparando as fotos…", prevStep: appending ? "review" : "pick" });
     const images = [];
-    for (const file of files) images.push(await prepareImage(file));
+    for (const file of files) {
+      if (isPdf(file)) {
+        const { files: got } = await chatFiles([file]);
+        if (got[0]) images.push({ mime: "application/pdf", data: got[0].data, url: "", pdf: true, nome: got[0].nome });
+      } else images.push(await prepareImage(file));
+    }
     this._readImages(images, appending);
   }
 
@@ -2008,7 +2016,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       step: "loading",
       images: all,
       prevStep: appending ? "review" : "pick",
-      loadingText: images.length > 1 ? `Lendo ${images.length} fotos com IA…` : "Lendo a foto com IA…",
+      loadingText: images.some((i) => i.pdf) ? "Lendo o PDF com IA…" : images.length > 1 ? `Lendo ${images.length} fotos com IA…` : "Lendo a foto com IA…",
     });
     this._runExtract({ images, appending });
   }
@@ -2080,14 +2088,17 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   // ------------------------------------------------------------ camera ("Digitalizar com IA")
 
-  async _openCamera() {
+  async _openCamera(opts = {}) {
     const md = navigator.mediaDevices;
+    // 1.26.0: from the clip of the Conversa (Tirar foto), the photos go to the chat
+    const chat = !!opts.chat;
     if (!md || !md.getUserMedia) {
+      if (chat) return this._chatAttach("fotos");
       this._pickFiles("scan");
       return;
     }
-    const appending = !!(this._form && this._form.step === "review");
-    this._cam = { status: "starting", shots: [], torch: false, torchOk: false, appending, flash: 0 };
+    const appending = !chat && !!(this._form && this._form.step === "review");
+    this._cam = { status: "starting", shots: [], torch: false, torchOk: false, appending, chat, flash: 0 };
     try {
       history.pushState({ ...(history.state || {}), rvCam: true }, "");
     } catch (e) {
@@ -2171,15 +2182,21 @@ class MemoriaApp extends ChatMixin(LitElement) {
     if (!this._cam || !this._cam.shots.length) return;
     const shots = this._cam.shots;
     const appending = this._cam.appending;
+    const chat = this._cam.chat;
     this._cam = { ...this._cam, used: true };
     this._closeCamera();
     if (this._popping) await this._popping;
+    if (chat) return this._chatAddShots(shots);
     if (this._sheet !== "new") await this._openNew("pick");
     this._readImages(shots, appending && this._form.step === "review");
   }
 
   _cameraFallback() {
     const appending = this._cam && this._cam.appending;
+    if (this._cam && this._cam.chat) {
+      this._closeCamera();
+      return this._chatAttach("fotos");
+    }
     this._closeCamera();
     if (appending && this._form) this._setForm({ step: "review" });
     this._pickFiles("scan");
@@ -2218,7 +2235,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           ${this._renderNav(view)}
         </div>
         ${this._renderSheet()} ${this._renderToast()} ${this._renderCamera()}
-        <input id="mm-photos" class="sr" type="file" accept="image/*" ?multiple=${!this._isHaAndroid()} tabindex="-1" aria-hidden="true" @change=${(e) => this._onFiles(e)} />
+        <input id="mm-photos" class="sr" type="file" accept="image/*,application/pdf" ?multiple=${!this._isHaAndroid()} tabindex="-1" aria-hidden="true" @change=${(e) => this._onFiles(e)} />
         <input id="mm-scan" class="sr" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true" @change=${(e) => this._onFiles(e)} />
         <input id="mm-import" class="sr" type="file" accept=".zip,.json,application/zip,application/x-zip-compressed,application/json" tabindex="-1" aria-hidden="true" @change=${(e) => this._onImportFile(e)} />
       </div>
@@ -3810,7 +3827,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       this._setForm({ step: "pick", error: null, note: null });
     };
     const error = f.error ? html`<div class="imp-error">${icon("circle-alert")}<span>${f.error}</span></div>` : nothing;
-    const thumbs = f.images && f.images.length ? html`<div class="thumbs">${f.images.map((img) => html`<img src=${img.url} alt="" />`)}</div>` : nothing;
+    const thumbs = f.images && f.images.length ? html`<div class="thumbs">${f.images.map((img) => (img.pdf ? html`<span class="thumb-pdf" title=${img.nome || "PDF"}>${icon("file-text")}</span>` : html`<img src=${img.url} alt="" />`))}</div>` : nothing;
     const targets =
       blocks.length > 1
         ? html`<div class="field">
@@ -3899,7 +3916,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           ? nothing
           : html`<button class="imp-opt" ?disabled=${!ai.images} @click=${() => this._pickFiles("photos")}>
                 <span class="imp-ic">${icon("images")}</span>
-                <span class="imp-tx"><b>Escolher fotos</b><small>Prints e fotos da galeria</small></span>
+                <span class="imp-tx"><b>Escolher fotos ou PDF</b><small>Prints, fotos da galeria ou um PDF</small></span>
                 ${icon("chevron-right")}
               </button>
               <button class="imp-opt" ?disabled=${!ai.images} @click=${() => this._openCamera()}>
@@ -3964,7 +3981,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         ${c.flash ? html`<div class="cam-flash" .key=${c.flash}></div>` : nothing}
         <div class="cam-top">
           <button class="cam-btn" aria-label="Fechar" @click=${() => this._closeCamera()}>${icon("x")}</button>
-          <span class="cam-title">Digitalizar com IA</span>
+          <span class="cam-title">${c.chat ? "Tirar foto" : "Digitalizar com IA"}</span>
           ${c.torchOk ? html`<button class="cam-btn ${c.torch ? "on" : ""}" aria-label="Lanterna" @click=${() => this._toggleTorch()}>${icon("zap")}</button>` : html`<span class="cam-btn ghost"></span>`}
         </div>
         ${c.status === "error"

@@ -270,9 +270,21 @@ export class Api {
     return body;
   }
 
-  /** Conversa: one turn -> {reply, actions, provider}. */
-  chat(messages, context) {
-    return this.call("memoria/ai/chat", { messages, context });
+  /** Conversa: one turn -> {reply, actions, provider}. With files (1.26.0, the clip), by POST: too big for the WebSocket. */
+  async chat(messages, context, files = []) {
+    if (!files.length) return this.call("memoria/ai/chat", { messages, context });
+    const res = await fetch(new URL("api/chat", location.href), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ messages, context, files }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(body.error || `Erro ${res.status}`);
+      err.code = body.code;
+      throw err;
+    }
+    return body;
   }
 
   /** Mais › Relatório: a page of the server (with Baixar PDF). */

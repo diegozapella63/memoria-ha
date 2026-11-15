@@ -343,6 +343,54 @@ function sendJson(res, status, obj) {
   res.end(JSON.stringify(obj));
 }
 
+/**
+ * POST /api/chat {messages, context, files: [{data (base64), mime, nome}]} -> {reply, actions, provider}: the Conversa with
+ * the clip (1.26.0: Tirar foto, Escolher fotos, Escolher arquivo). Without files, the screen uses memoria/ai/chat.
+ */
+function handleChat(req, res) {
+  const chunks = [];
+  let size = 0;
+  let aborted = false;
+  req.on("data", (c) => {
+    size += c.length;
+    if (size > MAX_UPLOAD) {
+      aborted = true;
+      sendJson(res, 413, { error: "Arquivo grande demais" });
+      req.destroy();
+      return;
+    }
+    chunks.push(c);
+  });
+  req.on("end", async () => {
+    if (aborted) return;
+    let body;
+    try {
+      body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    } catch (e) {
+      return sendJson(res, 400, { error: "JSON inválido" });
+    }
+    const started = Date.now();
+    const images = Array.isArray(body.files) ? body.files.length : 0;
+    const input = JSON.stringify([body.messages, body.context]).length;
+    try {
+      if (aiOff()) throw offError();
+      let out;
+      try {
+        out = await ai.chat({ messages: body.messages, context: body.context }, new Date(), body.files);
+      } catch (err) {
+        if (!["invalid_format", "no_ai", "no_vision", "gone", "unavailable", "no_media", "ai_off"].includes(err.code)) countAi("conversa", { input, images, started, err });
+        throw err;
+      }
+      countAi("conversa", { entity: out.entity, input, output: (out.reply || "").length + JSON.stringify(out.actions || []).length, images, started });
+      sendJson(res, 200, out);
+    } catch (err) {
+      log.warn(`Conversa com arquivo falhou: ${err.message}`);
+      const code = err.code || "failed";
+      sendJson(res, code === "invalid_format" ? 400 : ["no_ai", "no_vision", "gone", "unavailable", "no_media", "ai_off"].includes(code) ? 409 : 502, { error: err.message, code });
+    }
+  });
+}
+
 /** POST /api/extract {text?, images?: [{data(base64), mime}]} -> {text, provider} */
 function handleExtract(req, res) {
   const chunks = [];
@@ -561,6 +609,7 @@ const server = http.createServer((req, res) => {
   }
   const url = new URL(req.url, "http://x");
   if (url.pathname === "/api/extract" && req.method === "POST") return handleExtract(req, res);
+  if (url.pathname === "/api/chat" && req.method === "POST") return handleChat(req, res);
   if (url.pathname === "/api/import" && req.method === "POST") return handleImport(req, res);
   if (url.pathname === "/api/voice" && req.method === "POST") return handleVoice(req, res);
   const exp = url.pathname.match(/^\/api\/export\/(json|csv|zip)$/);

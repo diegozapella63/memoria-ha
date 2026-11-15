@@ -3,6 +3,8 @@
 // add to a sheet), which the screen shows as cards and only does after a tap. The AI is the one Home Assistant gives
 // the app (ai_task.generate_data), so there is no memory on its side: the conversation goes in every call.
 
+import { fileNames, withFiles, filesNote } from "./anexos.js";
+
 const WEEKDAY = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
 const MONTH = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const MAX_TURNS = 16;
@@ -44,10 +46,14 @@ export const CHAT_STRUCTURE = {
  */
 export function cleanChat(raw) {
   const r = raw && typeof raw === "object" ? raw : {};
+  // 1.26.0: a message of the person can be only the files sent (their names; the files go only with the last one)
   const messages = (Array.isArray(r.messages) ? r.messages : [])
-    .filter((m) => m && (m.role === "user" || m.role === "ia") && typeof m.text === "string" && m.text.trim())
+    .filter((m) => m && (m.role === "user" || m.role === "ia") && ((typeof m.text === "string" && m.text.trim()) || (m.role === "user" && fileNames(m.anexos).length)))
     .slice(-MAX_TURNS)
-    .map((m) => ({ role: m.role, text: text(m.text, 2000) }));
+    .map((m) => {
+      const names = m.role === "user" ? fileNames(m.anexos) : [];
+      return names.length ? { role: m.role, text: text(m.text, 2000), anexos: names } : { role: m.role, text: text(m.text, 2000) };
+    });
   const c = r.context && typeof r.context === "object" ? r.context : {};
   let sheets = MAX_SHEETS;
   let chars = MAX_CONTEXT;
@@ -86,7 +92,7 @@ const whenText = (now) => `${WEEKDAY[now.getDay()]}, ${now.getDate()} de ${MONTH
 const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
 /** The instructions for one turn: who the AI is, today, the screen, the notebooks and the conversation so far. */
-export function chatInstructions({ messages, context }, now = new Date()) {
+export function chatInstructions({ messages, context, arquivos = 0 }, now = new Date()) {
   const blocks = context.blocos.length
     ? context.blocos
         .map((b) => {
@@ -101,7 +107,7 @@ export function chatInstructions({ messages, context }, now = new Date()) {
         })
         .join("\n")
     : "(nenhum bloco)";
-  const talk = messages.map((m) => `${m.role === "user" ? "Pessoa" : "Você"}: ${m.text}`).join("\n");
+  const talk = messages.map((m) => `${m.role === "user" ? "Pessoa" : "Você"}: ${m.role === "user" ? withFiles(m) : m.text}`).join("\n");
   return [
     "Você é a IA do MemorIA, o app de blocos de anotações (cadernos) da casa no Home Assistant. Converse em português do Brasil, de forma curta e direta, sem palavras em inglês e sem markdown.",
     "A pessoa pode perguntar sobre os blocos, as folhas e a tela em que está, ou sobre qualquer outro assunto: responda das duas formas. Sobre as anotações, use só os dados abaixo; não invente folhas.",
@@ -111,6 +117,7 @@ export function chatInstructions({ messages, context }, now = new Date()) {
     "Blocos e folhas:",
     blocks,
     'Quando a pessoa pedir para escrever, criar uma folha ou acrescentar algo, escreva em "acoes" uma linha por pedido ("criar | bloco | texto" ou "acrescentar | bloco | número da folha | texto") e, na resposta, diga o que vai fazer: ela confirma na tela antes. Sem pedido, deixe "acoes" vazio.',
+    filesNote(arquivos),
     "Conversa até agora (responda à última fala da pessoa):",
     talk,
   ]

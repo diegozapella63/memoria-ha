@@ -7,8 +7,68 @@
 // Perguntas prontas: the questions of the app (examples) until the person edits them (Editar perguntas, kept on the
 // device in <app>-perguntas); with an empty chat they are there, and the sparkles button by the box shows them at any
 // moment. The state of the panel is here (one chat per page); onRedraw draws the chat again.
+//
+// The clip (with onAttach): Tirar foto, Escolher fotos and Escolher arquivo; the files chosen (files: [{nome, pdf,
+// url}], from chatFiles) go with the next message (onSend) and their names stay in it (anexos). The round button on
+// the right is the microphone with the box empty and Enviar with text or a file, as in WhatsApp.
 
-const UI = { quick: false, editing: null };
+const UI = { quick: false, editing: null, menu: false };
+export const CHAT_MAX_FILES = 4;
+
+/**
+ * The files chosen (File objects) ready for the AI: [{nome, pdf, mime, data (base64), url}]. The photos become JPG
+ * of up to 1600 px; a PDF goes as it is, alone (up to 15 MB). With `current`, up to CHAT_MAX_FILES in all.
+ */
+export async function chatFiles(list, current = []) {
+  let out = current.slice();
+  const b64 = (blob) =>
+    new Promise((ok, fail) => {
+      const r = new FileReader();
+      r.onload = () => ok(String(r.result).split(",")[1] || "");
+      r.onerror = () => fail(r.error);
+      r.readAsDataURL(blob);
+    });
+  const errors = [];
+  for (const f of Array.from(list || [])) {
+    const pdf = f.type === "application/pdf" || /\.pdf$/i.test(f.name || "");
+    if (pdf) {
+      if (f.size > 15 * 1024 * 1024) {
+        errors.push("Arquivo grande demais (até 15 MB).");
+        continue;
+      }
+      out = [{ nome: f.name || "arquivo.pdf", pdf: true, mime: "application/pdf", data: await b64(f), url: "" }]; // um PDF vai sozinho
+      continue;
+    }
+    if (f.type && !/^image\//.test(f.type)) {
+      errors.push("Escolha uma foto ou um PDF.");
+      continue;
+    }
+    if (out.length >= CHAT_MAX_FILES || out.some((x) => x.pdf)) {
+      if (out.some((x) => x.pdf)) out = [];
+      else {
+        errors.push(`Até ${CHAT_MAX_FILES} arquivos por mensagem.`);
+        break;
+      }
+    }
+    try {
+      const bmp = await createImageBitmap(f, { imageOrientation: "from-image" });
+      const k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(bmp.width * k));
+      c.height = Math.max(1, Math.round(bmp.height * k));
+      const g = c.getContext("2d");
+      g.fillStyle = "#fff";
+      g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(bmp, 0, 0, c.width, c.height);
+      if (bmp.close) bmp.close();
+      const blob = await new Promise((ok) => c.toBlob(ok, "image/jpeg", 0.86));
+      out.push({ nome: f.name || `Foto ${out.length + 1}.jpg`, pdf: false, mime: "image/jpeg", data: await b64(blob), url: URL.createObjectURL(blob) });
+    } catch (e) {
+      errors.push("Não deu para abrir esta foto. Use JPG ou PNG.");
+    }
+  }
+  return { files: out, error: errors[0] || "" };
+}
 
 /** The questions of the chat: the ones the person saved on this device, or the app's. */
 export function chatQuestions(app, examples = []) {
@@ -31,11 +91,11 @@ function saveQuestions(app, list) {
 }
 
 /** The chat. lit: {html, nothing}; icon(name). */
-export function renderChat({ lit, icon, app = "", messages = [], draft = "", busy = false, error = "", voice = null, examples = [], onDraft, onSend, onMic, onAction, onAll, onClear, onClose, onRedraw = () => {} }) {
+export function renderChat({ lit, icon, app = "", messages = [], draft = "", busy = false, error = "", voice = null, examples = [], files = [], onDraft, onSend, onMic, onAction, onAll, onClear, onClose, onAttach = null, onFileRemove = () => {}, onRedraw = () => {} }) {
   const { html, nothing } = lit;
   const send = () => {
     const t = (draft || "").trim();
-    if (t && !busy) onSend(t);
+    if ((t || files.length) && !busy) onSend(t);
   };
   const qs = app ? chatQuestions(app, examples) : examples;
   const redraw = (changes) => (Object.assign(UI, changes), onRedraw());
@@ -81,8 +141,9 @@ export function renderChat({ lit, icon, app = "", messages = [], draft = "", bus
   </div>`;
   const bubble = (m, k) => {
     const todo = (m.actions || []).filter((a) => a.state !== "done" && a.state !== "doing").length;
+    const arqs = m.role === "user" && Array.isArray(m.anexos) ? m.anexos : [];
     return html`<div class="chat-msg ${m.role === "user" ? "me" : "ia"}">
-      ${m.text ? html`<div class="chat-bubble">${m.text}</div>` : nothing}
+      ${m.text || arqs.length ? html`<div class="chat-bubble">${arqs.map((n) => html`<span class="chat-arq">${icon("paperclip")}${n}</span>`)}${m.text || ""}</div>` : nothing}
       ${(m.actions || []).length
         ? html`<div class="chat-acts">
             ${m.actions.map((a, j) => actionRow(m, k, a, j))}
@@ -92,6 +153,11 @@ export function renderChat({ lit, icon, app = "", messages = [], draft = "", bus
     </div>`;
   };
   const rec = voice && voice.on;
+  const clip = !!onAttach && !rec;
+  const menu = clip && UI.menu;
+  const attach = (kind) => (redraw({ menu: false }), onAttach(kind));
+  // the round button on the right: the microphone with the box empty (listening: the check), Enviar with text or a file
+  const micMode = !!(voice && voice.ready) && (rec || (!(draft || "").trim() && !files.length));
   return html`<div class="chat">
     <div class="chat-head">
       <span class="chat-title">${icon("message-circle")}Conversa</span>
@@ -108,7 +174,20 @@ export function renderChat({ lit, icon, app = "", messages = [], draft = "", bus
       ${error ? html`<div class="chat-error">${icon("circle-alert")}<span>${error}</span></div>` : nothing}
     </div>
     ${messages.length && (UI.quick || UI.editing) ? html`<div class="chat-quick">${quickBlock()}</div>` : nothing}
+    ${menu
+      ? html`<div class="chat-menu" role="menu">
+          <button type="button" class="chat-op" role="menuitem" @click=${() => attach("camera")}>${icon("camera")}Tirar foto</button>
+          <button type="button" class="chat-op" role="menuitem" @click=${() => attach("fotos")}>${icon("images")}Escolher fotos</button>
+          <button type="button" class="chat-op" role="menuitem" @click=${() => attach("arquivo")}>${icon("file-text")}Escolher arquivo</button>
+        </div>`
+      : nothing}
+    ${files.length
+      ? html`<div class="chat-files">${files.map(
+          (f, i) => html`<div class="chat-file">${f.pdf ? html`<span class="chat-pdf">${icon("file-text")}</span>` : html`<img src=${f.url} alt="" />`}<span class="chat-file-n">${f.nome}</span><button type="button" class="icon-btn" aria-label=${`Tirar ${f.nome}`} @click=${() => onFileRemove(i)}>${icon("x")}</button></div>`,
+        )}</div>`
+      : nothing}
     <form class="chat-input" @submit=${(e) => (e.preventDefault(), send())}>
+      ${clip ? html`<button type="button" class="icon-btn chat-clip ${menu ? "on" : ""}" aria-label="Anexar" title="Anexar" aria-expanded=${menu ? "true" : "false"} ?disabled=${busy} @click=${() => redraw({ menu: !UI.menu, quick: false, editing: null })}>${icon("paperclip")}</button>` : nothing}
       <textarea rows="1" data-size="off" .value=${draft} placeholder=${rec ? "Ouvindo…" : "Pergunte o que quiser"} aria-label="Mensagem para a IA" ?disabled=${rec}
         @input=${(e) => onDraft(e.target.value)}
         @keydown=${(e) => {
@@ -117,13 +196,12 @@ export function renderChat({ lit, icon, app = "", messages = [], draft = "", bus
             send();
           }
         }}></textarea>
-      ${messages.length && (qs.length || app)
-        ? html`<button type="button" class="icon-btn chat-qbtn ${UI.quick || UI.editing ? "on" : ""}" aria-label="Perguntas prontas" aria-expanded=${UI.quick || UI.editing ? "true" : "false"} title="Perguntas prontas" @click=${() => redraw({ quick: !(UI.quick || UI.editing), editing: null })}>${icon("sparkles")}</button>`
+      ${messages.length && (qs.length || app) && !rec
+        ? html`<button type="button" class="icon-btn chat-qbtn ${UI.quick || UI.editing ? "on" : ""}" aria-label="Perguntas prontas" aria-expanded=${UI.quick || UI.editing ? "true" : "false"} title="Perguntas prontas" @click=${() => redraw({ quick: !(UI.quick || UI.editing), editing: null, menu: false })}>${icon("sparkles")}</button>`
         : nothing}
-      ${voice && voice.ready
+      ${micMode
         ? html`<button type="button" class="icon-btn chat-mic ${rec ? "on" : ""}" aria-label=${rec ? "Pronto: enviar o que falei" : "Falar"} ?disabled=${busy || voice.starting} @click=${() => onMic()}>${icon(rec ? "check" : "mic")}</button>`
-        : nothing}
-      <button type="submit" class="icon-btn chat-send" aria-label="Enviar" ?disabled=${busy || rec || !(draft || "").trim()}>${icon("send")}</button>
+        : html`<button type="submit" class="icon-btn chat-send" aria-label="Enviar" ?disabled=${busy || rec || !((draft || "").trim() || files.length)}>${icon("send")}</button>`}
     </form>
   </div>`;
 }
@@ -173,7 +251,19 @@ export const chatStyles = `
   .chat-send { background: var(--rv-accent); color: var(--rv-on-accent, #fff); }
   .chat-send:disabled { opacity: 0.4; }
   .chat-mic.on { background: var(--rv-late, #e5484d); color: #fff; }
-  .chat-qbtn.on { background: var(--rv-accent-soft); color: var(--rv-accent-ink, var(--rv-accent)); }
+  .chat-qbtn.on, .chat-clip.on { background: var(--rv-accent-soft); color: var(--rv-accent-ink, var(--rv-accent)); }
+  .chat-input textarea::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-menu { display: grid; gap: 2px; margin-top: 8px; padding: 6px; border-radius: 16px; border: 1.5px solid var(--rv-line); }
+  .chat-op { display: flex; align-items: center; gap: 12px; min-height: 50px; padding: 0 12px; border-radius: 12px; font: inherit; font-size: 16px; color: var(--rv-text); text-align: left; background: none; border: 0; cursor: pointer; }
+  .chat-op:active { background: var(--rv-accent-soft); }
+  .chat-op .i { width: 20px; height: 20px; color: var(--rv-accent-ink, var(--rv-accent)); }
+  .chat-files { display: grid; gap: 6px; margin-top: 8px; }
+  .chat-file { display: flex; align-items: center; gap: 10px; padding: 4px 4px 4px 6px; border-radius: 12px; border: 1.5px solid var(--rv-line); font-size: 14px; }
+  .chat-file img, .chat-file .chat-pdf { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; flex: none; display: grid; place-items: center; color: var(--rv-accent-ink, var(--rv-accent)); }
+  .chat-file-n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chat-file .icon-btn { width: 36px; height: 36px; flex: none; }
+  .chat-arq { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; }
+  .chat-arq .i { width: 15px; height: 15px; flex: none; }
   .chat-quick { max-height: 42vh; overflow-y: auto; padding: 10px 2px; border-top: 1px solid var(--rv-line); }
   .chat-ed-open { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; }
   .chat-ed-open .i { width: 16px; height: 16px; }
