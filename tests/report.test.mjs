@@ -79,7 +79,7 @@ test("the page: the header of the apps, the choices, Voltar and Baixar PDF, the 
   assert.match(h, /<select name="categoria"[^>]*>.*<option value="catcasa0001" selected>Casa<\/option>.*<option value="sem">Sem categoria<\/option><\/select>/s);
   assert.match(h, /<select name="bloco"[^>]*><option value="" selected>Todos os blocos dela<\/option><option value="mercado0001">Mercado<\/option><option value="reforma0001">Reforma da cozinha<\/option><\/select>/);
   assert.match(h, /href="relatorio\.pdf\?categoria=catcasa0001&amp;cor=%2362B5FF" download="anotacoes-casa-2026-11-08\.pdf"/);
-  assert.match(h, />Voltar<\/a>/);
+  assert.match(h, /<span>Voltar<\/span><\/a>/);
   assert.match(h, /localStorage\.setItem\('memoria\.relatorio'/);
   assert.match(h, /<script src="selectsheet\.js"><\/script>/);
   assert.match(h, /Correr<i>IA<\/i> Code<\/b><small>desenvolvimento de softwares<\/small>/);
@@ -158,7 +158,10 @@ test("Arquivar bloco and De quem é (1.9.0): the archived out of all but a choic
   assert.doesNotMatch(reportHtml(anotacoes({ ...data, blocks: data.blocks.map((b) => ({ ...b, archived: undefined })) }, { now: NOW })), /optgroup/);
   // the boxes closed like the ones of the app: no arrow of the phone, the arrow of the app
   assert.match(h, /\.barra select\{[^}]*appearance:none;-webkit-appearance:none;[^}]*background-image:linear-gradient/);
-  assert.match(h, /<h2><span>Mercado<\/span><small>Casa · de Ana · 2 folhas · abre de manhã \(05:00\)<\/small><\/h2>/);
+  assert.match(h, /<h2><span><span class="hic"><svg class="i"[^>]*>.*?<\/svg><\/span>Mercado<\/span><small>Casa · de Ana · 2 folhas · abre de manhã \(05:00\)<\/small><\/h2>/);
+  // 1.23.0: every section and button with its icon (the charts, each block, Voltar and Baixar PDF)
+  assert.match(h, /return false\}"><svg class="i"[^>]*><path d="m15 18-6-6 6-6"\/><\/svg><span>Voltar<\/span><\/a>/);
+  assert.match(h, /<svg class="i"[^>]*>.*?<\/svg><span>Baixar PDF<\/span><\/a>/);
   // chosen: it comes, marked
   rep = anotacoes(data, { bloco: "ideias00001", now: NOW });
   assert.deepEqual(rep.sections.map((s) => s.name), ["Ideias soltas"]);

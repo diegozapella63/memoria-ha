@@ -159,6 +159,17 @@ export function graficos(rep) {
   return out;
 }
 
+/** The icons of the page (Lucide, the same as the app): each chart, each block, Voltar and Baixar PDF (1.23.0). */
+const IC = {
+  tag: '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>',
+  notebook: '<path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M16 2v20"/>',
+  library: '<path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>',
+  "chevron-left": '<path d="m15 18-6-6 6-6"/>',
+  download: '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
+};
+const svg = (name) => `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[name] || IC.notebook}</svg>`;
+const CHART_IC = { "Por categoria": "tag", "Por bloco": "library" };
+
 function chartHtml(c) {
   const f = foldTop(c.rows);
   const split = [...f.shown, ...(f.more ? [{ name: `+${plural(f.more, c.unit[0], c.unit[1])}`, n: f.moreN, color: "var(--g2)" }] : [])];
@@ -167,7 +178,7 @@ function chartHtml(c) {
     .map((x) => `<div class="gl"><span class="nm"><b>${esc(x.name)}</b></span><span class="v">${x.n}</span><span class="bar"><i style="width:${share(x.n, c.max)}%;background:${x.color}"></i></span></div>`)
     .join("");
   const more = f.more ? `<p class="gpe">+${plural(f.more, c.unit[0], c.unit[1])}: <b>${f.moreN}</b></p>` : "";
-  return `<section class="g"><h3>${esc(c.title)}</h3>${bar}${rows}${more}</section>`;
+  return `<section class="g"><h3><span class="hic">${svg(CHART_IC[c.title])}</span>${esc(c.title)}</h3>${bar}${rows}${more}</section>`;
 }
 
 // ------------------------------------------------------------------ the page
@@ -186,7 +197,7 @@ const ICON = (cor) => `<svg class="ic" viewBox="0 0 32 32" aria-hidden="true">
 /** Baixar PDF from the frame of the app in Home Assistant (the same as the ResolvIA's): a link on the top page. */
 export const BAIXAR =
   "try{var d=window.top.document,a=d.createElement('a');a.href=this.href;a.download=this.getAttribute('download')||'';a.target='_blank';a.style.display='none';" +
-  "d.body.appendChild(a);a.dispatchEvent(new MouseEvent('click'));d.body.removeChild(a);var b=this;b.textContent='Baixando…';" +
+  "d.body.appendChild(a);a.dispatchEvent(new MouseEvent('click'));d.body.removeChild(a);var b=this.querySelector('span')||this;b.textContent='Baixando…';" +
   "setTimeout(function(){b.textContent='Baixar PDF'},4000);return false}catch(e){return true}";
 
 /** The mark of CorrerIA Code (as in Mais › Sobre). */
@@ -251,7 +262,7 @@ export function reportHtml(rep, { tema = null, cor = DEFAULT_COLOR } = {}) {
   };
   const section = (s) => {
     const sub = sectionMeta(s);
-    return `<section class="bloco" style="--b:${s.color}"><h2><span>${esc(s.name)}</span><small>${esc(sub)}</small></h2>${s.pages.length ? s.pages.map(page).join("") : `<p class="vazio">Nenhuma folha escrita neste bloco.</p>`}</section>`;
+    return `<section class="bloco" style="--b:${s.color}"><h2><span><span class="hic">${svg("notebook")}</span>${esc(s.name)}</span><small>${esc(sub)}</small></h2>${s.pages.length ? s.pages.map(page).join("") : `<p class="vazio">Nenhuma folha escrita neste bloco.</p>`}</section>`;
   };
   const charts = graficos(rep);
   const claro = "--bg:#f6f7f9;--card:#fff;--fg:#141a22;--mut:#5b6573;--linha:#e3e7ec;--linha2:#eef1f4;--borda:#d6dbe2;--g2:#aab3bd";
@@ -272,7 +283,8 @@ body{font:15px/1.45 Barlow,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 main{max-width:860px;margin:0 auto}
 .barra{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
 .barra a,.barra select{font:inherit;font-size:14px;font-weight:600;min-height:44px;min-width:0;padding:8px 10px;border-radius:12px;border:1px solid var(--borda);background:var(--card);color:var(--fg);text-decoration:none;cursor:pointer;text-align:center}
-.barra a{display:flex;align-items:center;justify-content:center;line-height:1.2}
+.barra a{display:flex;align-items:center;justify-content:center;gap:8px;line-height:1.2}
+.barra .i{width:18px;height:18px;flex:none}
 .barra select{grid-column:1/-1;text-align:left;font-size:15px;padding:10px 40px 10px 14px;text-overflow:ellipsis;appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);background-position:calc(100% - 20px) 52%,calc(100% - 14px) 52%;background-size:6px 6px;background-repeat:no-repeat}
 .barra .pdf{background:var(--a);border-color:transparent;color:#1a1210}
 .cab{display:flex;gap:14px;align-items:center;background:var(--card);border:1px solid var(--linha);border-left:6px solid var(--a);border-radius:16px;padding:16px 18px;margin-bottom:14px}
@@ -295,7 +307,10 @@ h2 small{color:var(--mut);font-size:13px;font-weight:400}
 .vazio{color:var(--mut);margin:10px 0}
 .graficos{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;margin-top:14px;align-items:start}
 .graficos section{margin:0;padding:12px 16px}
-.g h3{font:700 20px/1.2 "Barlow Condensed",Barlow,sans-serif;margin:2px 0 10px}
+.g h3{display:flex;align-items:center;gap:10px;font:700 20px/1.2 "Barlow Condensed",Barlow,sans-serif;margin:2px 0 10px}
+.hic{display:inline-grid;place-items:center;flex:none;width:30px;height:30px;border-radius:9px;background:color-mix(in srgb,var(--b,var(--a)) 22%,transparent);color:var(--fg)}
+.hic .i{width:17px;height:17px}
+h2 > span:first-child{display:inline-flex;align-items:center;gap:10px}
 .split{display:flex;gap:2px;height:10px;margin:0 0 8px}
 .split i{display:block;min-width:4px}
 .split i:first-child{border-radius:5px 0 0 5px}
@@ -318,7 +333,7 @@ h2 small{color:var(--mut);font-size:13px;font-weight:400}
 </style><script src="selectsheet.js"></script></head><body><main>
 <div class="barra">
 ${catSel}${blockSel}
-<a href="./" onclick="if(history.length>1){history.back();return false}">Voltar</a><a class="pdf" href="${esc(pdfHref)}" download="${esc(pdfName(rep))}" onclick="${BAIXAR}">Baixar PDF</a>
+<a href="./" onclick="if(history.length>1){history.back();return false}">${svg("chevron-left")}<span>Voltar</span></a><a class="pdf" href="${esc(pdfHref)}" download="${esc(pdfName(rep))}" onclick="${BAIXAR}">${svg("download")}<span>Baixar PDF</span></a>
 </div>
 <header class="cab">${ICON(accent)}<div><div class="app"><span class="wm">Memor<b>IA</b></span> · anotações</div><h1>Relatório de anotações</h1><p>${esc(countText(rep))} · ${whenGenerated(rep.at)}</p></div></header>
 ${charts.length ? `<div class="graficos">${charts.map(chartHtml).join("")}</div>` : ""}

@@ -106,7 +106,8 @@ try:
             check([x[0] for x in bx] == ["Voltar", "Baixar PDF"] and bx[0][1] == bx[1][1] and bx[0][2] == bx[1][2], f"{tag}: Voltar and Baixar PDF side by side ({bx})")
             heads = [h.strip() for h in pg.locator(".g h3").all_inner_texts()]
             check(heads == ["Por categoria", "Por bloco"], f"{tag}: the charts ({heads})")
-            blocks = [h.strip() for h in pg.locator(".bloco h2 span").all_inner_texts()]
+            blocks = [h.strip() for h in pg.locator(".bloco h2 > span:first-child").all_inner_texts()]
+            check(pg.locator(".bloco h2 .hic svg, .g h3 .hic svg, .barra a > svg").count() == len(blocks) + len(heads) + 2, f"{tag}: 1.23.0: each part, Voltar and Baixar PDF with the icon")
             check(blocks == ["Mercado", "Reforma da cozinha", "Inglês", "Ideias soltas"], f"{tag}: the blocks ({blocks})")
             check(pg.locator(".folha").count() == 5, f"{tag}: the sheets with text")
             marca = pg.locator(".marca")

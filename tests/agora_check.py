@@ -164,7 +164,7 @@ with sync_playwright() as p:
         cats = texts(a.locator(".sheet .cat-pick .pick"))
         check(cats == ["Sem categoria", "Pessoal", "Trabalho", "Casa", "Hobbies", "Saúde", "Nova"], f"{tag}: the categories ({cats})")
         cols = a.locator(".sheet .cat-pick").evaluate("(e) => getComputedStyle(e).gridTemplateColumns.split(' ').length")
-        check(cols == (3 if w >= 390 else 2), f"{tag}: {cols} columns")
+        check(cols == 2, f"{tag}: {cols} columns (1.23.0: two by row, as in the other apps)")
         tops = a.locator(".sheet .periods-pick .pick").evaluate_all("(els) => els.map((e) => Math.round(e.getBoundingClientRect().top))")
         check(len(set(tops)) == 1, f"{tag}: Manhã, Tarde and Noite side by side ({tops})")
         check(a.evaluate(OVER) == [], f"{tag}: nothing out of the screen in the sheet {a.evaluate(OVER)}")

@@ -161,8 +161,7 @@ with sync_playwright() as p:
         check(pick.nth(2).get_attribute("aria-checked") == "true", f"{tag}: Beto chosen")
         widths = {round(x["width"]) for x in pick.evaluate_all("(els) => els.map((e) => e.getBoundingClientRect().toJSON())")}
         check(len(widths) == 1, f"{tag}: the choices with the same width ({widths})")
-        hint = a.locator(".sheet .owner-pick + .field-hint")
-        check(hint.count() == 1 and hint.inner_text().strip() == "Só aparece no Agora de Beto.", f"{tag}: Só aparece no Agora de Beto.")
+        check(a.locator(".sheet .owner-pick + .field-hint").count() == 0 and "Só aparece no Agora" not in a.locator(".sheet").inner_text(), f"{tag}: 1.23.0: without the note Só aparece no Agora de …")
         check(a.evaluate(OVER) == [], f"{tag}: nothing out of the screen in the sheet {a.evaluate(OVER)}")
         a.locator(".sheet .owner-pick").scroll_into_view_if_needed()
         pg.screenshot(path=str(SHOTS / f"dono-{scheme}-{w}-folha.png"))
@@ -202,7 +201,7 @@ with sync_playwright() as p:
         check(inp.count() == 1 and inp.get_attribute("placeholder") == "Todos" and a.locator(".sheet .owner-pick").count() == 0, f"{tag}: no people: a name to write, Todos when empty")
         inp.fill("Carla")
         pg.wait_for_timeout(200)
-        check("Só aparece no Agora de Carla." in a.locator(".sheet").inner_text(), f"{tag}: the hint with the name written")
+        check("Só aparece no Agora" not in a.locator(".sheet").inner_text(), f"{tag}: the name written, no note")
         save(a, pg)
         check(a.evaluate("(el) => el._block('ideias00001').owner") == "Carla", f"{tag}: saved as Carla's")
 

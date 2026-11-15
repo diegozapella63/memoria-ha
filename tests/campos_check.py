@@ -13,7 +13,7 @@ REPO = Path(__file__).resolve().parent.parent
 PREVIEW = os.environ.get("MEMORIA_PREVIEW_URL") or (REPO / "preview" / "memoria-preview.html").as_uri()
 SHOTS = Path(sys.argv[1] if len(sys.argv) > 1 else os.environ.get("MEMORIA_SHOTS", Path(tempfile.gettempdir()) / "memoria-shots"))
 SHOTS.mkdir(parents=True, exist_ok=True)
-WIDTHS = """(el, s) => [...el.renderRoot.querySelectorAll(s)].map((b) => { const p = b.closest('.panel'), cs = getComputedStyle(p); return [Math.round(b.getBoundingClientRect().width), Math.round(p.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight))]; })"""
+WIDTHS = """(el, s) => [...el.renderRoot.querySelectorAll(s)].map((b) => { const p = b.closest('.sub-box, .panel'), cs = getComputedStyle(p); return [Math.round(b.getBoundingClientRect().width), Math.round(p.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight))]; })"""
 PASTE = "dialog textarea, .sheet textarea"
 
 n_ok, failed = 0, []
@@ -54,7 +54,7 @@ with sync_playwright() as p:
     a.locator(".page-title").first.wait_for()
     pg.wait_for_timeout(500)
 
-    # Verificar de novo at the width of the card
+    # Verificar de novo at the width of the card (1.23.0: of the box under Usar IA, where it is)
     config(a, pg)
     w = a.evaluate(WIDTHS, ".ai-actions .btn")
     check(w and all(abs(x - y) <= 4 for x, y in w), f"390 px: Verificar de novo at the width of the card ({w})")

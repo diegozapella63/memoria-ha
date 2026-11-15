@@ -1,5 +1,13 @@
 # Mudanças
 
+## 1.23.1
+
+- **Escolhas do mesmo tamanho**, como nos outros apps: duas por linha (os blocos em **No bloco**, as categorias, De quem é…), sem o nome do bloco quebrado no meio.
+- **Quando abrir sozinho**: **Horário exato** do mesmo tamanho que Manhã, Tarde e Noite.
+- **Colar mensagem**: **Colar** e **Como está** lado a lado e **Organizar** embaixo, na largura toda.
+- **Sem avisos que só ocupam espaço** nos ajustes do bloco e da folha ("Só aparece no Agora de…", "Sem horário, o bloco só abre…", "Um trecho com horário…").
+- **Relatório**: cada gráfico e cada bloco com o seu ícone, e **Voltar** e **Baixar PDF** com os deles.
+
 ## 1.23.0
 
 - **Contrair e expandir**: toda seção de Configurações fecha e abre num toque no cabeçalho, com a seta no canto. O aparelho lembra as que ficaram fechadas.

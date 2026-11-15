@@ -2196,7 +2196,7 @@ export const styles = css`
      other apps; a long name goes to a second line inside its button */
   .chip-row.grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 6.5em), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 8em), 1fr));
     gap: 8px;
   }
   .chip-row.grid .pick {
@@ -3367,11 +3367,42 @@ export const notebookStyles = css`
     background-image: radial-gradient(circle at 1px 1px, var(--rule-dot) 1.2px, transparent 1.6px);
     background-size: 10px 10px;
   }
+  /* the times and Escolher horário: the grid of the choices, as in the other apps (1.23.0) */
   .time-list {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 8em), 1fr));
     gap: 8px;
-    align-items: center;
+    align-items: stretch;
+  }
+  .time-list .add-time {
+    justify-content: center;
+  }
+  /* Quando abrir sozinho: Horário exato and the times the same size as Manhã, Tarde and Noite */
+  .chip-row.grid.periods-pick .pick {
+    min-height: 58px;
+  }
+  .periods-pick + .time-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .periods-pick + .time-list .add-time,
+  .periods-pick + .time-list .time-chip {
+    min-height: 58px;
+  }
+  .periods-pick + .time-list .add-time {
+    min-width: 0;
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  .periods-pick + .time-list .add-time > span {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    text-align: center;
+    line-height: 1.15;
+  }
+  .time-list .time-chip {
+    justify-content: space-between;
+    min-height: 50px;
   }
   .time-chip {
     display: inline-flex;
@@ -4082,5 +4113,19 @@ export const notebookStyles = css`
     background: var(--rv-bg);
     color: var(--rv-text);
     overflow-wrap: anywhere;
+  }
+  /* 1.23.0: three buttons (Colar, Como está, Organizar): the two first side by side and the main one under them, all
+     of the same height, as in the other apps */
+  .sheet-actions.tri {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .sheet-actions.tri > .btn {
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .sheet-actions.tri > .btn.primary {
+    grid-column: 1 / -1;
   }
 `;

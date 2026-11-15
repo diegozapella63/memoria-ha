@@ -3683,7 +3683,6 @@ class MemoriaApp extends ChatMixin(LitElement) {
           )}
           ${f.times.length < 24 ? this._timePicker((t) => this._setForm({ times: [...new Set([...f.times, t])].sort() }), f.times.length ? "Outro horário" : "Horário exato") : nothing}
         </div>
-        <div class="field-hint">${icon("clock")}<span>${f.periods.length || f.times.length ? "Nesses momentos a tela Agora abre este bloco. Folhas com horário próprio têm prioridade." : "Sem horário, o bloco só abre quando você escolher."}</span></div>
       </div>
       ${f.periods.length || f.times.length ? this._durPick(f.dur || 0, (d) => this._setForm({ dur: d })) : nothing}
       ${f.id
@@ -3707,12 +3706,10 @@ class MemoriaApp extends ChatMixin(LitElement) {
   _renderOwnerPick(f) {
     const people = this._people || [];
     const owner = ownerName(f.owner || "");
-    const hint = owner ? html`<span class="field-hint">${icon("info")}<span>Só aparece no Agora de ${owner}.</span></span>` : nothing;
     if (!people.length) {
       return html`<label class="field">
         <span class="flabel">${icon("user-round", "lbl-ic")}De quem é</span>
         <input type="text" maxlength="80" .value=${f.owner || ""} placeholder="Todos" aria-label="De quem é" @input=${(e) => this._setForm({ owner: e.target.value })} />
-        ${hint}
       </label>`;
     }
     const names = owner && !people.some((n) => sameName(n, owner)) ? [...people, owner] : people;
@@ -3724,7 +3721,6 @@ class MemoriaApp extends ChatMixin(LitElement) {
           return html`<button class="pick ${on ? "on" : ""}" role="radio" aria-checked=${on ? "true" : "false"} @click=${() => this._setForm({ owner: n })}>${icon(n ? "user-round" : "users")}<span>${n || "Todos"}</span></button>`;
         })}
       </div>
-      ${hint}
     </div>`;
   }
 
@@ -3766,7 +3762,6 @@ class MemoriaApp extends ChatMixin(LitElement) {
           ${times.map((t) => html`<span class="time-chip">${t}<button aria-label="Tirar ${t}" @click=${() => this._setPageTimes(page.id, times.filter((x) => x !== t))}>${icon("x")}</button></span>`)}
           ${this._timePicker((t) => this._setPageTimes(page.id, [...times, t]), times.length ? "Outro horário" : "Escolher horário")}
         </div>
-        <div class="field-hint">${icon("pin")}<span>${times.length ? `Às ${times.join(", ")} a tela Agora abre direto nesta folha.` : "Um trecho com horário: ex.: às 10h esta folha aparece sozinha."}</span></div>
       </div>
       ${times.length ? this._durPick(page.dur || 0, (d) => this._setPageDur(page.id, d)) : nothing}
       ${blocks.length > 1
@@ -3813,7 +3808,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           <textarea rows="7" .value=${f.text} placeholder="Cole aqui a mensagem do WhatsApp, e-mail ou anotação…" @input=${(e) => this._setForm({ text: e.target.value, error: null })}></textarea>
         </label>
         ${error} ${targets}
-        <div class="sheet-actions">
+        <div class="sheet-actions ${ai.ready ? "tri" : ""}">
           <button class="btn outline" @click=${() => this._pasteClipboard()}>${icon("clipboard-paste")}Colar</button>
           ${ai.ready ? html`<button class="btn outline" ?disabled=${!(f.text || "").trim()} @click=${() => this._readText(false)}>${icon("notebook-text")}Como está</button>` : nothing}
           <button class="btn primary" ?disabled=${!(f.text || "").trim()} @click=${() => this._readText(true)}>${ai.ready ? html`${icon("sparkles")}Organizar` : html`${icon("plus")}Criar folha`}</button>
