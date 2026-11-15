@@ -24,10 +24,11 @@ Numa tela larga (a partir de 1100 px, como um computador ou uma TV), o bloco abe
 
 ### Caixas de marcar e Pronto
 
-Escrevendo, a barra de baixo (no lugar das abas, logo acima do teclado) vira a barra da escrita: **Caixa de marcar**, **Negrito**, **Cor**, **Emoji** e **Pronto**. Usar não fecha o teclado, e ali o menu do celular sobre uma seleção (Copiar, Colar…) não cobre os botões. **Pronto** sai da escrita (o teclado fecha, e as caixas e os links aparecem de novo). Fora da escrita, a **Caixa de marcar** fica no alto da folha, ao lado do número. No celular, a folha tem margens estreitas, para caber mais texto em cada linha.
+Escrevendo, a barra de baixo (no lugar das abas, logo acima do teclado) vira a barra da escrita: **Caixa de marcar**, **Negrito**, **Maior**, **Cor**, **Emoji** e **Pronto**. Usar não fecha o teclado, e ali o menu do celular sobre uma seleção (Copiar, Colar…) não cobre os botões. **Pronto** sai da escrita (o teclado fecha, e as caixas e os links aparecem de novo). Fora da escrita, a **Caixa de marcar** fica no alto da folha, ao lado do número. No celular, a folha tem margens estreitas, para caber mais texto em cada linha.
 
 - **Caixa de marcar** transforma a linha onde está o cursor num item com caixa (☐); tocar de novo tira a caixa. Fora da escrita, ela põe um item novo no fim da folha.
 - **Negrito** e **Cor** valem para a palavra onde está o cursor, sem precisar selecionar; para uma parte maior, selecione antes. **Cor** abre cinco cores (vermelho, laranja, verde, azul e lilás) e **Sem cor**. O negrito e as cores já aparecem enquanto você escreve, com as marcas apagadas em volta (`**negrito**`, `{azul:texto}`); fora da escrita, as marcas somem. Tocar de novo no Negrito ou na mesma cor tira; outra cor troca. No relatório, nos títulos e nos outros apps vai só o texto.
+- **Maior** deixa maior a linha do cursor (um título), sem precisar selecionar; para só uma parte, selecione antes. Combina com o negrito e a cor. Escrevendo, a parte maior fica sublinhada com pontinhos (a marca é `++texto++`); o tamanho aparece no **Pronto**. Tocar de novo tira.
 - **Emoji** abre uma lista de emojis; cada um entra onde está o cursor. Os que você usou vêm primeiro (guardados no aparelho). Os do teclado do celular também valem.
 - Num item, o **Enter** já faz outro item embaixo. Enter num item vazio acaba a lista.
 - Fora da escrita, cada item mostra uma caixa: um toque marca como feito (o texto fica riscado), outro toque desmarca. Tocar no texto abre a escrita, como sempre.

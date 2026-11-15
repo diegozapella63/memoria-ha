@@ -7,14 +7,14 @@ import { readable, lineHtml } from "../memoria/rootfs/app/lib/report.js";
 
 test("the parts: bold, a color, a color with bold inside; where each starts in the sheet", () => {
   assert.deepEqual(parseFormat("Café **forte** e {azul:leite **zero**}!"), [
-    { text: "Café ", start: 0, bold: false, color: "" },
-    { text: "forte", start: 7, bold: true, color: "" },
-    { text: " e ", start: 14, bold: false, color: "" },
-    { text: "leite ", start: 23, bold: false, color: "azul" },
-    { text: "zero", start: 31, bold: true, color: "azul" },
-    { text: "!", start: 38, bold: false, color: "" },
+    { text: "Café ", start: 0, bold: false, big: false, color: "" },
+    { text: "forte", start: 7, bold: true, big: false, color: "" },
+    { text: " e ", start: 14, bold: false, big: false, color: "" },
+    { text: "leite ", start: 23, bold: false, big: false, color: "azul" },
+    { text: "zero", start: 31, bold: true, big: false, color: "azul" },
+    { text: "!", start: 38, bold: false, big: false, color: "" },
   ]);
-  assert.deepEqual(parseFormat("**{vermelho:atenção}**"), [{ text: "atenção", start: 12, bold: true, color: "vermelho" }]);
+  assert.deepEqual(parseFormat("**{vermelho:atenção}**"), [{ text: "atenção", start: 12, bold: true, big: false, color: "vermelho" }]);
   assert.ok(hasFormat("um **dois**") && hasFormat("{lilas:x}"));
   for (const t of ["a ** b ** c", "2 * 3 * 4", "{rosa:x}", "{azul:}", "**\n**", "{azul:a\nb}"]) assert.equal(hasFormat(t), false, t);
   assert.deepEqual(FORMAT_COLORS, ["vermelho", "laranja", "verde", "azul", "lilas"]);
@@ -69,6 +69,7 @@ test("1.28.0: the runs drawn while writing: every character, the marks apart, ea
   const t = "Café **forte** e {azul:leite **zero**}!";
   const r = markRuns(t);
   assert.equal(r.map((x) => x.text).join(""), t, "nothing left out, nothing added");
+  assert.ok(r.every((x) => x.big === false));
   assert.deepEqual(
     r.map((x) => [x.text, x.mark, x.bold, x.color]),
     [
@@ -87,5 +88,32 @@ test("1.28.0: the runs drawn while writing: every character, the marks apart, ea
     ],
   );
   assert.deepEqual(markRuns(""), []);
-  assert.deepEqual(markRuns("sem nada"), [{ text: "sem nada", mark: false, bold: false, color: "" }]);
+  assert.deepEqual(markRuns("sem nada"), [{ text: "sem nada", mark: false, bold: false, big: false, color: "" }]);
+});
+
+test("1.29.0: Maior (++texto++), for a title: with the bold and the colors; without a selection, the whole line", () => {
+  assert.deepEqual(parseFormat("a ++b {azul:c}++ d"), [
+    { text: "a ", start: 0, bold: false, big: false, color: "" },
+    { text: "b ", start: 4, bold: false, big: true, color: "" },
+    { text: "c", start: 12, bold: false, big: true, color: "azul" },
+    { text: " d", start: 16, bold: false, big: false, color: "" },
+  ]);
+  assert.equal(stripFormat("++{verde:**Título**}++ ok"), "Título ok");
+  assert.ok(hasFormat("++x++"));
+  for (const t of ["C++ e C++", "2++3", "++ x ++"]) assert.equal(hasFormat(t), false, t);
+  assert.deepEqual(markRuns("++a **b**++").map((r) => [r.text, r.mark, r.bold, r.big]), [
+    ["++", true, false, true],
+    ["a ", false, false, true],
+    ["**", true, true, true],
+    ["b", false, true, true],
+    ["**", true, true, true],
+    ["++", true, false, true],
+  ]);
+  assert.deepEqual(formatText("Título aqui", 0, 6, "maior"), { text: "++Título++ aqui", s: 0, e: 10 });
+  assert.deepEqual(formatText("++Título++ aqui", 0, 10, "maior"), { text: "Título aqui", s: 0, e: 6 });
+  const t = "{verde:**☕ Café da manhã**}\n\n* Pão";
+  assert.deepEqual(formatAt(t, 12, "maior"), { text: `++{verde:**☕ Café da manhã**}++\n\n* Pão`, s: 14, e: 14 }, "the whole line, the color and the bold inside");
+  assert.deepEqual(formatAt(`++{verde:**☕ Café da manhã**}++\n\n* Pão`, 14, "maior"), { text: t, s: 12, e: 12 }, "again: it goes away");
+  assert.deepEqual(formatAt("a\n  Título  \nb", 6, "maior"), { text: "a\n  ++Título++  \nb", s: 8, e: 8 }, "the spaces around stay outside");
+  assert.deepEqual(formatAt("a\n\nb", 2, "maior"), { text: "a\n++++\nb", s: 4, e: 4 }, "an empty line: the marks, to write");
 });

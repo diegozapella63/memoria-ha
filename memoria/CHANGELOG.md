@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.29.0
+
+- **Folha › Maior**: na barra da escrita, deixa maior a linha do cursor (um título), ou a parte selecionada. Combina com o negrito e a cor; o tamanho aparece no **Pronto**.
+
 ## 1.28.1
 
 - **Tela grande**: o caderno aberto mostra a folha atual nas duas páginas, com o texto continuando na da direita, em vez de duas folhas diferentes. Um toque na direita escreve naquele ponto; as setas viram uma folha por vez.

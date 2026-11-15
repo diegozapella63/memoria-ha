@@ -2576,8 +2576,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
     // marks (data-o: where its text starts in the sheet, so a tap puts the cursor in the right place)
     const fmt = (t, at) =>
       parseFormat(t, at).map((f) =>
-        f.bold || f.color
-          ? html`<span data-o=${f.start} class="fmt ${f.bold ? "b" : ""} ${f.color ? `c-${f.color}` : ""}">${f.text}</span>`
+        f.bold || f.big || f.color
+          ? html`<span data-o=${f.start} class="fmt ${f.bold ? "b" : ""} ${f.big ? "big" : ""} ${f.color ? `c-${f.color}` : ""}">${f.text}</span>`
           : html`<span data-o=${f.start}>${f.text}</span>`,
       );
     const parts = (s, base) =>
@@ -2624,7 +2624,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     return html`${markRuns(text).map((r) => {
       const o = at;
       at += r.text.length;
-      return html`<span data-o=${o} class="${r.mark ? "mk" : ""} ${r.bold ? "lb" : ""} ${r.color ? `lc c-${r.color}` : ""}">${r.text}</span>`;
+      return html`<span data-o=${o} class="${r.mark ? "mk" : ""} ${r.bold ? "lb" : ""} ${r.big && !r.mark ? "lg" : ""} ${r.color ? `lc c-${r.color}` : ""}">${r.text}</span>`;
     })}${/\n$/.test(text) ? " " : ""}`;
   }
 
@@ -2840,7 +2840,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   /**
    * 1.28.0: writing, the bar at the bottom (in the place of the tabs, above the keyboard) has the tools: Caixa de marcar,
-   * Negrito, Cor, Emoji and Pronto. At the bottom, the menu of the phone over a selection (Copiar, Colar…) doesn't cover
+   * Negrito, Maior (1.29.0), Cor, Emoji and Pronto. At the bottom, the menu of the phone over a selection (Copiar, Colar…) doesn't cover
    * them. None of them takes the focus from the sheet (the keyboard stays open).
    */
   _renderWriteBar() {
@@ -2877,6 +2877,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       <div class="wtools">
         ${btn("Caixa de marcar", "square-check", () => this._inkCheck())}
         ${btn("Negrito", "bold", () => this._inkFormat("negrito"))}
+        ${btn("Maior", "a-arrow-up", () => this._inkFormat("maior"))}
         ${btn("Cor", "palette", () => toggle("cor"), pop === "cor")}
         ${btn("Emoji", "smile", () => toggle("emoji"), pop === "emoji")}
         <button type="button" class="ink-done" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkDone()}>${icon("check")}Pronto</button>

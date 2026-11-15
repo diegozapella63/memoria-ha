@@ -3154,6 +3154,18 @@ export const notebookStyles = css`
   .fmt[class*="c-"] {
     color: var(--fc);
   }
+  /* 1.29.0: Maior, para um título: na mesma linha do papel (a altura da linha não muda) */
+  .fmt.big {
+    font-size: 1.35em;
+  }
+  /* escrevendo, o tamanho só aparece no Pronto (as letras desenhadas por cima do editor têm a largura das dele): até lá,
+     a parte maior fica sublinhada */
+  .ink-mirror .lg,
+  .ink.cont .lg {
+    text-decoration: underline dotted;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 5px;
+  }
   .c-vermelho { --fc: #c42a1f; }
   .c-laranja { --fc: #b45309; }
   .c-verde { --fc: #3f7a17; }
@@ -3207,6 +3219,18 @@ export const notebookStyles = css`
     padding: 0 18px 0 14px;
     border-radius: 21px;
     font-size: 16px;
+  }
+  @media (max-width: 380px) {
+    .wtools {
+      padding: 0 8px;
+      gap: 0;
+    }
+    .wbtn {
+      width: 40px;
+    }
+    .wtools .ink-done {
+      padding: 0 12px 0 10px;
+    }
   }
   .wpop {
     position: absolute;

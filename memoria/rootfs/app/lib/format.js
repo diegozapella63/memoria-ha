@@ -1,20 +1,23 @@
-// Negrito e cor numa parte do texto (1.27.0). A folha guarda o texto como foi escrito, com as marcas: **negrito** e
-// {cor:texto} (as cores da paleta abaixo). Fora do editor, a parte aparece em negrito ou na cor e as marcas somem; no
-// relatório, nos títulos, na busca e nos outros apps fica só o texto. Shared by the screen (frontend), the report,
+// Negrito e cor numa parte do texto (1.27.0) e, desde a 1.29.0, Maior. A folha guarda o texto como foi escrito, com as
+// marcas: **negrito**, ++maior++ e {cor:texto} (as cores da paleta abaixo). Fora do editor, a parte aparece em negrito,
+// maior ou na cor e as marcas somem; no relatório, nos títulos, na busca e nos outros apps fica só o texto. Shared by the screen (frontend), the report,
 // the sensor and the integration, like links.js.
 
 /** The colors of a part of the text (ids of the palette of the app). */
 export const FORMAT_COLORS = ["vermelho", "laranja", "verde", "azul", "lilas"];
 const COLOR_ALT = FORMAT_COLORS.join("|");
-// **bold** (not starting or ending with a space) or {color:text} (one line, no braces inside)
-const FMT = () => new RegExp(`\\*\\*(?=\\S)([^\\n]*?\\S)\\*\\*|\\{(${COLOR_ALT}):([^{}\\n]+)\\}`, "g");
+// **bold** or ++bigger++ (not starting or ending with a space) or {color:text} (one line, no braces inside)
+const FMT = () => new RegExp(`\\*\\*(?=\\S)([^\\n]*?\\S)\\*\\*|\\+\\+(?=\\S)([^\\n]*?\\S)\\+\\+|\\{(${COLOR_ALT}):([^{}\\n]+)\\}`, "g");
+// the marks that go around a part, by the kind of the bar
+const PAIRS = { negrito: "**", maior: "++" };
+const esc = (t) => t.replace(/[*+]/g, "\\$&");
 
 /** Whether the text has a part in bold or in a color. */
 export const hasFormat = (text) => FMT().test(String(text || ""));
 
 /**
- * The parts of a piece of text: [{text, start (where the text of the part starts in the source), bold, color}]. The
- * marks are left out; a bold part can have a color inside and the other way round.
+ * The parts of a piece of text: [{text, start (where the text of the part starts in the source), bold, big, color}]. The
+ * marks are left out; a bold part can have a color inside and the other way round (and a bigger one too).
  */
 export function parseFormat(s, base = 0, inherit = {}) {
   const src = String(s || "");
@@ -23,12 +26,13 @@ export function parseFormat(s, base = 0, inherit = {}) {
   let at = 0;
   let m;
   const plain = (from, to) => {
-    if (to > from) out.push({ text: src.slice(from, to), start: base + from, bold: !!inherit.bold, color: inherit.color || "" });
+    if (to > from) out.push({ text: src.slice(from, to), start: base + from, bold: !!inherit.bold, big: !!inherit.big, color: inherit.color || "" });
   };
   while ((m = re.exec(src))) {
     plain(at, m.index);
     if (m[1] != null) out.push(...parseFormat(m[1], base + m.index + 2, { ...inherit, bold: true }));
-    else out.push(...parseFormat(m[3], base + m.index + m[2].length + 2, { ...inherit, color: m[2] }));
+    else if (m[2] != null) out.push(...parseFormat(m[2], base + m.index + 2, { ...inherit, big: true }));
+    else out.push(...parseFormat(m[4], base + m.index + m[3].length + 2, { ...inherit, color: m[3] }));
     at = m.index + m[0].length;
   }
   plain(at, src.length);
@@ -45,18 +49,19 @@ export function markRuns(s, inherit = {}) {
   const re = FMT();
   let at = 0;
   let m;
-  const put = (t, mark, st) => t && out.push({ text: t, mark, bold: !!st.bold, color: st.color || "" });
+  const put = (t, mark, st) => t && out.push({ text: t, mark, bold: !!st.bold, big: !!st.big, color: st.color || "" });
   while ((m = re.exec(src))) {
     put(src.slice(at, m.index), false, inherit);
-    if (m[1] != null) {
-      const st = { ...inherit, bold: true };
-      put("**", true, st);
-      out.push(...markRuns(m[1], st));
-      put("**", true, st);
+    if (m[1] != null || m[2] != null) {
+      const k = m[1] != null ? "**" : "++";
+      const st = { ...inherit, [m[1] != null ? "bold" : "big"]: true };
+      put(k, true, st);
+      out.push(...markRuns(m[1] != null ? m[1] : m[2], st));
+      put(k, true, st);
     } else {
-      const st = { ...inherit, color: m[2] };
-      put(`{${m[2]}:`, true, st);
-      out.push(...markRuns(m[3], st));
+      const st = { ...inherit, color: m[3] };
+      put(`{${m[3]}:`, true, st);
+      out.push(...markRuns(m[4], st));
       put("}", true, st);
     }
     at = m.index + m[0].length;
@@ -85,7 +90,7 @@ function eachPiece(text, s, e, fn) {
 }
 
 /**
- * Formatting a selection of the editor: kind "negrito" (puts or takes the bold), a color of FORMAT_COLORS (puts it,
+ * Formatting a selection of the editor: kind "negrito" or "maior" (puts or takes it), a color of FORMAT_COLORS (puts it,
  * changes it or, the same one again, takes it) or "sem-cor". Returns {text, s, e} (the new selection). Without a
  * selection, the marks go in with the cursor in the middle, to write.
  */
@@ -95,12 +100,13 @@ export function formatText(text, s, e, kind) {
   e = Math.max(s, Math.min(e, text.length));
   const sel = text.slice(s, e);
   const color = FORMAT_COLORS.includes(kind) ? kind : "";
-  if (kind === "negrito") {
-    // the selection already between ** (inside or around): the bold goes away
-    if (text.slice(s - 2, s) === "**" && text.slice(e, e + 2) === "**") return { text: text.slice(0, s - 2) + sel + text.slice(e + 2), s: s - 2, e: e - 2 };
-    if (/^\*\*[\s\S]+\*\*$/.test(sel)) return { text: text.slice(0, s) + sel.slice(2, -2) + text.slice(e), s, e: e - 4 };
-    if (s === e) return { text: `${text.slice(0, s)}****${text.slice(e)}`, s: s + 2, e: s + 2 };
-    return eachPiece(text, s, e, (p) => `**${p}**`);
+  const k = PAIRS[kind];
+  if (k) {
+    // the selection already between the marks (inside or around): they go away
+    if (text.slice(s - 2, s) === k && text.slice(e, e + 2) === k) return { text: text.slice(0, s - 2) + sel + text.slice(e + 2), s: s - 2, e: e - 2 };
+    if (new RegExp(`^${esc(k)}[\\s\\S]+${esc(k)}$`).test(sel)) return { text: text.slice(0, s) + sel.slice(2, -2) + text.slice(e), s, e: e - 4 };
+    if (s === e) return { text: `${text.slice(0, s)}${k}${k}${text.slice(e)}`, s: s + 2, e: s + 2 };
+    return eachPiece(text, s, e, (p) => `${k}${p}${k}`);
   }
   if (!color && kind !== "sem-cor") return { text, s, e };
   // the selection is the text of a color: change the color, or take it (the same one, or Sem cor)
@@ -141,24 +147,36 @@ export function formatAt(text, pos, kind) {
   text = String(text || "");
   pos = Math.max(0, Math.min(pos, text.length));
   const color = FORMAT_COLORS.includes(kind) ? kind : "";
-  if (kind !== "negrito" && !color && kind !== "sem-cor") return { text, s: pos, e: pos };
+  const pair = PAIRS[kind];
+  if (!pair && !color && kind !== "sem-cor") return { text, s: pos, e: pos };
   // the part with the cursor inside (from the first mark to the last)
-  const re = kind === "negrito" ? /\*\*(?=\S)([^\n]*?\S)\*\*/g : new RegExp(`\\{(${COLOR_ALT}):([^{}\\n]+)\\}`, "g");
+  const re = pair ? new RegExp(`${esc(pair)}(?=\\S)([^\\n]*?\\S)${esc(pair)}`, "g") : new RegExp(`\\{(${COLOR_ALT}):([^{}\\n]+)\\}`, "g");
   let m;
   while ((m = re.exec(text))) {
     const a = m.index;
     const z = a + m[0].length;
     // right at the edge of the part counts, unless the cursor is touching another word there
     if (pos < a || pos > z || (pos === a && a > 0 && WORD.test(text[a - 1])) || (pos === z && z < text.length && WORD.test(text[z]))) continue;
-    const head = kind === "negrito" ? 2 : m[1].length + 2;
-    const inner = kind === "negrito" ? m[1] : m[2];
+    const head = pair ? 2 : m[1].length + 2;
+    const inner = pair ? m[1] : m[2];
     const at = (p) => Math.max(a, Math.min(a + inner.length, p - head));
-    if (kind === "negrito" || !color || color === m[1]) return { text: text.slice(0, a) + inner + text.slice(z), s: at(pos), e: at(pos) };
+    if (pair || !color || color === m[1]) return { text: text.slice(0, a) + inner + text.slice(z), s: at(pos), e: at(pos) };
     const swapped = `{${color}:${inner}}`;
     const c = pos + (color.length - m[1].length);
     return { text: text.slice(0, a) + swapped + text.slice(z), s: Math.max(a, c), e: Math.max(a, c) };
   }
   if (!color && kind === "sem-cor") return { text, s: pos, e: pos };
+  // Maior is for a title: the whole line of the cursor (without the spaces around it)
+  if (kind === "maior") {
+    const ls = text.lastIndexOf("\n", pos - 1) + 1;
+    const le = text.indexOf("\n", pos) < 0 ? text.length : text.indexOf("\n", pos);
+    const line = text.slice(ls, le);
+    if (!line.trim()) return formatText(text, pos, pos, kind);
+    const lead = line.length - line.trimStart().length;
+    const r = formatText(text, ls + lead, ls + line.trimEnd().length, kind);
+    const c = pos < ls + lead ? pos : pos + 2;
+    return { text: r.text, s: c, e: c };
+  }
   // the word under the cursor (or touching it)
   let a = pos;
   let z = pos;
