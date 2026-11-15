@@ -1,7 +1,8 @@
 # MemorIA 1.12.0: no alto da folha, Caixa de marcar. Caixa de marcar faz da linha do cursor um item (☐) ou tira a
 # caixa; fora do editor, põe um item novo no fim. Enter num item faz outro embaixo; Enter num item vazio acaba a lista.
 # 1.21.0: os Emojis saíram (o teclado do celular já tem) e, escrevendo, o Pronto fica no lugar do número da folha: um
-# toque sai do editor (o teclado fecha e as caixas voltam). Fora do editor, as caixas viram quadradinhos: um toque marca
+# toque sai do editor (o teclado fecha e as caixas voltam). 1.28.0: escrevendo, a Caixa de marcar e o Pronto ficam na
+# barra de baixo, no lugar das abas. Fora do editor, as caixas viram quadradinhos: um toque marca
 # como feito (☑, o texto riscado) e o outro desmarca, sem abrir o editor; fica salvo. 390 e 320 px, claro e escuro.
 #
 # Usa a prévia (sem servidor): cd frontend && npm run build, depois
@@ -63,15 +64,16 @@ with sync_playwright() as p:
         a.evaluate("(el) => el._openPage('ideias00001', 'new')")
         pg.wait_for_timeout(900)
         tools = a.locator(".leaf-top .tool")
-        got = [tools.nth(i).get_attribute("aria-label") for i in range(tools.count())]
-        check(got[:1] == ["Caixa de marcar"] and "Emojis" not in got, f"{tag}: no alto da folha, Caixa de marcar (sem os Emojis; 1.27.0: escrevendo, também Negrito e cor) ({got})")
-        done = a.locator(".leaf-top .ink-done")
+        done = a.locator("nav.write .ink-done")
+        wbox = a.locator("nav.write .wbtn[aria-label='Caixa de marcar']")
+        check(a.evaluate("(el) => el._editing") is not None and wbox.count() == 1 and tools.count() == 0, f"{tag}: a folha nova já escrevendo: a Caixa de marcar na barra de baixo, não no alto da folha")
 
         # ---- Caixa de marcar e o Enter
         ta = a.locator("textarea.ink")
         ta.click()
         pg.keyboard.type("Feira")
-        tap(pg, tools.nth(0))
+        check(wbox.count() == 1 and a.locator(".leaf-top .tool").count() == 0, f"{tag}: escrevendo, a Caixa de marcar na barra de baixo")
+        tap(pg, wbox)
         check(a.evaluate(VALUE) == "☐ Feira", f"{tag}: a linha vira um item ({a.evaluate(VALUE)!r})")
         check(a.locator(".ink-view").count() == 0, f"{tag}: escrevendo a folha nova, o editor (e não a vista das caixas)")
         check(a.evaluate(FOCUSED), f"{tag}: o teclado fica aberto (o foco continua na folha)")
@@ -85,23 +87,23 @@ with sync_playwright() as p:
         pg.keyboard.press("Enter")
         pg.keyboard.type("Fim da lista")
         check(a.evaluate(VALUE) == "☐ Feira\n☐ Pão\n☐ Leite\nFim da lista", f"{tag}: Enter num item vazio acaba a lista ({a.evaluate(VALUE)!r})")
-        tap(pg, tools.nth(0))
-        tap(pg, tools.nth(0))
+        tap(pg, wbox)
+        tap(pg, wbox)
         check(a.evaluate(VALUE).endswith("\nFim da lista"), f"{tag}: de novo, a caixa sai ({a.evaluate(VALUE)!r})")
 
-        # ---- Pronto: escrevendo, no lugar do número da folha
-        check(done.count() == 1 and done.inner_text().strip() == "Pronto" and a.locator(".leaf-top .num").count() == 0, f"{tag}: escrevendo, o Pronto no lugar do número")
+        # ---- Pronto: escrevendo, na barra de baixo (no lugar das abas); o número da folha continua no alto
+        check(done.count() == 1 and done.inner_text().strip() == "Pronto" and a.locator("nav .tabs").count() == 0 and a.locator(".leaf-top .num").count() == 1, f"{tag}: escrevendo, o Pronto na barra de baixo, no lugar das abas")
         check(not a.evaluate(OVER), f"{tag}: nada passa da largura {a.evaluate(OVER)}")
         pg.screenshot(path=str(SHOTS / f"caixas-editor-{scheme}-{w}.png"))
-        tap(pg, tools.nth(0))
+        tap(pg, wbox)
         check(a.evaluate(FOCUSED) and done.count() == 1, f"{tag}: a Caixa de marcar não tira do editor")
-        tap(pg, tools.nth(0))
+        tap(pg, wbox)
         pid = a.evaluate("(el) => el._pad.page")
 
         # ---- Pronto: um toque sai do editor; fora dele, um toque marca como feito
         tap(pg, done)
         pg.wait_for_timeout(300)
-        check(not a.evaluate(FOCUSED) and a.evaluate("(el) => el._editing") is None and done.count() == 0, f"{tag}: Pronto sai do editor")
+        check(not a.evaluate(FOCUSED) and a.evaluate("(el) => el._editing") is None and done.count() == 0 and a.locator("nav .tabs").count() == 1, f"{tag}: Pronto sai do editor (e as abas voltam)")
         check(a.locator(".leaf-top .num").count() == 1, f"{tag}: fora do editor, o número da folha de novo")
         boxes = a.locator(".ink-view .chk")
         check(boxes.count() == 3 and all(boxes.nth(i).get_attribute("aria-checked") == "false" for i in range(3)), f"{tag}: fora do editor, três caixas para marcar")
@@ -118,7 +120,9 @@ with sync_playwright() as p:
         check(saved in (None, "☐ Feira\n☑ Pão\n☐ Leite\nFim da lista"), f"{tag}: e fica salvo ({saved!r})")
         tap(pg, boxes.nth(1))
         check(boxes.nth(1).get_attribute("aria-checked") == "false", f"{tag}: outro toque desmarca")
-        # Caixa de marcar fora do editor: um item novo no fim, com o teclado
+        # Caixa de marcar fora do editor (no alto da folha): um item novo no fim, com o teclado
+        got = [tools.nth(i).get_attribute("aria-label") for i in range(tools.count())]
+        check(got == ["Caixa de marcar"], f"{tag}: fora do editor, no alto da folha, Caixa de marcar ({got})")
         tap(pg, tools.nth(0))
         check(a.evaluate(VALUE).endswith("\nFim da lista\n☐ ") and a.evaluate(FOCUSED), f"{tag}: fora do editor, um item novo no fim ({a.evaluate(VALUE)[-12:]!r})")
         check(not errs, f"{tag}: sem erros {errs}")

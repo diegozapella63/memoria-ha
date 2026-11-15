@@ -1,7 +1,7 @@
 // 1.27.0: Negrito e cor numa parte do texto (lib/format.js): as partes, o texto sem as marcas e o que a barra faz.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { hasFormat, parseFormat, stripFormat, formatText, FORMAT_COLORS } from "../memoria/rootfs/app/lib/format.js";
+import { hasFormat, parseFormat, stripFormat, formatText, formatAt, markRuns, FORMAT_COLORS } from "../memoria/rootfs/app/lib/format.js";
 import { linksToText } from "../memoria/rootfs/app/lib/links.js";
 import { readable, lineHtml } from "../memoria/rootfs/app/lib/report.js";
 
@@ -48,4 +48,44 @@ test("a color: puts, changes, takes (the same one again or Sem cor)", () => {
   assert.deepEqual(formatText("ab", 1, 1, "lilas"), { text: "a{lilas:}b", s: 8, e: 8 });
   assert.deepEqual(formatText("ab", 0, 2, "outra"), { text: "ab", s: 0, e: 2 }, "an unknown kind does nothing");
   assert.deepEqual(formatText("ab", 0, 2, "sem-cor"), { text: "ab", s: 0, e: 2 });
+});
+
+test("1.28.0: with the cursor in a word, without selecting: the word; inside a part, the part; the cursor stays", () => {
+  assert.deepEqual(formatAt("Café forte e leite", 6, "negrito"), { text: "Café **forte** e leite", s: 8, e: 8 });
+  assert.deepEqual(formatAt("Café **forte** e leite", 9, "negrito"), { text: "Café forte e leite", s: 7, e: 7 }, "inside: the bold goes away");
+  assert.deepEqual(formatAt("Café **forte** e leite", 5, "negrito"), { text: "Café forte e leite", s: 5, e: 5 }, "at the edge too");
+  assert.deepEqual(formatAt("* Café - 0,5", 4, "negrito"), { text: "* **Café** - 0,5", s: 6, e: 6 }, "a list: only the word");
+  assert.deepEqual(formatAt("Café forte", 10, "negrito"), { text: "Café **forte**", s: 12, e: 12 }, "at the end of the word: it, and the cursor inside to go on");
+  assert.deepEqual(formatAt("a  b", 2, "negrito"), { text: "a **** b", s: 4, e: 4 }, "between words: the marks, to write");
+  assert.deepEqual(formatAt("Café forte e leite", 15, "azul"), { text: "Café forte e {azul:leite}", s: 21, e: 21 });
+  assert.deepEqual(formatAt("Café {azul:leite} x", 12, "azul"), { text: "Café leite x", s: 6, e: 6 }, "the same color: it goes away");
+  assert.deepEqual(formatAt("Café {azul:leite} x", 12, "verde"), { text: "Café {verde:leite} x", s: 13, e: 13 }, "another color: it changes");
+  assert.deepEqual(formatAt("Café {azul:leite} x", 12, "sem-cor"), { text: "Café leite x", s: 6, e: 6 });
+  assert.deepEqual(formatAt("Café forte", 3, "sem-cor"), { text: "Café forte", s: 3, e: 3 }, "Sem cor without a color: nothing");
+  assert.deepEqual(formatAt("ab", 1, "outra"), { text: "ab", s: 1, e: 1 });
+});
+
+test("1.28.0: the runs drawn while writing: every character, the marks apart, each with its bold and color", () => {
+  const t = "Café **forte** e {azul:leite **zero**}!";
+  const r = markRuns(t);
+  assert.equal(r.map((x) => x.text).join(""), t, "nothing left out, nothing added");
+  assert.deepEqual(
+    r.map((x) => [x.text, x.mark, x.bold, x.color]),
+    [
+      ["Café ", false, false, ""],
+      ["**", true, true, ""],
+      ["forte", false, true, ""],
+      ["**", true, true, ""],
+      [" e ", false, false, ""],
+      ["{azul:", true, false, "azul"],
+      ["leite ", false, false, "azul"],
+      ["**", true, true, "azul"],
+      ["zero", false, true, "azul"],
+      ["**", true, true, "azul"],
+      ["}", true, false, "azul"],
+      ["!", false, false, ""],
+    ],
+  );
+  assert.deepEqual(markRuns(""), []);
+  assert.deepEqual(markRuns("sem nada"), [{ text: "sem nada", mark: false, bold: false, color: "" }]);
 });

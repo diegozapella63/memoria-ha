@@ -35,6 +35,36 @@ export function parseFormat(s, base = 0, inherit = {}) {
   return out;
 }
 
+/**
+ * 1.28.0: every character of the text, in runs: the marks (mark: true) and the text, each with its bold and color. While
+ * writing, the screen draws these over the editor, so the bold and the colors show with the marks faint.
+ */
+export function markRuns(s, inherit = {}) {
+  const src = String(s || "");
+  const out = [];
+  const re = FMT();
+  let at = 0;
+  let m;
+  const put = (t, mark, st) => t && out.push({ text: t, mark, bold: !!st.bold, color: st.color || "" });
+  while ((m = re.exec(src))) {
+    put(src.slice(at, m.index), false, inherit);
+    if (m[1] != null) {
+      const st = { ...inherit, bold: true };
+      put("**", true, st);
+      out.push(...markRuns(m[1], st));
+      put("**", true, st);
+    } else {
+      const st = { ...inherit, color: m[2] };
+      put(`{${m[2]}:`, true, st);
+      out.push(...markRuns(m[3], st));
+      put("}", true, st);
+    }
+    at = m.index + m[0].length;
+  }
+  put(src.slice(at), false, inherit);
+  return out;
+}
+
 /** The text without the marks (how it reads in the report, the titles and the other apps). */
 export const stripFormat = (text) =>
   parseFormat(text)
@@ -97,4 +127,46 @@ export function formatText(text, s, e, kind) {
   }
   const t = text.slice(0, s) + bare + text.slice(e);
   return eachPiece(t, s, s + bare.length, (p) => `{${color}:${p.replace(/[{}]/g, "")}}`);
+}
+
+const WORD = /[\p{L}\p{M}\p{N}_]/u;
+
+/**
+ * 1.28.0: Negrito or a color with the cursor in a word, without selecting (on the phone, selecting brings the menu of
+ * the system over the app): the part with the cursor inside loses or changes its marks; otherwise the word under the
+ * cursor gets them; between words, the marks go in to write, as in formatText. The cursor stays in the same place of
+ * the text. Returns {text, s, e}.
+ */
+export function formatAt(text, pos, kind) {
+  text = String(text || "");
+  pos = Math.max(0, Math.min(pos, text.length));
+  const color = FORMAT_COLORS.includes(kind) ? kind : "";
+  if (kind !== "negrito" && !color && kind !== "sem-cor") return { text, s: pos, e: pos };
+  // the part with the cursor inside (from the first mark to the last)
+  const re = kind === "negrito" ? /\*\*(?=\S)([^\n]*?\S)\*\*/g : new RegExp(`\\{(${COLOR_ALT}):([^{}\\n]+)\\}`, "g");
+  let m;
+  while ((m = re.exec(text))) {
+    const a = m.index;
+    const z = a + m[0].length;
+    // right at the edge of the part counts, unless the cursor is touching another word there
+    if (pos < a || pos > z || (pos === a && a > 0 && WORD.test(text[a - 1])) || (pos === z && z < text.length && WORD.test(text[z]))) continue;
+    const head = kind === "negrito" ? 2 : m[1].length + 2;
+    const inner = kind === "negrito" ? m[1] : m[2];
+    const at = (p) => Math.max(a, Math.min(a + inner.length, p - head));
+    if (kind === "negrito" || !color || color === m[1]) return { text: text.slice(0, a) + inner + text.slice(z), s: at(pos), e: at(pos) };
+    const swapped = `{${color}:${inner}}`;
+    const c = pos + (color.length - m[1].length);
+    return { text: text.slice(0, a) + swapped + text.slice(z), s: Math.max(a, c), e: Math.max(a, c) };
+  }
+  if (!color && kind === "sem-cor") return { text, s: pos, e: pos };
+  // the word under the cursor (or touching it)
+  let a = pos;
+  let z = pos;
+  while (a > 0 && WORD.test(text[a - 1])) a--;
+  while (z < text.length && WORD.test(text[z])) z++;
+  if (a === z) return formatText(text, pos, pos, kind);
+  const r = formatText(text, a, z, kind);
+  const shift = r.text.indexOf(text.slice(a, z), a) - a;
+  const c = pos + Math.max(0, shift);
+  return { text: r.text, s: c, e: c };
 }

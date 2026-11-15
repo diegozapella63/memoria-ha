@@ -18,12 +18,17 @@ Na primeira vez já existem dois blocos de exemplo, **Diário** (abre à noite) 
 - Folhas deixadas em branco somem sozinhas.
 - No **⋯** da folha: horário próprio, mover para outro bloco, **Adicionar link**, copiar o texto ou arrancar a folha (com **Desfazer**).
 
+### Duas folhas lado a lado
+
+Numa tela larga (a partir de 1100 px, como um computador), o bloco aberto e o Agora mostram duas folhas lado a lado, como um caderno aberto: 1 e 2, 3 e 4… A folha em uso tem a escrita; um toque no texto da outra passa a escrever nela, com o cursor onde você tocou (as caixas e os links da outra continuam funcionando). As setas viram de duas em duas, e depois da última folha com texto aparece a folha nova ao lado.
+
 ### Caixas de marcar e Pronto
 
-No alto da folha, ao lado do número, fica **Caixa de marcar** (e, escrevendo, **Negrito e cor**); usar não fecha o teclado. No celular, a folha tem margens estreitas, para caber mais texto em cada linha. Escrevendo, o **Pronto** fica no lugar do número: um toque sai da escrita (o teclado fecha, e as caixas e os links aparecem de novo). Os emojis são os do teclado do celular.
+Escrevendo, a barra de baixo (no lugar das abas, logo acima do teclado) vira a barra da escrita: **Caixa de marcar**, **Negrito**, **Cor**, **Emoji** e **Pronto**. Usar não fecha o teclado, e ali o menu do celular sobre uma seleção (Copiar, Colar…) não cobre os botões. **Pronto** sai da escrita (o teclado fecha, e as caixas e os links aparecem de novo). Fora da escrita, a **Caixa de marcar** fica no alto da folha, ao lado do número. No celular, a folha tem margens estreitas, para caber mais texto em cada linha.
 
 - **Caixa de marcar** transforma a linha onde está o cursor num item com caixa (☐); tocar de novo tira a caixa. Fora da escrita, ela põe um item novo no fim da folha.
-- **Negrito e cor** (o T, só escrevendo) abre uma barra com **Negrito**, cinco cores (vermelho, laranja, verde, azul e lilás) e **Sem cor**. Selecione uma parte do texto e toque: ela ganha as marcas (`**negrito**` ou `{azul:texto}`), que só aparecem enquanto você escreve; fora da escrita, a parte fica em negrito ou na cor. Tocar de novo no Negrito ou na mesma cor tira; outra cor troca. No relatório, nos títulos e nos outros apps vai só o texto.
+- **Negrito** e **Cor** valem para a palavra onde está o cursor, sem precisar selecionar; para uma parte maior, selecione antes. **Cor** abre cinco cores (vermelho, laranja, verde, azul e lilás) e **Sem cor**. O negrito e as cores já aparecem enquanto você escreve, com as marcas apagadas em volta (`**negrito**`, `{azul:texto}`); fora da escrita, as marcas somem. Tocar de novo no Negrito ou na mesma cor tira; outra cor troca. No relatório, nos títulos e nos outros apps vai só o texto.
+- **Emoji** abre uma lista de emojis; cada um entra onde está o cursor. Os que você usou vêm primeiro (guardados no aparelho). Os do teclado do celular também valem.
 - Num item, o **Enter** já faz outro item embaixo. Enter num item vazio acaba a lista.
 - Fora da escrita, cada item mostra uma caixa: um toque marca como feito (o texto fica riscado), outro toque desmarca. Tocar no texto abre a escrita, como sempre.
 - No **Agora**, marcar vale só para aquela vez do trecho: a folha não muda (em **Blocos** ela aparece como está) e, na próxima vez que o trecho aparecer, as caixas voltam desmarcadas. Serve para listas de todo dia, como as refeições ou os remédios. Fora do Agora, em **Blocos**, marcar grava na folha.
@@ -50,7 +55,7 @@ Os horários abrem nas janelas do próprio app, sempre em 24 horas (sem AM/PM), 
 
 No alto do **Agora** aparece primeiro o que vale agora e, em seguida, os dois próximos horários (depois da meia-noite, os de amanhã). Um toque espia outro horário; **Voltar para agora** volta. O dia inteiro fica em **Blocos › Seu dia**.
 
-**Fica no Agora** diz por quanto tempo um horário vale: **Até o próximo** (o padrão: até começar o próximo horário) ou 1, 2, 3, 4, 6 ou 8 horas. Fica nos ajustes do bloco (embaixo de **Quando abrir sozinho**) e no ⋯ de uma folha com horário. Passado esse tempo, o Agora mostra **Nada agora** até o próximo horário, com os próximos no alto para espiar: a janta das 18:00 com 4 horas some às 22:00, em vez de ficar até a manhã. Enquanto vale, o alto diz até quando ("desde 18:00 até 22:00").
+**Fica no Agora** diz por quanto tempo um horário vale: **Até o próximo** (o padrão: até começar o próximo horário) ou 1, 2, 3, 4, 6 ou 8 horas. Fica nos ajustes do bloco (embaixo de **Quando abrir sozinho**) e no ⋯ de uma folha com horário. Passado esse tempo, o Agora mostra **Nada agora** até o próximo horário, com os próximos no alto para espiar: a janta das 18:00 com 4 horas some às 22:00, em vez de ficar até a manhã.
 
 Nos mesmos ajustes ficam o nome, a **categoria**, **de quem é**, a **cor da capa**, o tipo de **folha** (pautada, quadriculada, pontilhada ou lisa), **Arquivar bloco** e o botão de excluir o bloco (as folhas dele vão junto). Para criar outro, toque em **Novo bloco**, no fim da estante.
 
@@ -85,7 +90,7 @@ No fim de **Blocos**, o quadro **Seu dia** lista os horários de hoje, com o de 
 
 E uma folha pode ter horário próprio (um "trecho"): no **⋯** da folha, **Mostrar esta folha às…**. Às 10:00, por exemplo, a tela **Agora** abre direto na pauta da reunião.
 
-A tela **Agora** mostra o que vale no momento: o último horário que já começou, contando o dia anterior ("desde ontem às 18:00") até chegar o próximo. Valem os horários dos blocos e os das folhas: uma folha com horário abre o bloco dela mesmo que o bloco não tenha horário. Quando dois coincidem, a folha com horário vem antes do horário do bloco, que vem antes do período. A linha do tempo no topo mostra o dia todo: toque num horário para espiar e em **Voltar para agora** para voltar.
+A tela **Agora** mostra o que vale no momento: o último horário que já começou, contando o dia anterior, até chegar o próximo. Valem os horários dos blocos e os das folhas: uma folha com horário abre o bloco dela mesmo que o bloco não tenha horário. Quando dois coincidem, a folha com horário vem antes do horário do bloco, que vem antes do período. A linha do tempo no topo mostra o horário de agora (destacado) e os próximos, sem outro texto repetindo os horários: toque num horário para espiar e em **Voltar para agora** para voltar.
 
 Quando nada seu (nem de **Todos**) tem horário, o Agora não abre um bloco qualquer: ele diz **Nada com horário** e, se houver blocos com horário de outras pessoas, de quem são ("Treino é de Beto: só abre no Agora de Beto"). Na tela de um bloco, a linha **Abre sozinho** mostra os horários dele e as folhas com horário ("folha 3 às 18:00").
 

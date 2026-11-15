@@ -2989,8 +2989,8 @@ export const notebookStyles = css`
   .leaf-top .tool.on {
     color: var(--rv-accent-ink);
   }
-  /* Pronto (1.21.0): while writing, in the place of the number of the sheet; out of the editor in one tap */
-  .leaf-top .ink-done {
+  /* Pronto (1.21.0): out of the editor in one tap; since 1.28.0 at the end of the bar of the writing, at the bottom */
+  .ink-done {
     flex: none;
     display: inline-flex;
     align-items: center;
@@ -3007,12 +3007,12 @@ export const notebookStyles = css`
     font-weight: 600;
     cursor: pointer;
   }
-  .leaf-top .ink-done .i {
+  .ink-done .i {
     width: 17px;
     height: 17px;
     stroke-width: 2.6;
   }
-  .leaf-top .ink-done:active {
+  .ink-done:active {
     transform: scale(0.96);
   }
   /* the editor waits behind the view (it gets the focus at the tap, so the keyboard opens) */
@@ -3164,40 +3164,145 @@ export const notebookStyles = css`
   :host([dark]) .c-verde { --fc: #8bd45f; }
   :host([dark]) .c-azul { --fc: #62b5ff; }
   :host([dark]) .c-lilas { --fc: #b99bff; }
-  .fmt-bar {
-    flex: none;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px;
-    padding: 0 6px 6px 64px;
+  /* 1.28.0: escrevendo, a barra de baixo (no lugar das abas, acima do teclado) com a Caixa de marcar, o Negrito, a Cor, o
+     Emoji e o Pronto; a Cor e o Emoji abrem logo acima dela */
+  nav.write {
     position: relative;
-    z-index: 5;
+    margin-bottom: var(--kb, 0px);
   }
-  .fmt-bar button {
-    width: 38px;
-    height: 38px;
+  .wtools {
+    max-width: 600px;
+    margin: 0 auto;
+    height: var(--rv-nav-h);
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 12px;
+  }
+  .wbtn {
+    width: 46px;
+    height: 46px;
+    flex: none;
     border: 0;
-    border-radius: 10px;
+    border-radius: 12px;
     display: grid;
     place-items: center;
     background: none;
-    color: var(--ink-soft);
+    color: var(--rv-text);
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
-  .fmt-bar button:active {
+  .wbtn .i {
+    width: 23px;
+    height: 23px;
+  }
+  .wbtn:active,
+  .wbtn.on {
+    background: var(--rv-accent-soft);
+    color: var(--rv-accent-ink);
+  }
+  .wtools .ink-done {
+    margin-left: auto;
+    height: 42px;
+    padding: 0 18px 0 14px;
+    border-radius: 21px;
+    font-size: 16px;
+  }
+  .wpop {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 12px;
+    background: var(--rv-nav);
+    border-top: 1px solid var(--rv-line);
+    box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.1);
+  }
+  .wpop button {
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: none;
+    color: var(--rv-text);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .wpop button:active {
     background: var(--rv-accent-soft);
   }
-  .fmt-bar .i {
-    width: 20px;
-    height: 20px;
-  }
-  .fmt-bar .fmt-c span {
+  .wpop .i {
     width: 22px;
     height: 22px;
+  }
+  .wpop .fmt-c span {
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     background: var(--fc);
     box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  }
+  .wpop.emojis {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+    gap: 2px;
+  }
+  .wpop .emo {
+    width: auto;
+    height: 42px;
+    font-size: 24px;
+    line-height: 1;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  }
+  /* 1.28.0: escrevendo, o negrito e as cores já aparecem: o texto desenhado por cima do editor (as letras dele ficam
+     transparentes; o cursor e a seleção continuam), com as marcas apagadas; o negrito é um contorno, que não muda a
+     largura das letras */
+  .ink.live {
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+  .ink.live::selection {
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    background: color-mix(in srgb, var(--rv-accent) 32%, transparent);
+  }
+  .ink.live,
+  .ink-mirror {
+    scrollbar-gutter: stable;
+  }
+  .leaf .ink.ink-mirror {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 44px;
+    bottom: 0;
+    z-index: 2;
+    overflow: hidden;
+    pointer-events: none;
+    background: none;
+    color: var(--ink);
+  }
+  .ink-mirror .mk {
+    opacity: 0.3;
+  }
+  .ink-mirror .lb {
+    -webkit-text-stroke: 0.04em currentColor;
+  }
+  .ink-mirror .lc {
+    color: var(--fc);
+  }
+  /* escrevendo, um arrasto passa do alto do app: a página do Home Assistant em volta, que o teclado empurrou, volta */
+  :host([writing]) main {
+    overscroll-behavior-y: auto;
   }
   /* 1.27.0: no celular, as margens da folha menores, para caber mais texto em cada linha (a espiral e as bordas de virar
      a folha continuam onde estavam) */
@@ -3211,9 +3316,6 @@ export const notebookStyles = css`
     .leaf-top {
       padding-left: 40px;
     }
-    .fmt-bar {
-      padding-left: 40px;
-    }
     .leaf.pautado::before {
       left: 34px;
     }
@@ -3224,13 +3326,29 @@ export const notebookStyles = css`
       width: 22px;
     }
   }
-  /* escrevendo num celular, o alto da folha é das ferramentas (a caixa, o Negrito e cor e o Pronto): a data e os horários
-     voltam no Pronto, em vez de ficarem cortados ("h…") */
-  @media (max-width: 440px) {
-    .leaf-top.editing .when,
-    .leaf-top.editing .pin {
-      display: none;
-    }
+  /* 1.29.0: numa tela larga, duas folhas lado a lado, como um caderno aberto (a espiral no meio); a outra folha mostra o
+     texto como ele fica, e um toque nela escreve ali */
+  .page:has(.pad.spread) {
+    max-width: 1320px;
+  }
+  .pad.spread {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 30px;
+    margin-left: 8px;
+  }
+  .pad.spread .leaf.left {
+    border-radius: 11px 4px 4px 11px;
+  }
+  .pad.spread .spiral {
+    left: calc(50% - 22px);
+  }
+  .leaf.still .ink-view {
+    cursor: text;
+  }
+  .ink-ph {
+    color: var(--ink-soft);
+    opacity: 0.7;
   }
   .edge.next::after {
     /* turned-up page corner */

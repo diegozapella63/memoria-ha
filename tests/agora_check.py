@@ -120,11 +120,9 @@ with sync_playwright() as p:
         pg.wait_for_timeout(500)
         pad = a.evaluate("(el) => el._pad && [el._block(el._pad.block).name, el._pagesOf(el._pad.block).findIndex((p) => p.id === el._pad.page) + 1]")
         check(pad == ["Treino", 2], f"{tag}: Beto's Agora opens Treino on the sheet at 18:00 ({pad})")
-        status = a.locator(".page .status").first.inner_text().strip()
-        hour = a.evaluate("() => new Date().getHours()")
-        check((" · desde ontem às 18:00" in status) if hour < 18 else (" · desde 18:00" in status), f"{tag}: since 18:00 ({status})")
-        check("depois" not in status, f"{tag}: no 'depois' with one time only")
-        check(a.locator(".tline .tchip").count() == 1 and "18:00" in a.locator(".tline .tchip").inner_text(), f"{tag}: the line of the day has the sheet at 18:00")
+        # 1.28.0: the times only in the line of the day, no text above it saying them again
+        check(a.locator(".page .status").count() == 0, f"{tag}: no status line above the times")
+        check(a.locator(".tline .tchip").count() == 1 and "18:00" in a.locator(".tline .tchip").inner_text() and "on" in a.locator(".tline .tchip").get_attribute("class"), f"{tag}: the line of the day has the sheet at 18:00, the one of now")
         pg.screenshot(path=str(SHOTS / f"agora-{scheme}-{w}-beto.png"))
         # a shared tablet: everything
         a.evaluate("(el) => { el._user = { name: 'Tablet', person: '' }; el._cache = { ...el._cache, data: null }; el._enterView(); el.requestUpdate(); }")

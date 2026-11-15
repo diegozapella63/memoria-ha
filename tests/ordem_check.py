@@ -70,8 +70,7 @@ with sync_playwright() as p:
         check([c["t"] for c in chips] == ["18:00", "22:00", "05:00"], f"{tag}: 20:53: now, then the next two ({[c['t'] for c in chips]})")
         check(chips[0]["on"] and not any(c["on"] for c in chips[1:]), f"{tag}: the first one is the one of now")
         check(a.evaluate("(el) => el.renderRoot.querySelector('.tline').scrollLeft") == 0 and chips[0]["left"] >= 0, f"{tag}: the one of now is in sight, at the start ({chips[0]['left']})")
-        status = " ".join(a.locator(".page .status").first.inner_text().split())
-        check(status == "Noite · desde 18:00 · depois Diário às 22:00", f"{tag}: the status ({status})")
+        check(a.locator(".page .status").count() == 0, f"{tag}: no text above the times saying them again (1.28.0)")
         check(a.evaluate(OVER) == [], f"{tag}: nothing out of the screen {a.evaluate(OVER)}")
         pg.screenshot(path=str(SHOTS / f"ordem-{scheme}-{w}-noite.png"))
 
@@ -89,9 +88,7 @@ with sync_playwright() as p:
         # ---- 03:00: 22:00 of yesterday still holds
         at(pg, a, 3)
         chips = a.evaluate(CHIPS)
-        status = " ".join(a.locator(".page .status").first.inner_text().split())
-        check([c["t"] for c in chips] == ["22:00", "05:00", "10:00"] and chips[0]["on"], f"{tag}: 03:00 ({[c['t'] for c in chips]})")
-        check("desde ontem às 22:00" in status, f"{tag}: since yesterday ({status})")
+        check([c["t"] for c in chips] == ["22:00", "05:00", "10:00"] and chips[0]["on"], f"{tag}: 03:00, 22:00 of yesterday still holds ({[c['t'] for c in chips]})")
         # ---- 13:00: Tarde, then 18:00 and 22:00
         at(pg, a, 13)
         check([c["t"] for c in a.evaluate(CHIPS)] == ["12:00", "18:00", "22:00"], f"{tag}: 13:00 ({[c['t'] for c in a.evaluate(CHIPS)]})")

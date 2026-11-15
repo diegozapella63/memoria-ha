@@ -93,7 +93,7 @@ with sync_playwright() as p:
         a.evaluate("(el) => el._closeSheet()")
         pg.wait_for_timeout(500)
         at(9, 22, 30)
-        check("desde 22:00 até 23:00" in status(a), f"{tag}: the status says until when ({status(a)})")
+        check(a.locator(".page .status").count() == 0 and a.locator(".tline .tchip.on").count() == 1 and "22:00" in a.locator(".tline .tchip.on").inner_text(), f"{tag}: 22:30: the sheet of 22:00 holds (in the line of the day, no text above it)")
 
         # ---- the marks of the Agora: only for this time; the text stays
         a.locator(".page .ink-view .chk").first.click()
@@ -113,7 +113,7 @@ with sync_playwright() as p:
         # ---- 23:10: over; nothing now, not the sheet of 22:00 until the morning
         at(9, 23, 10)
         check(a.locator(".now-idle h3").count() == 1 and a.locator(".now-idle h3").inner_text().strip() == "Nada agora", f"{tag}: 23:10: Nada agora")
-        check(status(a) == "Noite · nada agora · depois Trabalho às 05:00", f"{tag}: the status ({status(a)})")
+        check(a.locator(".page .status").count() == 0, f"{tag}: no text above the times (Nada agora is in the card)")
         chips = a.evaluate(CHIPS)
         check(chips == ["05:00", "10:00", "12:00"], f"{tag}: the next times, none on ({chips})")
         check(a.evaluate(OVER) == [], f"{tag}: Nada agora inside the screen {a.evaluate(OVER)}")

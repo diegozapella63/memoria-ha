@@ -1,5 +1,15 @@
 # Mudanças
 
+## 1.28.0
+
+- **Folha › barra da escrita**: escrevendo, a barra de baixo vira a da escrita, logo acima do teclado: **Caixa de marcar**, **Negrito**, **Cor**, **Emoji** e **Pronto**. O menu do celular sobre uma seleção (Copiar, Colar…) não cobre mais os botões.
+- **Negrito** e **Cor** valem para a palavra onde está o cursor, sem precisar selecionar.
+- O negrito e as cores já aparecem enquanto você escreve, com as marcas apagadas em volta.
+- **Emoji**: os mais usados numa nota, um toque e ele entra onde está o cursor; os que você usou vêm primeiro.
+- Escrevendo com o teclado aberto, arrastar para baixo volta a mostrar o alto da tela.
+- **Agora**: sem o texto acima dos horários repetindo o que eles já mostram.
+- **Tela grande** (o computador): duas folhas lado a lado, como um caderno aberto. Um toque na outra folha escreve nela; as setas viram de duas em duas.
+
 ## 1.27.1
 
 - **Buscar › Filtros**: fechado, mostra só o título, sem o nome ao lado.

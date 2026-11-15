@@ -12,7 +12,7 @@ import { Recorder, micError, VOICE_RATE, VOICE_MAX_S } from "./voice.js";
 import { PALETTE, colorById, colorVars, hexToRgba, fold, foldKeepLength, plural, clip, writtenAt, hm, newId, firstLine, prepareImage } from "./util.js";
 import { parentHass, detectDark } from "./api.js";
 import { parseLinks, hasLinks, linksToText, normalizeUrl } from "../../memoria/rootfs/app/lib/links.js";
-import { hasFormat, parseFormat, formatText, FORMAT_COLORS } from "../../memoria/rootfs/app/lib/format.js";
+import { hasFormat, parseFormat, formatText, formatAt, markRuns, FORMAT_COLORS } from "../../memoria/rootfs/app/lib/format.js";
 import { appendLink, freeColor, checkOf, hasChecks, toggleCheck, CHECK_TODO } from "../../memoria/rootfs/app/lib/writing.js";
 import { PERIODS, PAPERS, DURATIONS, buildSchedule, currentAt, nextAfter, timeline, ahead, occurrence, minutesOf, fmtMin, periodAt, periodTimes, normTime, opensFor, sameName, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
 
@@ -34,6 +34,32 @@ const REPORT_KEY = "memoria.relatorio";
 const SEARCH_ARCH_KEY = "memoria.buscar.arquivados";
 // 1.25.0: Buscar › Filtros fechado (guardado no aparelho)
 const SEARCH_FOLD_KEY = "memoria.buscar.filtros";
+// 1.28.0: the emojis of the bar of the writing: the last ones used (on this device), then these
+const EMOJI_KEY = "memoria.emojis";
+const EMOJIS = ["✅", "❌", "⭐", "❤️", "👍", "🙏", "😊", "😂", "🎉", "💡", "📌", "⚠️", "❗", "❓", "👉", "📅", "⏰", "🛒", "💊", "🍎", "☕", "🏠", "🚗", "💰"];
+
+/**
+ * How much of the bottom of the app is behind the keyboard (or below the screen), in px: by the visible part of the page
+ * (visualViewport) and, inside the Home Assistant, of the page around it (same origin; the panel is an iframe there).
+ */
+function keyboardOver() {
+  let hidden = 0;
+  try {
+    let w = window;
+    const vv = w.visualViewport;
+    if (vv) hidden = w.innerHeight - (vv.offsetTop + vv.height);
+    while (w.frameElement && w.parent && w.parent !== w) {
+      const r = w.frameElement.getBoundingClientRect();
+      const p = w.parent;
+      const pv = p.visualViewport;
+      hidden = Math.max(hidden, r.bottom - (pv ? pv.offsetTop + pv.height : p.innerHeight));
+      w = p;
+    }
+  } catch {
+    // another origin around the app: only this page
+  }
+  return hidden > 1 ? Math.round(hidden) : 0;
+}
 
 const icon = (name, cls = "") =>
   html`<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${unsafeSVG(ICONS[name] || ICONS.notebook)}</svg>`;
@@ -76,6 +102,8 @@ export const foldKeyOf = (card) => {
 const byCreated = (a, b) => a.created - b.created || (a.id < b.id ? -1 : 1);
 const pad2 = (n) => String(n).padStart(2, "0");
 const periodOf = (id) => PERIODS.find((p) => p.id === id);
+// 1.29.0: from this width (the app's, without the sidebar of the Home Assistant), two sheets side by side
+const WIDE_MIN = 1100;
 const reduceMotion = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
 class MemoriaApp extends ChatMixin(LitElement) {
@@ -95,6 +123,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     _theme: { state: true },
     _cam: { state: true },
     _pad: { state: true },
+    _wide: { state: true },
     _turn: { state: true },
     _peek: { state: true },
     _choice: { state: true },
@@ -147,6 +176,10 @@ class MemoriaApp extends ChatMixin(LitElement) {
     this._onVisible = this._onVisible.bind(this);
     this._onResize = () => this._fitTitles();
     this._mql = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+    // 1.29.0: a wide screen (a computer): two sheets side by side, like an open notebook
+    this._wideMq = window.matchMedia ? window.matchMedia(`(min-width: ${WIDE_MIN}px)`) : null;
+    this._wide = !!(this._wideMq && this._wideMq.matches);
+    this._onWide = () => (this._wide = !!(this._wideMq && this._wideMq.matches));
     this._onScheme = () => this._syncDark();
   }
 
@@ -159,6 +192,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     document.addEventListener("visibilitychange", this._onVisible);
     window.addEventListener("resize", this._onResize);
     if (this._mql && this._mql.addEventListener) this._mql.addEventListener("change", this._onScheme);
+    if (this._wideMq && this._wideMq.addEventListener) this._wideMq.addEventListener("change", this._onWide);
     this._tickTimer = setInterval(() => this._tick(), 20000);
     // Sistema follows Home Assistant's light/dark mode while the app is open (and the system, and in the
     // preview the viewer's choice on the page)
@@ -177,8 +211,10 @@ class MemoriaApp extends ChatMixin(LitElement) {
     document.removeEventListener("visibilitychange", this._onVisible);
     window.removeEventListener("resize", this._onResize);
     if (this._mql && this._mql.removeEventListener) this._mql.removeEventListener("change", this._onScheme);
+    if (this._wideMq && this._wideMq.removeEventListener) this._wideMq.removeEventListener("change", this._onWide);
     clearInterval(this._tickTimer);
     clearInterval(this._themeTimer);
+    clearInterval(this._kbTimer);
     if (this._hostTheme) this._hostTheme.disconnect();
     clearTimeout(this._toastTimer);
     clearTimeout(this._turnTimer);
@@ -275,6 +311,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
 
   updated(changed) {
     this.toggleAttribute("dark", this._dark);
+    this._syncMirror(this.renderRoot.querySelector("textarea.ink.live"));
     this._markTabs();
     this._applyFolds();
     this._chatAfterRender();
@@ -877,9 +914,40 @@ class MemoriaApp extends ChatMixin(LitElement) {
     };
   }
 
+  /**
+   * 1.29.0: the two sheets on screen on a wide screen: (1, 2), (3, 4)… `from` is the index of the left one; `slots` the
+   * indexes shown (the one after the last page is the new sheet, there only when the last page has text); `prev` and
+   * `next` where the arrows go (a page id, "new" or null).
+   */
+  _spread(pad) {
+    const list = this._pagesOf(pad.block);
+    const page = pad.page !== "new" ? this._page(pad.page) : null;
+    const idx = page ? list.indexOf(page) : list.length;
+    const from = idx - (idx % 2);
+    const newOk = !list.length || !!list[list.length - 1].text.trim() || !page;
+    const at = (i) => (i < list.length ? list[i].id : i === list.length && newOk ? "new" : null);
+    return { list, from, slots: [from, from + 1].filter((i) => at(i)), prev: from > 0 ? list[from - 2].id : null, next: at(from + 2), at };
+  }
+
   _flip(dir) {
     if (this._turn || !this._pad) return;
     const pad = this._pad;
+    if (this._wide) {
+      const sp = this._spread(pad);
+      const target = dir > 0 ? sp.next : sp.prev;
+      if (!target) return this._haptic("light");
+      this._haptic("light");
+      const ta = this.renderRoot.querySelector("textarea.ink");
+      if (ta && this.renderRoot.activeElement === ta) ta.blur();
+      this._setPad({ block: pad.block, page: target });
+      if (target === "new") {
+        this.updateComplete.then(() => {
+          const t = this.renderRoot.querySelector("textarea.ink");
+          if (t) t.focus({ preventScroll: true });
+        });
+      }
+      return;
+    }
     const list = this._pagesOf(pad.block);
     const isNew = pad.page === "new" || !this._page(pad.page);
     const cur = isNew ? list.length : list.findIndex((p) => p.id === pad.page);
@@ -2233,7 +2301,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
             : nothing}
           ${!this._online ? html`<div class="offline">${icon("wifi-off")}<span>Sem conexão com o MemorIA. Reconectando…</span></div>` : nothing}
           <main @touchstart=${(e) => this._onSwipeStart(e)} @touchend=${(e) => this._onSwipeEnd(e)}>${page}</main>
-          ${this._renderNav(view)}
+          ${this._editing != null ? this._renderWriteBar() : this._renderNav(view)}
         </div>
         ${this._renderSheet()} ${this._renderToast()} ${this._renderCamera()}
         <input id="mm-photos" class="sr" type="file" accept="image/*,application/pdf" ?multiple=${!this._isHaAndroid()} tabindex="-1" aria-hidden="true" @change=${(e) => this._onFiles(e)} />
@@ -2295,7 +2363,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
   }
 
   _renderNow() {
-    const { entries, min, cur, next } = this._slot();
+    const { entries, min, cur } = this._slot();
     const pad = this._pad;
     const b = pad ? this._block(pad.block) : null;
     if (!b) {
@@ -2308,10 +2376,9 @@ class MemoriaApp extends ChatMixin(LitElement) {
       }
       // something has a time, but its Fica no Agora is over: nothing until the next one (tap a time to peek)
       if (entries.length && !cur) {
-        const period = periodOf(periodAt(min, periodTimes(this._data)));
-        const nb = next ? this._block(next.main.block) : null;
+        // 1.28.0: the times are in the line of the day; no text above it saying them again
         return html`<section class="page">
-          ${this._renderHead("Agora", { text: `${period.label} · nada agora${nb ? ` · depois ${clip(nb.name, 18)} às ${fmtMin(next.min)}` : ""}`, tone: "off" })}
+          ${this._renderHead("Agora", null)}
           ${this._renderTline(ahead(entries, min), null)}
           <div class="panel now-empty now-idle"><div class="empty"><div class="em-icon">${icon("calendar-clock")}</div><h3>Nada agora</h3><p>Toque num horário para espiar.</p></div></div>
         </section>`;
@@ -2343,9 +2410,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
         extra: html`<button class="text-btn now-btn" @click=${() => this._backToNow()}>${icon("clock-3")}Voltar para agora</button>`,
       };
     } else if (cur) {
-      const nb = next ? this._block(next.main.block) : null;
-      // what started before midnight still holds: "desde ontem às 18:00"; with Fica no Agora, until when
-      status = { text: `${period.label} · desde ${cur.min > min ? "ontem às " : ""}${fmtMin(cur.min)}${cur.end != null ? ` até ${fmtMin(cur.end)}` : ""}${nb ? ` · depois ${clip(nb.name, 18)} às ${fmtMin(next.min)}` : ""}` };
+      // 1.28.0: the line of the day already says the time of now and the next ones: no text above it saying them again
+      status = null;
     } else {
       status = { text: period.label, tone: "off" };
     }
@@ -2401,37 +2467,51 @@ class MemoriaApp extends ChatMixin(LitElement) {
     // a sheet with links or boxes, not being written: the links as short chips and the boxes to tick (tap the text to write)
     // 1.27.0: also with a part in bold or in a color (the marks show only while writing)
     const viewing = !!page && this._editing !== page.id && (hasLinks(page.text) || hasChecks(page.text) || hasFormat(page.text));
+    // 1.28.0: writing a sheet with bold or colors, they show already (drawn over the editor, the marks faint)
+    const liveFmt = !!page && this._editing === page.id && hasFormat(page.text);
+    // 1.29.0: on a wide screen, two sheets side by side (1 and 2, 3 and 4…); the one in use has the editor, a tap on the
+    // other one writes there; the arrows turn two at a time
+    const sp = this._wide ? this._spread(pad) : null;
+    const prevEdge = html`<button class="edge prev" @click=${() => this._flip(-1)} aria-label=${sp ? "Folhas anteriores" : "Folha anterior"}><span class="hint">${icon("chevron-left")}</span></button>`;
+    const nextEdge = (isNew) =>
+      html`<button class="edge next ${isNew ? "new" : ""}" @click=${() => this._flip(1)} aria-label=${isNew ? "Virar para uma folha nova" : sp ? "Próximas folhas" : "Próxima folha"}><span class="hint">${icon(isNew ? "plus" : "chevron-right")}</span></button>`;
+    const edgesOf = (i) =>
+      sp
+        ? html`${i === sp.from && sp.prev ? prevEdge : nothing}${i === sp.from + 1 || (i === sp.from && sp.slots.length === 1) ? (sp.next ? nextEdge(sp.next === "new") : nothing) : nothing}`
+        : html`${idx > 0 ? prevEdge : nothing}${canNext ? nextEdge(last) : nothing}`;
+    const active = html`<div class="leaf ${b.paper} ${sp ? (idx === sp.from ? "left" : "right") : ""}">
+      ${this._renderLeafTop({ created: page ? page.created : null, times: page ? page.times : [], num: idx + 1, total }, !!page, true, this._editing != null && this._editing === pad.page)}
+      ${viewing ? this._renderInkView(page, hand, `Folha ${idx + 1} de ${total} do bloco ${b.name}`) : nothing}
+      <textarea
+        class="ink ${hand ? "" : "normal"} ${viewing ? "behind" : ""} ${liveFmt ? "live" : ""}"
+        data-size="off"
+        @scroll=${(e) => this._syncMirror(e.target)}
+        .value=${live(page ? page.text : "")}
+        placeholder=${page ? "" : idx === 0 ? "Escreva a primeira folha deste bloco…" : "Folha nova. Escreva aqui…"}
+        spellcheck="true"
+        aria-label="Folha ${idx + 1} de ${total} do bloco ${b.name}"
+        @input=${(e) => this._onInk(e)}
+        @beforeinput=${(e) => this._onBeforeInk(e)}
+        @focus=${() => ((this._editing = pad.page), this._writing(true))}
+        @blur=${() => {
+          this._editing = null;
+          this._wpop = "";
+          this._writing(false);
+          if (page && this._saving.has(page.id)) this._flushSave(page.id);
+          setTimeout(() => this._tick(), 400);
+        }}
+      ></textarea>
+      ${liveFmt ? this._renderMirror(page.text, hand) : nothing}
+      ${edgesOf(idx)}
+    </div>`;
+    const leaves = sp ? sp.slots.map((i) => (i === idx ? active : this._renderStillLeaf(b, list, i, total, hand, edgesOf(i), i === sp.from ? "left" : "right"))) : [active];
     return html`
-      <div class="pad ${opts.tall ? "tall" : ""}" style=${this._cv(b)} @touchstart=${(e) => this._touchStart(e)} @touchend=${(e) => this._touchEnd(e)}>
+      <div class="pad ${opts.tall ? "tall" : ""} ${sp ? "spread" : ""}" style=${this._cv(b)} @touchstart=${(e) => this._touchStart(e)} @touchend=${(e) => this._touchEnd(e)}>
         <div class="pad-cover"></div>
         <div class="pad-stack"></div>
-        <div class="leaf ${b.paper}">
-          ${this._renderLeafTop({ created: page ? page.created : null, times: page ? page.times : [], num: idx + 1, total }, !!page, true, this._editing != null && this._editing === pad.page)}
-          ${viewing ? this._renderInkView(page, hand, `Folha ${idx + 1} de ${total} do bloco ${b.name}`) : nothing}
-          <textarea
-            class="ink ${hand ? "" : "normal"} ${viewing ? "behind" : ""}"
-            data-size="off"
-            .value=${live(page ? page.text : "")}
-            placeholder=${page ? "" : idx === 0 ? "Escreva a primeira folha deste bloco…" : "Folha nova. Escreva aqui…"}
-            spellcheck="true"
-            aria-label="Folha ${idx + 1} de ${total} do bloco ${b.name}"
-            @input=${(e) => this._onInk(e)}
-            @beforeinput=${(e) => this._onBeforeInk(e)}
-            @focus=${() => (this._editing = pad.page)}
-            @blur=${() => {
-              this._editing = null;
-              this._fmtOpen = false;
-              if (page && this._saving.has(page.id)) this._flushSave(page.id);
-              setTimeout(() => this._tick(), 400);
-            }}
-          ></textarea>
-          ${idx > 0 ? html`<button class="edge prev" @click=${() => this._flip(-1)} aria-label="Folha anterior"><span class="hint">${icon("chevron-left")}</span></button>` : nothing}
-          ${canNext
-            ? html`<button class="edge next ${last ? "new" : ""}" @click=${() => this._flip(1)} aria-label=${last ? "Virar para uma folha nova" : "Próxima folha"}><span class="hint">${icon(last ? "plus" : "chevron-right")}</span></button>`
-            : nothing}
-        </div>
+        ${leaves}
         <div class="spiral" aria-hidden="true">${RINGS}</div>
-        ${this._turn
+        ${this._turn && !sp
           ? html`<div class="turn ${this._turn.dir}" aria-hidden="true">
               <div class="face front leaf ${this._turn.snap.paper}">
                 ${this._renderLeafTop(this._turn.snap, false)}
@@ -2443,6 +2523,47 @@ class MemoriaApp extends ChatMixin(LitElement) {
           : nothing}
       </div>
     `;
+  }
+
+  /**
+   * 1.29.0: the other sheet of the two on a wide screen: as it reads (the boxes tick, the links open); a tap on the text
+   * writes there, with the cursor where it was tapped. After the last page, the new sheet.
+   */
+  _renderStillLeaf(b, list, i, total, hand, edges, side) {
+    const p = i < list.length ? list[i] : null;
+    const agora = this._view().name === "now";
+    const onCheck = p ? (agora ? (n) => this._markLine(p, n) : (n) => this._tickLine(p.id, n)) : null;
+    const rich = p && (hasLinks(p.text) || hasChecks(p.text) || hasFormat(p.text));
+    const n = p ? i + 1 : list.length + 1;
+    return html`<div class="leaf ${b.paper} still ${side}">
+      ${this._renderLeafTop({ created: p ? p.created : null, times: p ? p.times : [], num: n, total: p ? total : n }, false)}
+      <div
+        class="ink ink-view ${hand ? "" : "normal"}"
+        role="textbox"
+        aria-readonly="true"
+        tabindex="0"
+        aria-label=${p ? `Folha ${n} do bloco ${b.name}` : "Folha nova"}
+        @click=${(e) => this._writeAt(e, p)}
+        @keydown=${(e) => e.key === "Enter" && !e.target.closest("a, .chk") && this._writeAt(e, p)}
+      >${p ? (rich ? this._inkParts(p.text, true, onCheck, agora ? this._marksOf(p.id) : null) : html`<span data-o="0">${p.text}</span>`) : html`<span class="ink-ph">Folha nova. Escreva aqui…</span>`}</div>
+      ${edges}
+    </div>`;
+  }
+
+  /** 1.29.0: a tap on the other sheet of the two: it becomes the one being written, with the cursor where it was tapped. */
+  _writeAt(e, p) {
+    if (e.target.closest && e.target.closest("a, .chk")) return;
+    const pad = this._pad;
+    if (!pad) return;
+    const at = p ? this._offsetAt(e, p) : 0;
+    this._setPad({ block: pad.block, page: p ? p.id : "new" });
+    this.updateComplete.then(() => {
+      const ta = this.renderRoot.querySelector("textarea.ink");
+      if (!ta) return;
+      ta.focus({ preventScroll: true });
+      ta.setSelectionRange(at, at);
+      this._scrollToCaret(ta, at);
+    });
   }
 
   /** The text of a sheet with each link as a chip (the name, or the site and a bit of the address) and each box to tick
@@ -2486,6 +2607,23 @@ class MemoriaApp extends ChatMixin(LitElement) {
   }
 
   /** The sheet with its links as chips; a tap on the text opens the editor there (with the real text). */
+  /**
+   * 1.28.0: over the editor, the same text with the bold and the colors (the marks faint), letter by letter in the same
+   * place: the editor's own letters are transparent, its cursor and selection stay. The bold doesn't change the width of
+   * the letters here (an outline), so everything stays aligned.
+   */
+  _renderMirror(text, hand) {
+    const runs = markRuns(text);
+    return html`<div class="ink ink-mirror ${hand ? "" : "normal"}" aria-hidden="true">${runs.map((r) =>
+      r.mark || r.bold || r.color ? html`<span class="${r.mark ? "mk" : ""} ${r.bold ? "lb" : ""} ${r.color ? `lc c-${r.color}` : ""}">${r.text}</span>` : r.text,
+    )}${/\n$/.test(text) ? " " : ""}</div>`;
+  }
+
+  _syncMirror(ta) {
+    const m = ta && ta.parentElement && ta.parentElement.querySelector(".ink-mirror");
+    if (m && m.scrollTop !== ta.scrollTop) m.scrollTop = ta.scrollTop;
+  }
+
   _renderInkView(page, hand, label) {
     // in the Agora, ticking is only for this time of the sheet (the text stays as it is); in Blocos, it writes the box
     const agora = this._view().name === "now";
@@ -2678,32 +2816,103 @@ class MemoriaApp extends ChatMixin(LitElement) {
   }
 
   _renderLeafTop(s, menu, tools = false, editing = false) {
-    // the tools never take the focus from the sheet (the keyboard stays open while writing)
+    // the box is a shortcut to start a list; while writing, it and the rest are in the bar at the bottom (1.28.0)
     const keep = (e) => e.preventDefault();
-    return html`<div class="leaf-top ${editing ? "editing" : ""}">
+    return html`<div class="leaf-top">
       <span class="when">${s.created ? writtenAt(s.created, new Date(this._now)) : "folha nova"}</span>
       ${(s.times || []).length ? html`<span class="pin">${icon("clock")}${s.times.join(" · ")}</span>` : nothing}
-      ${tools
+      ${tools && !editing
         ? html`<button type="button" class="icon-btn tool" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkCheck()} aria-label="Caixa de marcar" title="Caixa de marcar">${icon("square-check")}</button>`
         : nothing}
-      ${tools && editing
-        ? html`<button type="button" class="icon-btn tool ${this._fmtOpen ? "on" : ""}" @pointerdown=${keep} @mousedown=${keep} @click=${() => ((this._fmtOpen = !this._fmtOpen), this.requestUpdate())} aria-label="Negrito e cor" title="Negrito e cor" aria-expanded=${this._fmtOpen ? "true" : "false"}>${icon("type")}</button>`
-        : nothing}
-      ${editing
-        ? html`<button type="button" class="ink-done" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkDone()}>${icon("check")}Pronto</button>`
-        : html`<span class="num">${s.num}/${s.total}</span>`}
+      <span class="num">${s.num}/${s.total}</span>
       ${menu ? html`<button class="icon-btn" @click=${() => this._openPageMenu()} aria-label="Opções da folha">${icon("ellipsis")}</button>` : html`<span class="icon-btn ghost"></span>`}
-    </div>
-    ${tools && editing && this._fmtOpen
-      ? html`<div class="fmt-bar" role="toolbar" aria-label="Negrito e cor">
-          <button type="button" class="fmt-b" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkFormat("negrito")} aria-label="Negrito" title="Negrito">${icon("bold")}</button>
-          ${FORMAT_COLORS.map((c) => {
-            const col = colorById(c);
-            return html`<button type="button" class="fmt-c c-${c}" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkFormat(c)} aria-label=${col ? col.label : c} title=${col ? col.label : c}><span></span></button>`;
-          })}
-          <button type="button" class="fmt-x" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkFormat("sem-cor")} aria-label="Sem cor" title="Sem cor">${icon("eraser")}</button>
-        </div>`
-      : nothing}`;
+    </div>`;
+  }
+
+  /**
+   * 1.28.0: writing, the bar at the bottom (in the place of the tabs, above the keyboard) has the tools: Caixa de marcar,
+   * Negrito, Cor, Emoji and Pronto. At the bottom, the menu of the phone over a selection (Copiar, Colar…) doesn't cover
+   * them. None of them takes the focus from the sheet (the keyboard stays open).
+   */
+  _renderWriteBar() {
+    const keep = (e) => {
+      e.preventDefault();
+      // what is selected now (on the phone, the tap could undo the selection before the click)
+      const ta = this.renderRoot.querySelector("textarea.ink");
+      if (ta) this._selDown = { s: ta.selectionStart, e: ta.selectionEnd, v: ta.value };
+    };
+    const pop = this._wpop || "";
+    const toggle = (p) => {
+      this._haptic("light");
+      this._wpop = pop === p ? "" : p;
+      this.requestUpdate();
+    };
+    const btn = (label, ic, fn, open) =>
+      html`<button type="button" class="wbtn ${open ? "on" : ""}" @pointerdown=${keep} @mousedown=${keep} @click=${fn} aria-label=${label} title=${label} aria-expanded=${open == null ? nothing : open ? "true" : "false"}>${icon(ic)}</button>`;
+    return html`<nav class="write" aria-label="Escrever">
+      ${pop === "cor"
+        ? html`<div class="wpop" role="toolbar" aria-label="Cor">
+            ${FORMAT_COLORS.map((c) => {
+              const col = colorById(c);
+              const name = col ? col.label : c;
+              return html`<button type="button" class="fmt-c c-${c}" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkFormat(c)} aria-label=${name} title=${name}><span></span></button>`;
+            })}
+            <button type="button" class="fmt-x" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkFormat("sem-cor")} aria-label="Sem cor" title="Sem cor">${icon("eraser")}</button>
+          </div>`
+        : nothing}
+      ${pop === "emoji"
+        ? html`<div class="wpop emojis" role="toolbar" aria-label="Emoji">
+            ${this._emojis().map((em) => html`<button type="button" class="emo" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkEmoji(em)} aria-label=${em}>${em}</button>`)}
+          </div>`
+        : nothing}
+      <div class="wtools">
+        ${btn("Caixa de marcar", "square-check", () => this._inkCheck())}
+        ${btn("Negrito", "bold", () => this._inkFormat("negrito"))}
+        ${btn("Cor", "palette", () => toggle("cor"), pop === "cor")}
+        ${btn("Emoji", "smile", () => toggle("emoji"), pop === "emoji")}
+        <button type="button" class="ink-done" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkDone()}>${icon("check")}Pronto</button>
+      </div>
+    </nav>`;
+  }
+
+  /** The emojis of the bar: the last ones used on this device first, then the usual ones of a note. */
+  _emojis() {
+    const used = (local.get(EMOJI_KEY, []) || []).filter((x) => typeof x === "string" && x.length <= 16);
+    return [...new Set([...used, ...EMOJIS])].slice(0, 24);
+  }
+
+  _inkEmoji(em) {
+    const ta = this._inkReady();
+    if (!ta) return;
+    this._haptic("light");
+    const s = ta.selectionStart;
+    const e = ta.selectionEnd;
+    this._inkSet(ta, ta.value.slice(0, s) + em + ta.value.slice(e), s + em.length);
+    local.set(EMOJI_KEY, [em, ...(local.get(EMOJI_KEY, []) || []).filter((x) => x !== em)].slice(0, 8));
+  }
+
+  /**
+   * Writing on the phone (1.28.0): the bar at the bottom stays above the keyboard, and a swipe can go past the top of the
+   * app (the page of the Home Assistant moves to show the sheet; a swipe down brings its top back).
+   */
+  _writing(on) {
+    clearInterval(this._kbTimer);
+    this.toggleAttribute("writing", on);
+    if (!on) {
+      this._kb = 0;
+      this.style.removeProperty("--kb");
+      return;
+    }
+    const lift = () => {
+      const kb = keyboardOver();
+      if (kb !== this._kb) {
+        this._kb = kb;
+        if (kb) this.style.setProperty("--kb", `${kb}px`);
+        else this.style.removeProperty("--kb");
+      }
+    };
+    lift();
+    this._kbTimer = setInterval(lift, 250);
   }
 
   /** Negrito e cor (1.27.0): the selection of the editor in bold, in a color, or back to the color of the ink. */
@@ -2711,7 +2920,17 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const ta = this._inkReady();
     if (!ta) return;
     this._haptic("light");
-    const r = formatText(ta.value, ta.selectionStart, ta.selectionEnd, kind);
+    let s = ta.selectionStart;
+    let e = ta.selectionEnd;
+    const d = this._selDown;
+    this._selDown = null;
+    if (s === e && d && d.s !== d.e && d.v === ta.value) [s, e] = [d.s, d.e];
+    // 1.28.0: without a selection, the word under the cursor (or the part it is in)
+    const r = s === e ? formatAt(ta.value, s, kind) : formatText(ta.value, s, e, kind);
+    if (FORMAT_COLORS.includes(kind) || kind === "sem-cor") {
+      this._wpop = "";
+      this.requestUpdate();
+    }
     if (r.text === ta.value) return;
     ta.value = r.text;
     ta.setSelectionRange(r.s, r.e);
