@@ -145,7 +145,7 @@ Em **Mais › Configurações › Integrações**:
 
 Em **Buscar**, procure qualquer palavra nas folhas dos blocos, sem se importar com acentos. Logo abaixo da caixa, **De quem** escolhe os blocos (os seus e os de **Todos**, para começar; os de outra pessoa; ou todos), como em **Blocos**, mas com a escolha própria. Cada resultado mostra o trecho com a palavra marcada, o bloco e quando foi escrito; toque para abrir a folha.
 
-Os blocos arquivados ficam de fora. Para procurar neles também, toque em **Incluir arquivados**; eles vêm depois dos outros (os blocos e as folhas), e as escolhas ficam guardadas no aparelho.
+Os blocos arquivados ficam de fora. Para procurar neles também, toque em **Incluir arquivados**; eles vêm depois dos outros (os blocos e as folhas), e as escolhas ficam guardadas no aparelho. O título **Filtros** fecha e abre o De quem e o Incluir arquivados num toque; fechado, ele mostra o que está valendo (por exemplo, "Todos · com arquivados") e continua fechado ao voltar.
 
 Antes de escrever, o **Buscar** já mostra os blocos (os de **De quem**, com a categoria de cada um); escrevendo, ficam os do nome procurado, e as folhas encontradas vêm embaixo. Toque num bloco para abrir.
 

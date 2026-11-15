@@ -31,6 +31,8 @@ const WHO_KEY = "memoria.blocos.pessoa";
 const SEARCH_WHO_KEY = "memoria.buscar.pessoa";
 const REPORT_KEY = "memoria.relatorio";
 const SEARCH_ARCH_KEY = "memoria.buscar.arquivados";
+// 1.25.0: Buscar › Filtros fechado (guardado no aparelho)
+const SEARCH_FOLD_KEY = "memoria.buscar.filtros";
 
 const icon = (name, cls = "") =>
   html`<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${unsafeSVG(ICONS[name] || ICONS.notebook)}</svg>`;
@@ -2944,12 +2946,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           <input type="search" placeholder="Buscar nos blocos" .value=${this._query} @input=${(e) => (this._query = e.target.value)} enterkeyhint="search" aria-label="Buscar" />
           ${this._query ? html`<button class="icon-btn" style="width:40px;height:40px" @click=${() => (this._query = "")} aria-label="Limpar">${icon("x")}</button>` : nothing}
         </label>
-        ${this._renderWhoChips(who, SEARCH_WHO_KEY)}
-        <div class="chip-row search-opts"><button class="pick ${withArch ? "on" : ""}" aria-pressed=${withArch ? "true" : "false"} @click=${() => {
-          this._haptic("light");
-          local.set(SEARCH_ARCH_KEY, !withArch);
-          this.requestUpdate();
-        }}>${icon("archive")}<span>Incluir arquivados</span></button></div>
+        ${this._renderSearchFilters(who, withArch)}
         ${blocks.length ? this._renderSearchBlocks(blocks, q) : nothing}
         ${!needle
           ? blocks.length
@@ -2981,6 +2978,30 @@ class MemoriaApp extends ChatMixin(LitElement) {
         ${this._sel ? this._renderSelBar(blocks) : nothing}
       </section>
     `;
+  }
+
+  /**
+   * Buscar › Filtros (1.25.0): De quem e Incluir arquivados, que fecham e abrem num toque no título (fechado fica guardado
+   * no aparelho); fechado, o título diz o que está valendo.
+   */
+  _renderSearchFilters(who, withArch) {
+    const shut = local.get(SEARCH_FOLD_KEY, false) === true;
+    const sum = [this._whoOn() ? (who === "*" ? "Todos" : clip(who, 18)) : "", withArch ? "com arquivados" : ""].filter(Boolean).join(" · ");
+    return html`<button type="button" class="filters-label" id="filtros" aria-expanded=${shut ? "false" : "true"} @click=${() => {
+        this._haptic("light");
+        local.set(SEARCH_FOLD_KEY, !shut);
+        this.requestUpdate();
+      }}>${icon("sliders-horizontal", "lbl-ic")}<span>Filtros</span>${shut && sum ? html`<span class="flt-sum">${sum}</span>` : nothing}</button>
+      ${shut
+        ? nothing
+        : html`<div class="filtros" role="group" aria-labelledby="filtros">
+            ${this._renderWhoChips(who, SEARCH_WHO_KEY)}
+            <div class="chip-row search-opts"><button class="pick ${withArch ? "on" : ""}" aria-pressed=${withArch ? "true" : "false"} @click=${() => {
+              this._haptic("light");
+              local.set(SEARCH_ARCH_KEY, !withArch);
+              this.requestUpdate();
+            }}>${icon("archive")}<span>Incluir arquivados</span></button></div>
+          </div>`}`;
   }
 
   /**

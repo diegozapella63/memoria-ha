@@ -2248,6 +2248,49 @@ export const styles = css`
   .search-opts {
     margin: -6px 0 16px;
   }
+  /* Buscar › Filtros (1.25.0): o título fecha e abre De quem e Incluir arquivados, com a seta no canto */
+  .filters-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 40px;
+    margin: -4px 0 8px;
+    padding: 2px 0;
+    background: none;
+    border: 0;
+    text-align: left;
+    font: inherit;
+    font-weight: 600;
+    color: var(--rv-text);
+    cursor: pointer;
+  }
+  .filters-label .flt-sum {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 400;
+    font-size: 14px;
+    color: var(--rv-muted);
+  }
+  .filters-label::after {
+    content: "";
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-left: auto;
+    background: var(--rv-muted);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / 18px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / 18px no-repeat;
+    transition: transform 0.15s;
+  }
+  .filters-label[aria-expanded="false"] {
+    margin-bottom: 14px;
+  }
+  .filters-label[aria-expanded="false"]::after {
+    transform: rotate(-90deg);
+  }
   /* Mais › Categorias */
   .cat-row .chev {
     width: 20px;

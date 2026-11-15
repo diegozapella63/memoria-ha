@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.25.0
+
+- **Buscar › Filtros**: o De quem e o Incluir arquivados fecham e abrem num toque no título. Fechado, ele mostra o que está valendo e continua fechado ao voltar.
+
 ## 1.24.0
 
 - **Conversa › Perguntas prontas**: as perguntas de exemplo viram suas. **Editar perguntas** tira (✕) e acrescenta as que você quiser; **Padrão** volta às de antes. Ficam guardadas no aparelho.
