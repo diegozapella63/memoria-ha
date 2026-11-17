@@ -70,18 +70,25 @@ export function cutMarked(marked, max = MAX_TEXT_OUT) {
 
 /**
  * The trechos of a person (their blocks and everyone's; "": every block): what holds at `now` (with fim, the time it
- * stops, when it has a Fica no Agora; past it, none holds) and the next start times, past midnight too, three in all.
+ * stops, when it has a Fica no Agora; past it, none holds) and the next start times, past midnight too, three in all
+ * (1.33.0: next, the times after it, up to 12, for the Tela cheia of the CronologIA, which steps through them).
  * A sheet with a time is that sheet; a block with a period or a time, its last sheet (the one the Agora opens; none
  * yet: folha_id null and no text). The text of the one of now has the boxes ticked in the Agora for this time.
  * papel and letra (1.15.1): the paper of the block and the letters of the sheets (Letra de mão), to draw it the same way.
  * texto_formatado (1.32.0), only when the sheet has a part in bold, bigger or in a color: the text with those marks
  * (**negrito**, ++maior++, {cor:texto}), so the sheet there shows them as here; texto stays without them.
  */
-export function trechos(data, { person = "", now = new Date() } = {}) {
+/** 1.33.0: how many times after the one of now (?proximos=, the Tela cheia of the CronologIA: up to 12; 2 by default). */
+export function nextOf(v) {
+  const n = Number.parseInt(v, 10);
+  return Number.isFinite(n) ? Math.min(12, Math.max(0, n)) : 2;
+}
+
+export function trechos(data, { person = "", now = new Date(), next = 2 } = {}) {
   const min = minutesOf(now);
   const blocks = new Map(((data && data.blocks) || []).map((b) => [b.id, b]));
   const pages = (data && data.pages) || [];
-  return ahead(buildSchedule(data, { person }), min).flatMap((g) => {
+  return ahead(buildSchedule(data, { person }), min, 1 + nextOf(next)).flatMap((g) => {
     const e = g.main;
     const b = blocks.get(e.block);
     if (!b) return [];

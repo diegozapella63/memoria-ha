@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.33.0
+
+- **Na tela cheia da CronologIA**: dá para ver as folhas dos próximos horários, uma depois da outra, sem sair da tela cheia (precisa da CronologIA 1.98.0 ou mais nova).
+
 ## 1.32.0
 
 - **No CronologIA**: a folha de agora aparece lá com o **negrito**, o **maior** e as **cores**, como aqui (precisa da CronologIA 1.93.0 ou mais nova).

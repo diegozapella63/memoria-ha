@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildSchedule, ahead } from "../memoria/rootfs/app/lib/schedule.js";
-import { trechos, panelOf, MAX_TEXT_OUT, clockOf, cutMarked } from "../memoria/rootfs/app/lib/integracao.js";
+import { trechos, panelOf, MAX_TEXT_OUT, clockOf, cutMarked, nextOf } from "../memoria/rootfs/app/lib/integracao.js";
 import { stripFormat } from "../memoria/rootfs/app/lib/format.js";
 import { casa } from "./fixtures/casa.mjs";
 
@@ -40,6 +40,16 @@ test("ahead: never the same time twice; one time, nothing else; nothing with a t
   assert.deepEqual(times(ahead(buildSchedule(one), at(8))), ["19:30"]);
   one.blocks[2].times = [];
   assert.deepEqual(ahead(buildSchedule(one), at(8)), []);
+});
+
+test("1.33.0: next, the times after now (up to 12, each once; 2 by default)", () => {
+  assert.deepEqual([nextOf(undefined), nextOf(""), nextOf("x"), nextOf("0"), nextOf(5), nextOf("99"), nextOf(-3)], [2, 2, 2, 0, 5, 12, 0]);
+  const d = casa();
+  d.blocks[1].times = ["15:00", "21:00", "23:00"];
+  assert.deepEqual(trechos(d, { now: when(13, 30) }).map((t) => t.inicio), ["09:00", "15:00", "19:30"]);
+  const all = trechos(d, { now: when(13, 30), next: 8 });
+  assert.deepEqual(all.map((t) => [t.inicio, t.agora, t.amanha]), [["09:00", true, false], ["15:00", false, false], ["19:30", false, false], ["21:00", false, false], ["23:00", false, false], ["05:00", false, true]]);
+  assert.equal(trechos(d, { now: when(13, 30), next: 0 }).length, 1);
 });
 
 test("ahead: blocks and sheets at the same time are one group", () => {

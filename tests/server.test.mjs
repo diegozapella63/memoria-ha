@@ -420,6 +420,10 @@ test("1.13.0: the trechos of now for the CronologIA, with the key of share/memor
   assert.equal(r.body.pessoa, "");
   assert.deepEqual(r.body.trechos.map((t) => t.inicio).sort(), ["05:00", "09:00", "19:30"]);
   assert.deepEqual(r.body.trechos.map((t) => t.agora), [true, false, false], "now first");
+  // 1.33.0: ?proximos= (the Tela cheia of the CronologIA steps through them): 0 only now; more than there are, each once
+  assert.equal((await get("?proximos=0")).body.trechos.length, 1);
+  assert.equal((await get("?proximos=1")).body.trechos.length, 2);
+  assert.equal((await get("?proximos=8")).body.trechos.length, 3);
   // 1.15.1: at the clock of the phone (hora, dia): at 06:00 the Mercado of 05:00 holds, whatever the clock of the server
   const today = new Date();
   const dia = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;

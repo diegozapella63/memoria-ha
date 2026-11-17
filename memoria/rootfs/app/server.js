@@ -514,7 +514,7 @@ async function handleNow(req, res) {
     // not a person of the house: every block, like the Agora of a shared tablet (no Home Assistant now: the name as it came)
     who = p ? p.name : house && house.length ? "" : /^person\./.test(pessoa) ? "" : pessoa;
   }
-  sendJson(res, 200, { versao: VERSION, pessoa: who, trechos: trechos(store.data, { person: who, now: clockOf(q.get("hora"), q.get("dia")) }) });
+  sendJson(res, 200, { versao: VERSION, pessoa: who, trechos: trechos(store.data, { person: who, now: clockOf(q.get("hora"), q.get("dia")), next: q.has("proximos") ? q.get("proximos") : 2 }) });
 }
 
 function download(res, body, type, name) {
