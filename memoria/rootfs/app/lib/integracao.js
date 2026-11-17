@@ -9,6 +9,7 @@ import { addressOf, keyIn, bearerIs, writePrivate } from "./correria.js";
 import { PERIODS, buildSchedule, ahead, occurrence, minutesOf, fmtMin } from "./schedule.js";
 import { linksToText } from "./links.js";
 import { firstLine, checkOf, CHECK_TODO, CHECK_DONE } from "./writing.js";
+import { hasFormat, stripFormat } from "./format.js";
 
 export const ROUTE = "/api/integracao/agora";
 export const MAX_TEXT_OUT = 1500;
@@ -50,11 +51,31 @@ function withMarks(text, lines) {
 }
 
 /**
+ * 1.32.0: the text with the marks of the bold, the bigger and the colors, cut like texto (at most max letters to read),
+ * but only at the end of a line: a mark never crosses a line, so none is cut in half. The first line alone too long: null
+ * (the other app shows texto).
+ */
+export function cutMarked(marked, max = MAX_TEXT_OUT) {
+  if (stripFormat(marked).length <= max) return marked;
+  const out = [];
+  let n = 0;
+  for (const line of marked.split("\n")) {
+    const len = stripFormat(line).length + (out.length ? 1 : 0);
+    if (n + len > max - 1) break;
+    out.push(line);
+    n += len;
+  }
+  return out.length ? `${out.join("\n").trimEnd()}…` : null;
+}
+
+/**
  * The trechos of a person (their blocks and everyone's; "": every block): what holds at `now` (with fim, the time it
  * stops, when it has a Fica no Agora; past it, none holds) and the next start times, past midnight too, three in all.
  * A sheet with a time is that sheet; a block with a period or a time, its last sheet (the one the Agora opens; none
  * yet: folha_id null and no text). The text of the one of now has the boxes ticked in the Agora for this time.
  * papel and letra (1.15.1): the paper of the block and the letters of the sheets (Letra de mão), to draw it the same way.
+ * texto_formatado (1.32.0), only when the sheet has a part in bold, bigger or in a color: the text with those marks
+ * (**negrito**, ++maior++, {cor:texto}), so the sheet there shows them as here; texto stays without them.
  */
 export function trechos(data, { person = "", now = new Date() } = {}) {
   const min = minutesOf(now);
@@ -83,6 +104,10 @@ export function trechos(data, { person = "", now = new Date() } = {}) {
       papel: PAPERS.has(b.paper) ? b.paper : "pautado",
       letra: data.app && data.app.hand === false ? "normal" : "mao",
     };
+    if (page && hasFormat(marked)) {
+      const fmt = cutMarked(linksToText(marked, { marks: true }).trim());
+      if (fmt && hasFormat(fmt)) out.texto_formatado = fmt;
+    }
     if (g.now && g.end != null) out.fim = fmtMin(g.end);
     if (e.kind === "period") out.periodo = (PERIODS.find((p) => p.id === e.period) || {}).label || "";
     out.outros = g.entries.length - 1;

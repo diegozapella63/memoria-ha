@@ -3,7 +3,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildSchedule, ahead } from "../memoria/rootfs/app/lib/schedule.js";
-import { trechos, panelOf, MAX_TEXT_OUT, clockOf } from "../memoria/rootfs/app/lib/integracao.js";
+import { trechos, panelOf, MAX_TEXT_OUT, clockOf, cutMarked } from "../memoria/rootfs/app/lib/integracao.js";
+import { stripFormat } from "../memoria/rootfs/app/lib/format.js";
 import { casa } from "./fixtures/casa.mjs";
 
 const at = (h, m = 0) => h * 60 + m;
@@ -227,4 +228,29 @@ test("1.15.1: the clock of whoever is looking (their phone), the paper of the bl
   assert.deepEqual([trechos(data, { now: when(13, 30) })[0].papel, trechos(data, { now: when(13, 30) })[0].letra], ["quadriculado", "normal"]);
   data.blocks.forEach((b) => (b.paper = "<script>"));
   assert.equal(trechos(data, { now: when(13, 30) })[0].papel, "pautado", "an unknown paper: the default");
+});
+
+test("1.32.0: texto_formatado, the text with the marks of the bold, the bigger and the colors, for the CronologIA", () => {
+  const d = casa();
+  d.pages[1].text = "++{verde:Café da Tarde}++\n**Opção 1**\n☐ Iogurte [farofa](https://exemplo.com.br/f)";
+  let out = trechos(d, { now: when(10) });
+  assert.equal(out[0].texto, "Café da Tarde\nOpção 1\n☐ Iogurte farofa", "texto stays without the marks");
+  assert.equal(out[0].texto_formatado, "++{verde:Café da Tarde}++\n**Opção 1**\n☐ Iogurte farofa");
+  // the box ticked in the Agora goes in the formatted text too
+  d.marks = { [d.pages[1].id]: { at: "2026-11-08T09:00", lines: ["Iogurte [farofa](https://exemplo.com.br/f)"] } };
+  assert.match(trechos(d, { now: when(10) })[0].texto_formatado, /\n☑ Iogurte farofa$/);
+  // no part in bold or in a color: no field
+  d.pages[1].text = "Churrasco do Beto\n☐ Carvão";
+  assert.equal(trechos(d, { now: when(10) })[0].texto_formatado, undefined);
+  // long: cut at the end of a line, so no mark is cut in half
+  d.pages[1].text = `**Título**\n${Array.from({ length: 200 }, (_, i) => `{azul:linha ${i}}`).join("\n")}`;
+  out = trechos(d, { now: when(10) });
+  const f = out[0].texto_formatado;
+  assert.ok(f.endsWith("}…"), f.slice(-20));
+  assert.ok(f.split("\n").every((l) => /^(\*\*Título\*\*|\{azul:linha \d+\}…?)$/.test(l)));
+  assert.ok(stripFormat(f).length <= MAX_TEXT_OUT);
+  // one line alone longer than the cap: none (the other app shows texto)
+  d.pages[1].text = `**${"x".repeat(3000)}**`;
+  assert.equal(trechos(d, { now: when(10) })[0].texto_formatado, undefined);
+  assert.equal(cutMarked("**a**\nb"), "**a**\nb");
 });

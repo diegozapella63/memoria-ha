@@ -129,10 +129,10 @@ export const hasLinks = (text) => parseLinks(text).some((p) => p.type === "link"
  * The text with each link as it reads outside the app: the name, or the short address; with domain (the report,
  * the PDF), "Nome (site)".
  */
-export function linksToText(text, { domain = false } = {}) {
-  // 1.27.0: without the marks of the bold and of the colors (format.js)
+export function linksToText(text, { domain = false, marks = false } = {}) {
+  // 1.27.0: without the marks of the bold and of the colors (format.js); marks (1.32.0): with them, for the CronologIA
   return parseLinks(text)
-    .map((p) => (p.type === "text" ? stripFormat(p.text) : p.name ? (domain ? `${p.name} (${domainOf(p.url)})` : p.name) : p.label))
+    .map((p) => (p.type === "text" ? (marks ? p.text : stripFormat(p.text)) : p.name ? (domain ? `${p.name} (${domainOf(p.url)})` : p.name) : p.label))
     .join("");
 }
 

@@ -31,7 +31,7 @@ Numa tela larga, o botão **Tela cheia** (ao lado do Conversar e do Falar, no bl
 Escrevendo, a barra de baixo (no lugar das abas, logo acima do teclado) vira a barra da escrita: **Caixa de marcar**, **Negrito**, **Maior**, **Cor**, **Emoji** e **Pronto**. Usar não fecha o teclado, e ali o menu do celular sobre uma seleção (Copiar, Colar…) não cobre os botões. **Pronto** sai da escrita (o teclado fecha, e as caixas e os links aparecem de novo). Fora da escrita, a **Caixa de marcar** fica no alto da folha, ao lado do número. No celular, a folha tem margens estreitas, para caber mais texto em cada linha.
 
 - **Caixa de marcar** transforma a linha onde está o cursor num item com caixa (☐); tocar de novo tira a caixa. Fora da escrita, ela põe um item novo no fim da folha.
-- **Negrito** e **Cor** valem para a palavra onde está o cursor, sem precisar selecionar; para uma parte maior, selecione antes. **Cor** abre cinco cores (vermelho, laranja, verde, azul e lilás) e **Sem cor**. O negrito e as cores já aparecem enquanto você escreve, com as marcas apagadas em volta (`**negrito**`, `{azul:texto}`); fora da escrita, as marcas somem. Tocar de novo no Negrito ou na mesma cor tira; outra cor troca. No relatório, nos títulos e nos outros apps vai só o texto.
+- **Negrito** e **Cor** valem para a palavra onde está o cursor, sem precisar selecionar; para uma parte maior, selecione antes. **Cor** abre cinco cores (vermelho, laranja, verde, azul e lilás) e **Sem cor**. O negrito e as cores já aparecem enquanto você escreve, com as marcas apagadas em volta (`**negrito**`, `{azul:texto}`); fora da escrita, as marcas somem. Tocar de novo no Negrito ou na mesma cor tira; outra cor troca. No relatório e nos títulos vai só o texto; no Agora do CronologIA, a folha aparece com o negrito, o maior e as cores.
 - **Maior** deixa maior a linha do cursor (um título), sem precisar selecionar; para só uma parte, selecione antes. Combina com o negrito e a cor. Escrevendo, a parte maior fica sublinhada com pontinhos (a marca é `++texto++`); o tamanho aparece no **Pronto**. Tocar de novo tira.
 - **Emoji** abre uma lista de emojis; cada um entra onde está o cursor. Os que você usou vêm primeiro (guardados no aparelho). Os do teclado do celular também valem.
 - Num item, o **Enter** já faz outro item embaixo. Enter num item vazio acaba a lista.
@@ -195,7 +195,7 @@ Ligado, o cartão mostra quem usou por último e quando ("Claude usou hoje às 0
 
 ## CronologIA
 
-O **CronologIA** (o calendário da família) pode mostrar no **Agora** dele a folha do MemorIA que vale agora, de quem está usando, como no **Agora** daqui: pelo relógio do celular de quem olha (mesmo viajando, em outro fuso), no mesmo papel e com a mesma letra. Ligue lá, em **Mais › Configurações › Integrações › MemorIA**. Aqui não há nada para ligar: o CronologIA acha o MemorIA pelo arquivo `share/memoria/integracao.json`, com uma chave de acesso própria, e só lê.
+O **CronologIA** (o calendário da família) pode mostrar no **Agora** dele a folha do MemorIA que vale agora, de quem está usando, como no **Agora** daqui: pelo relógio do celular de quem olha (mesmo viajando, em outro fuso), no mesmo papel, com a mesma letra e com o negrito, o maior e as cores. Ligue lá, em **Mais › Configurações › Integrações › MemorIA**. Aqui não há nada para ligar: o CronologIA acha o MemorIA pelo arquivo `share/memoria/integracao.json`, com uma chave de acesso própria, e só lê.
 
 ## Relatório
 

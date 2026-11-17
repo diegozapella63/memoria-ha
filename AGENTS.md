@@ -60,7 +60,7 @@ Ao mudar um, mude nos outros: `frontend/src/selectsheet.js` (as caixas de seleç
 
 ## Como os apps conversam
 
-- **MemorIA → CronologIA**: `share/memoria/integracao.json` e a rota `/api/integracao/agora` (o trecho de agora e os dois próximos de uma pessoa, pelo relógio do celular de quem olha), em `lib/integracao.js`.
+- **MemorIA → CronologIA**: `share/memoria/integracao.json` e a rota `/api/integracao/agora` (o trecho de agora e os dois próximos de uma pessoa, pelo relógio do celular de quem olha), em `lib/integracao.js`. `texto` vai sem as marcas; desde a 1.32.0, uma folha com negrito, maior ou cor leva também `texto_formatado` (com `**negrito**`, `++maior++` e `{cor:texto}`, cortado no fim de uma linha para não partir uma marca).
 - **CorrerIA → MemorIA**: o contrato de todos os apps da família (ver o AGENTS.md do CorrerIA); os detalhes daqui estão no README.md, em **Como os apps conversam**.
 
 ## Como o dono gosta (interface)

@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.32.0
+
+- **No CronologIA**: a folha de agora aparece lá com o **negrito**, o **maior** e as **cores**, como aqui (precisa da CronologIA 1.93.0 ou mais nova).
+
 ## 1.31.1
 
 - **Tela cheia** no **Agora** sem nada agora (só os próximos horários): a linha do alto e a barra de baixo também ficam escondidas, como quando há uma folha. Para sair, passe o mouse embaixo (**Sair da tela cheia**) ou aperte **Esc**.
