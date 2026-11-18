@@ -16,6 +16,10 @@ from playwright.sync_api import sync_playwright
 REPO = Path(__file__).resolve().parent.parent
 # the preview over http (tests/visual.sh): Chromium does not always keep what a file:// page saves across a reload
 PREVIEW = os.environ.get("MEMORIA_PREVIEW_URL") or (REPO / "preview" / "memoria-preview.html").as_uri()
+# 1.35.0: com 1000 px ou mais, a barra lateral no lugar da barra de baixo: o que estiver à vista
+TAB = "nav .tab:visible, .side-link:visible"
+TAB_ON = "nav .tab.on:visible, .side-link[aria-current=page]:visible"
+FAB = "nav .tab.fab:visible, .side-add:visible"
 SHOTS = Path(sys.argv[1] if len(sys.argv) > 1 else os.environ.get("MEMORIA_SHOTS", Path(tempfile.gettempdir()) / "memoria-shots"))
 SHOTS.mkdir(parents=True, exist_ok=True)
 VERSION = re.search(r'^version:\s*"?([\d.]+)', (REPO / "memoria" / "config.yaml").read_text(), re.M).group(1)
@@ -83,7 +87,7 @@ with sync_playwright() as p:
         pg.wait_for_timeout(500)
 
         # ---- the menu
-        a.locator("nav .tab", has_text="Mais").click()
+        a.locator(TAB, has_text="Mais").click()
         pg.wait_for_timeout(500)
         check(view(a) == "more", f"{tag}: Mais open")
         rows = [" ".join(t.split()) for t in a.locator(".more-menu .more-row").all_inner_texts()]
@@ -101,15 +105,21 @@ with sync_playwright() as p:
         pg.wait_for_timeout(600)
         check(view(a) == "config:integracoes", f"{tag}: Configurações opens on Integrações ({view(a)})")
         check(a.locator(".page-title").first.inner_text().strip() == "Configurações" and a.locator(".uplink").inner_text().strip() == "Mais", f"{tag}: title and ‹ Mais")
-        check(a.locator("nav .tab.on").inner_text().strip() == "Mais", f"{tag}: Mais lit in the bar")
+        check(a.locator(TAB_ON).inner_text().strip() == "Mais", f"{tag}: Mais lit in the bar")
         # 1.17.0: the bar of the family: Agora, Buscar, Adicionar in the middle, Blocos and, last, Mais with three dots
-        labels = [t.strip() for t in a.locator("nav .tab").all_inner_texts()]
-        check(labels == ["Agora", "Buscar", "", "Blocos", "Mais"] and "fab" in a.locator("nav .tab").nth(2).get_attribute("class"), f"{tag}: the bar ({labels})")
-        # 1.21.0: Adicionar only with the + (its name in the aria-label), in every app of the family
-        fab = a.locator("nav .tab.fab")
-        fb, tb = fab.locator(".pill").bounding_box(), a.locator("nav .tab").first.bounding_box()
-        check(fab.get_attribute("aria-label") == "Adicionar" and abs((fb["y"] + fb["height"] / 2) - (tb["y"] + tb["height"] / 2)) <= 3, f"{tag}: Adicionar only the +, in the middle of the bar")
-        check(a.locator("nav .tab").last.locator("svg circle").count() == 3, f"{tag}: Mais with three dots")
+        if w < 1000:
+            labels = [t.strip() for t in a.locator("nav .tab").all_inner_texts()]
+            check(labels == ["Agora", "Buscar", "", "Blocos", "Mais"] and "fab" in a.locator("nav .tab").nth(2).get_attribute("class"), f"{tag}: the bar ({labels})")
+            # 1.21.0: Adicionar only with the + (its name in the aria-label), in every app of the family
+            fab = a.locator("nav .tab.fab")
+            fb, tb = fab.locator(".pill").bounding_box(), a.locator("nav .tab").first.bounding_box()
+            check(fab.get_attribute("aria-label") == "Adicionar" and abs((fb["y"] + fb["height"] / 2) - (tb["y"] + tb["height"] / 2)) <= 3, f"{tag}: Adicionar only the +, in the middle of the bar")
+            check(a.locator("nav .tab").last.locator("svg circle").count() == 3, f"{tag}: Mais with three dots")
+        else:
+            # 1.35.0: on the computer, the sidebar of the family: Adicionar, then Agora, Buscar, Blocos and Mais (three dots)
+            labels = [t.strip() for t in a.locator(".side-link").all_inner_texts()]
+            check(labels == ["Agora", "Buscar", "Blocos", "Mais"] and a.locator(".side-add").inner_text().strip() == "Adicionar", f"{tag}: the sidebar ({labels})")
+            check(a.locator(".side-link").last.locator("svg circle").count() == 3, f"{tag}: Mais with three dots")
         tabs = [t.strip() for t in a.locator(".more-tabs button").all_inner_texts()]
         check(tabs == ["Integrações", "Dados", "Aparência", "Opções"], f"{tag}: the four tabs ({tabs})")
         bar = a.locator(".more-tabs").evaluate("(x) => [x.scrollWidth, x.clientWidth, [...x.querySelectorAll('button')].map((b) => b.scrollWidth <= b.clientWidth + 1)]")
@@ -158,24 +168,24 @@ with sync_playwright() as p:
         check(view(a) == "now", f"{tag}: Back again goes to Agora ({view(a)})")
         # ‹ Mais and Mais in the bar
         for how in ("uplink", "tab"):
-            a.locator("nav .tab", has_text="Mais").click()
+            a.locator(TAB, has_text="Mais").click()
             pg.wait_for_timeout(400)
             a.locator(".more-row", has_text="Configurações").click()
             pg.wait_for_timeout(400)
             a.locator(".more-tabs button", has_text="Dados").click()
             pg.wait_for_timeout(400)
-            (a.locator(".uplink") if how == "uplink" else a.locator("nav .tab", has_text="Mais")).click()
+            (a.locator(".uplink") if how == "uplink" else a.locator(TAB, has_text="Mais")).click()
             pg.wait_for_timeout(500)
             check(view(a) == "more", f"{tag}: {how} goes back to the menu ({view(a)})")
             pg.go_back()
             pg.wait_for_timeout(500)
             check(view(a) == "now", f"{tag}: and then Back goes to Agora ({how}: {view(a)})")
         # another tab of the bar from Configurações: there, and Back goes to Agora
-        a.locator("nav .tab", has_text="Mais").click()
+        a.locator(TAB, has_text="Mais").click()
         pg.wait_for_timeout(400)
         a.locator(".more-row", has_text="Configurações").click()
         pg.wait_for_timeout(400)
-        a.locator("nav .tab", has_text="Buscar").click()
+        a.locator(TAB, has_text="Buscar").click()
         pg.wait_for_timeout(700)
         check(view(a) == "search", f"{tag}: Buscar from Configurações ({view(a)})")
         pg.go_back()
@@ -186,7 +196,7 @@ with sync_playwright() as p:
         if phone:
             x0, x1 = w * 0.75, w * 0.2
             seq = []
-            a.locator("nav .tab", has_text="Buscar").click()
+            a.locator(TAB, has_text="Buscar").click()
             pg.wait_for_timeout(500)
             for _ in range(2):
                 pg.evaluate(SWIPE, ["main .page-title", x0, 120, x1, 130])
@@ -218,7 +228,7 @@ with sync_playwright() as p:
             pg.wait_for_timeout(500)
             check(view(a) == "now", f"{tag}: short or slanted moves change nothing")
             # on a screen of Mais, to the right goes back to the menu; to the left nothing
-            a.locator("nav .tab", has_text="Mais").click()
+            a.locator(TAB, has_text="Mais").click()
             pg.wait_for_timeout(400)
             a.locator(".more-row", has_text="Configurações").click()
             pg.wait_for_timeout(500)
@@ -232,7 +242,7 @@ with sync_playwright() as p:
             pg.wait_for_timeout(500)
             check(view(a) == "now", f"{tag}: and then Back goes to Agora ({view(a)})")
             # with a sheet open, no swipe
-            a.locator("nav .tab.fab").click()
+            a.locator(FAB).click()
             pg.wait_for_timeout(500)
             pg.evaluate(SWIPE, ["main .page-title", x0, 120, x1, 130])
             pg.wait_for_timeout(400)
@@ -258,7 +268,7 @@ with sync_playwright() as p:
         pg.evaluate("() => document.documentElement.removeAttribute('data-theme')")
         pg.wait_for_timeout(400)
         check(dark() == (scheme == "dark"), f"{tag}: and back to the system without it")
-        a.locator("nav .tab", has_text="Mais").click()
+        a.locator(TAB, has_text="Mais").click()
         pg.wait_for_timeout(400)
         a.locator(".more-row", has_text="Configurações").click()
         pg.wait_for_timeout(400)

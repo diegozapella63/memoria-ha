@@ -2,7 +2,8 @@
 # folha que não cabem nela vão para a página da direita, que rola. Cada página tem a sua parte da folha para escrever
 # (linhas inteiras), sem repetir nada: a da esquerda e depois a da direita são a folha. Escrevendo, as linhas passam de
 # uma página para a outra e o cursor vai junto; as setas e o Backspace atravessam a espiral. Abaixo de 1100 px, uma
-# página só, como antes. 1660 e 1100 px (claro e escuro) e 1099 px.
+# página só, como antes; 1.35.0: com a barra lateral do computador, abaixo de 1200. 1660 e 1200 px (claro e escuro) e
+# 1199 px.
 #
 # Usa a prévia (sem servidor): cd frontend && npm run build, depois
 #   python3 tests/folhas_check.py [pasta das capturas]
@@ -12,6 +13,10 @@ from playwright.sync_api import sync_playwright
 
 REPO = Path(__file__).resolve().parent.parent
 PREVIEW = os.environ.get("MEMORIA_PREVIEW_URL") or (REPO / "preview" / "memoria-preview.html").as_uri()
+# 1.35.0: com 1000 px ou mais, a barra lateral no lugar da barra de baixo: o que estiver à vista
+TAB = "nav .tab:visible, .side-link:visible"
+TAB_ON = "nav .tab.on:visible, .side-link[aria-current=page]:visible"
+FAB = "nav .tab.fab:visible, .side-add:visible"
 SHOTS = Path(sys.argv[1] if len(sys.argv) > 1 else os.environ.get("MEMORIA_SHOTS", Path(tempfile.gettempdir()) / "memoria-shots"))
 SHOTS.mkdir(parents=True, exist_ok=True)
 
@@ -60,7 +65,7 @@ def focus(a, part, pos):
 
 with sync_playwright() as p:
     b = p.chromium.launch()
-    for scheme, w in (("light", 1660), ("dark", 1100), ("light", 1099)):
+    for scheme, w in (("light", 1660), ("dark", 1200), ("light", 1199)):
         tag = f"{scheme} {w}px"
         ctx = b.new_context(viewport={"width": w, "height": 950}, color_scheme=scheme)
         pg = ctx.new_page()
@@ -74,8 +79,8 @@ with sync_playwright() as p:
         pg.wait_for_timeout(800)
         pages = a.evaluate("(el) => el._pagesOf('ideias00001').map((p) => p.id)")
         pid = pages[1]
-        if w < 1100:
-            check(a.locator(".pad.spread").count() == 0 and a.locator(".pad > .leaf").count() == 1 and a.locator(".pad textarea.ink").count() == 1, f"{tag}: abaixo de 1100 px, uma página só")
+        if w < 1200:
+            check(a.locator(".pad.spread").count() == 0 and a.locator(".pad > .leaf").count() == 1 and a.locator(".pad textarea.ink").count() == 1, f"{tag}: com a barra lateral, abaixo de 1200 px, uma página só")
             check(a.evaluate(OVER) == [], f"{tag}: nada passa da largura {a.evaluate(OVER)}")
             pg.screenshot(path=str(SHOTS / f"folhas-{scheme}-{w}.png"))
             check(not errs, f"{tag}: sem erros {errs}")
@@ -87,7 +92,7 @@ with sync_playwright() as p:
         check(a.locator(".pad.spread").count() == 1 and len(lv) == 2 and lv[0][1] < lv[1][0] and lv[0][2] == lv[1][2] and lv[0][3] == lv[1][3], f"{tag}: duas páginas lado a lado, na mesma altura ({lv})")
         check(a.locator(".pad .leaf .num").all_inner_texts() == ["2/2"], f"{tag}: as duas são da folha atual (um número só)")
         sp = a.locator(".pad .spiral").bounding_box()
-        check(lv[0][1] - 20 <= sp["x"] and sp["x"] + sp["width"] <= lv[1][0] + 30, f"{tag}: a espiral no meio")
+        check(lv[0][1] - 20 <= sp["x"] and sp["x"] + sp["width"] <= lv[1][0] + 30, f"{tag}: a espiral no meio ({lv}, {sp})")
 
         # ---- uma folha comprida, lendo: a esquerda não rola; a direita continua, sem repetir, e rola
         a.evaluate(PUT, [pid, TEXT])
@@ -102,14 +107,25 @@ with sync_playwright() as p:
         pg.screenshot(path=str(SHOTS / f"folhas-{scheme}-{w}.png"))
 
         # ---- um toque na direita escreve nela, ali
-        rv = a.locator(".pad.spread .leaf.right .ink-view").bounding_box()
-        pg.mouse.click(rv["x"] + 120, rv["y"] + 4 + 32 * 2 + 14)
+        # 1.35.0: on a line of the text (the first one of the right page wraps more or less with the width)
+        ln = a.evaluate("""(el) => {
+          const root = el.renderRoot.querySelector('.pad.spread .leaf.right .ink-view');
+          const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+          for (let n = w.nextNode(); n; n = w.nextNode()) {
+            const i = n.data.search(/Linha final 2(?!\\d)/);
+            if (i < 0) continue;
+            const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + 13);
+            const b = r.getBoundingClientRect(); return [b.left, b.top + b.height / 2];
+          }
+          return null; }""")
+        pg.mouse.click(ln[0] + 40, ln[1])
         pg.wait_for_timeout(600)
         g = a.evaluate(PAGES)
         check(g["focus"] == "r" and not g["view"] and not g["lscroll"], f"{tag}: o toque na direita escreve nela ({g['focus']})")
         check(g["l"] + "\n" + g["r"] == TEXT, f"{tag}: escrevendo, também sem repetir nada")
         row = g["r"][: g["pos"]].count("\n")
-        check(1 <= row <= 4, f"{tag}: o cursor na linha tocada ({row})")
+        want = g["r"].split("\n").index("Linha final 2")
+        check(row == want, f"{tag}: o cursor na linha tocada ({row}, {want})")
         pg.keyboard.type("Ok ")
         pg.wait_for_timeout(400)
         check("Ok " in a.evaluate(TEXT_OF, pid) and a.evaluate(PAGES)["focus"] == "r", f"{tag}: escreve na folha, pela direita")
@@ -168,7 +184,7 @@ with sync_playwright() as p:
         check(a.evaluate("(el) => el._pad.page") == pid, f"{tag}: a da direita vai para a próxima")
 
         # ---- o Agora também
-        a.locator("nav .tab", has_text="Agora").click()
+        a.locator(TAB, has_text="Agora").click()
         pg.wait_for_timeout(600)
         if a.locator(".pad").count():
             check(a.locator(".pad.spread").count() == 1 and len(a.locator(".pad .leaf .num").all_inner_texts()) == 1, f"{tag}: no Agora também, o caderno aberto da folha de agora")

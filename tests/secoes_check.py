@@ -83,7 +83,7 @@ with sync_playwright() as p:
         go("/config")
         lines = a.evaluate("(el) => [...el.renderRoot.querySelectorAll('.panel > .row')].filter((r) => !r.querySelector(':scope > .tile') && parseFloat(getComputedStyle(r).borderTopWidth) > 0).length")
         check(lines == 0, f"{tag}: no line between the options ({lines})")
-        check(a.locator("#leitura-ia > .sub-op > .sub-box .ai-state").count() == 1 and a.locator("#leitura-ia .sub-box select").count() == 1 and a.locator("#leitura-ia .sub-box .ai-actions .btn").count() == 1, f"{tag}: the state, the choice and Verificar de novo of the AI in the box under Usar IA")
+        check(a.locator("#leitura-ia > .sub-op > .sub-box .ai-state").count() == 1 and a.locator("#leitura-ia .sub-box select").count() == 2 and a.locator("#leitura-ia .sub-box .ai-actions .btn").count() == 1, f"{tag}: the state, the choice and Verificar de novo of the AI in the box under Usar IA")
         check(a.locator("#leitura-ia .field-hint").count() == 0, f"{tag}: without the note about Padrão do Home Assistant")
         sw = a.locator("#correria input[role=switch]")
         if not sw.is_checked():

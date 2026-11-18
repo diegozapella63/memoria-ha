@@ -37,6 +37,7 @@ export const styles = css`
     --rv-header-bg: var(--app-header-background-color, #f8f6fb);
     --rv-header-fg: var(--app-header-text-color, #1f1a26);
     --rv-nav-h: 68px;
+    --rv-side-w: 272px;
     color-scheme: light;
     display: block;
     height: 100%;
@@ -1234,6 +1235,197 @@ export const styles = css`
     width: 24px;
     height: 24px;
     stroke-width: 2.4;
+  }
+
+  /* ---------- 1.35.0: computador (1000 px ou mais, fora da Tela cheia): a barra lateral dos outros apps (a mesma do
+     CronologIA e do ResolvIA) no lugar da barra de baixo ---------- */
+  .side {
+    display: none;
+  }
+  .side-brand {
+    font-family: var(--rv-display);
+    font-size: 25px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 4px 10px 18px;
+    color: var(--rv-text);
+  }
+  .side-brand span {
+    color: var(--rv-accent-ink);
+  }
+  .app-ic {
+    display: inline-block;
+    width: 1.15em;
+    height: 1.15em;
+    margin-right: 0.28em;
+    vertical-align: -0.2em;
+    color: var(--rv-text);
+    overflow: visible;
+  }
+  /* .side: the .btn of the app grows (flex: 1) */
+  .side .side-add {
+    flex: none;
+    width: 100%;
+    height: 50px;
+    min-height: 50px;
+    margin: 0 0 14px;
+  }
+  .side-nav,
+  .side-lists {
+    display: grid;
+    gap: 2px;
+  }
+  .side-link,
+  .side-list {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    text-align: left;
+    color: var(--rv-text);
+    font-weight: 500;
+  }
+  .side-link .i {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    color: var(--rv-muted);
+  }
+  .side-link:hover,
+  .side-list:hover {
+    background: var(--rv-surface-2);
+  }
+  .side-link[aria-current="page"],
+  .side-list[aria-current="page"] {
+    background: var(--rv-surface);
+    box-shadow: inset 3px 0 0 var(--rv-accent);
+    font-weight: 600;
+  }
+  .side-link[aria-current="page"] .i {
+    color: var(--rv-accent-ink);
+  }
+  .side-h {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 22px 10px 8px;
+  }
+  .side-h span {
+    font-family: var(--rv-display);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--rv-text);
+  }
+  .side-h small {
+    font-size: 13px;
+    color: var(--rv-muted);
+  }
+  .side-list {
+    min-height: 38px;
+    padding: 5px 10px;
+    font-weight: 400;
+  }
+  .side-tile {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    flex: none;
+    background: var(--cs);
+    color: var(--ci);
+  }
+  .side-tile .i {
+    width: 15px;
+    height: 15px;
+  }
+  .sl-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sl-num {
+    font-family: var(--rv-display);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--rv-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .side-foot {
+    margin-top: auto;
+    padding: 18px 10px 0;
+    font-size: 13px;
+    color: var(--rv-faint);
+  }
+  @media (min-width: 1000px) {
+    :host(:not([full])) .app {
+      position: relative;
+      padding-left: var(--rv-side-w);
+    }
+    :host(:not([full])) .side {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: var(--rv-side-w);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 22px 14px 18px;
+      overflow-y: auto;
+      border-right: 1px solid var(--rv-line);
+      background: var(--rv-bg);
+      scrollbar-width: thin;
+    }
+    /* a barra de baixo sai (a de escrever fica) */
+    :host(:not([full])) nav:not(.write) {
+      display: none;
+    }
+    :host(:not([full])) .page {
+      max-width: 880px;
+      padding: 30px 40px 56px;
+    }
+    :host(:not([full])) .page:has(.pad.spread) {
+      max-width: 1320px;
+    }
+    /* o nome do app já está na barra lateral: no alto, o "Olá, Ana" */
+    :host(:not([full])) .eyebrow .brand,
+    :host(:not([full])) .eyebrow .sep {
+      display: none;
+    }
+    /* fora do Home Assistant: o nome já está na barra lateral */
+    :host(:not([full])) .topbar {
+      display: none;
+    }
+    /* as janelas de baixo viram uma janela no meio da tela */
+    :host(:not([full])) .sheet {
+      left: var(--rv-side-w);
+      top: 0;
+      bottom: 0;
+      height: fit-content;
+      max-height: 86%;
+      margin: auto;
+      border-radius: 24px;
+      padding-bottom: 22px;
+      animation-name: rv-win;
+    }
+    :host(:not([full])) .sheet .grab {
+      display: none;
+    }
+    :host(:not([full])) .toast,
+    :host(:not([full])) .toast.has-sheet {
+      left: calc(50% + var(--rv-side-w) / 2);
+      bottom: 24px;
+    }
+  }
+  @keyframes rv-win {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.98);
+    }
   }
 
   /* ---------- sheet ---------- */
@@ -3417,7 +3609,8 @@ export const notebookStyles = css`
   }
   .pad.spread {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    /* 1.35.0: the two pages always the same width (a long line of the left one made it grow, under the spiral) */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     column-gap: 30px;
     margin-left: 8px;
   }

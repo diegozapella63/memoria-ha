@@ -55,7 +55,7 @@ with sync_playwright() as p:
         tap(pg, sel)
         sheet = pg.locator(".ss-wrap.in .ss-sheet")
         check(sheet.count() == 1, f"{scheme}: a tap opens the sheet")
-        check(sheet.locator(".ss-head b").inner_text().strip() == "Para conversar", f"{scheme}: its title is the name of the box")
+        check(sheet.locator(".ss-head b").inner_text().strip() == "IA para conversar", f"{scheme}: its title is the name of the box")
         rows = [t.strip() for t in sheet.locator(".ss-opt").all_inner_texts()]
         check(rows == opts, f"{scheme}: the options in rows ({rows})")
         on = sheet.locator(".ss-opt.on")

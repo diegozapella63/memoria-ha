@@ -12,6 +12,10 @@ from playwright.sync_api import sync_playwright
 REPO = Path(__file__).resolve().parent.parent
 # the preview over http (tests/visual.sh): Chromium does not always keep what a file:// page saves across a reload
 PREVIEW = os.environ.get("MEMORIA_PREVIEW_URL") or (REPO / "preview" / "memoria-preview.html").as_uri()
+# 1.35.0: com 1000 px ou mais, a barra lateral no lugar da barra de baixo: o que estiver à vista
+TAB = "nav .tab:visible, .side-link:visible"
+TAB_ON = "nav .tab.on:visible, .side-link[aria-current=page]:visible"
+FAB = "nav .tab.fab:visible, .side-add:visible"
 SHOTS = Path(sys.argv[1] if len(sys.argv) > 1 else os.environ.get("MEMORIA_SHOTS", Path(tempfile.gettempdir()) / "memoria-shots"))
 SHOTS.mkdir(parents=True, exist_ok=True)
 
@@ -66,7 +70,7 @@ with sync_playwright() as p:
         check(a.evaluate("(el) => el.hasAttribute('dark')") == (scheme == "dark"), f"{tag}: {scheme} theme")
 
         # Agora › Mais (the tab) › Sobre (the last row)
-        a.locator("nav .tab", has_text="Mais").click()
+        a.locator(TAB, has_text="Mais").click()
         pg.wait_for_timeout(500)
         check(view(a) == "more", f"{tag}: Mais open")
         row = a.locator(".more-menu .more-row").last
@@ -85,7 +89,7 @@ with sync_playwright() as p:
         check(a.locator(".page-title").first.inner_text().strip() == "Sobre", f"{tag}: title Sobre")
         up = a.locator(".uplink")
         check(up.count() == 1 and up.inner_text().strip() == "Mais", f"{tag}: ‹ Mais above the title")
-        on = a.locator("nav .tab.on")
+        on = a.locator(TAB_ON)
         check(on.count() == 1 and on.inner_text().strip() == "Mais", f"{tag}: Mais lit in the bar")
 
         name = a.locator(".ab-name")
@@ -139,14 +143,14 @@ with sync_playwright() as p:
         check(view(a) == "now", f"{tag}: Back again goes to Agora")
         # ‹ Mais, and Mais in the bar, from Sobre
         for how in ("uplink", "tab"):
-            a.locator("nav .tab", has_text="Mais").click()
+            a.locator(TAB, has_text="Mais").click()
             pg.wait_for_timeout(400)
             a.locator(".more-menu .more-row").last.click()
             pg.wait_for_timeout(500)
             if how == "uplink":
                 a.locator(".uplink").click()
             else:
-                a.locator("nav .tab", has_text="Mais").click()
+                a.locator(TAB, has_text="Mais").click()
             pg.wait_for_timeout(500)
             check(view(a) == "more", f"{tag}: {'‹ Mais' if how == 'uplink' else 'Mais in the bar'} goes back to Mais")
             pg.go_back()

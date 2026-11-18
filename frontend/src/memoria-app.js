@@ -8,6 +8,7 @@ import { swipeStart, swipeEnd, slideIn } from "./swipe.js";
 import { chatStyles, chatFiles } from "./chat.js";
 import { usagePanel, usageStyles } from "./usage-panel.js";
 import { ChatMixin } from "./chat-panel.js";
+import { appIcon } from "./appicon.js";
 import { Recorder, micError, VOICE_RATE, VOICE_MAX_S } from "./voice.js";
 import { PALETTE, colorById, colorVars, hexToRgba, fold, foldKeepLength, plural, clip, writtenAt, hm, newId, firstLine, prepareImage } from "./util.js";
 import { parentHass, detectDark } from "./api.js";
@@ -104,6 +105,8 @@ const pad2 = (n) => String(n).padStart(2, "0");
 const periodOf = (id) => PERIODS.find((p) => p.id === id);
 // 1.29.0: from this width (the app's, without the sidebar of the Home Assistant), two sheets side by side
 const WIDE_MIN = 1100;
+// 1.35.0: with the sidebar (1000 px or more, out of Tela cheia), the open notebook needs this much, so each page keeps its width
+const SPREAD_SIDE_MIN = 1200;
 const reduceMotion = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
 class MemoriaApp extends ChatMixin(LitElement) {
@@ -124,6 +127,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     _cam: { state: true },
     _pad: { state: true },
     _wide: { state: true },
+    _spreadWide: { state: true },
     _full: { state: true },
     _turn: { state: true },
     _peek: { state: true },
@@ -180,7 +184,12 @@ class MemoriaApp extends ChatMixin(LitElement) {
     // 1.29.0: a wide screen (a computer): two sheets side by side, like an open notebook
     this._wideMq = window.matchMedia ? window.matchMedia(`(min-width: ${WIDE_MIN}px)`) : null;
     this._wide = !!(this._wideMq && this._wideMq.matches);
-    this._onWide = () => (this._wide = !!(this._wideMq && this._wideMq.matches));
+    this._spreadMq = window.matchMedia ? window.matchMedia(`(min-width: ${SPREAD_SIDE_MIN}px)`) : null;
+    this._onWide = () => {
+      this._wide = !!(this._wideMq && this._wideMq.matches);
+      this._spreadWide = !!(this._spreadMq && this._spreadMq.matches);
+    };
+    this._onWide();
     // 1.30.0: Tela cheia: Esc leaves it (a window open over it closes first); leaving the fullscreen of the browser too
     // Tela cheia: Esc leaves it; the arrows ← → go through the sheets (1.31.0)
     this._onFullKey = (e) => {
@@ -214,6 +223,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     window.addEventListener("resize", this._onResize);
     if (this._mql && this._mql.addEventListener) this._mql.addEventListener("change", this._onScheme);
     if (this._wideMq && this._wideMq.addEventListener) this._wideMq.addEventListener("change", this._onWide);
+    if (this._spreadMq && this._spreadMq.addEventListener) this._spreadMq.addEventListener("change", this._onWide);
     window.addEventListener("keydown", this._onFullKey);
     this._tickTimer = setInterval(() => this._tick(), 20000);
     // Sistema follows Home Assistant's light/dark mode while the app is open (and the system, and in the
@@ -234,6 +244,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     window.removeEventListener("resize", this._onResize);
     if (this._mql && this._mql.removeEventListener) this._mql.removeEventListener("change", this._onScheme);
     if (this._wideMq && this._wideMq.removeEventListener) this._wideMq.removeEventListener("change", this._onWide);
+    if (this._spreadMq && this._spreadMq.removeEventListener) this._spreadMq.removeEventListener("change", this._onWide);
     window.removeEventListener("keydown", this._onFullKey);
     if (this._fsDoc) this._fsDoc.removeEventListener("fullscreenchange", this._onFsChange);
     clearInterval(this._tickTimer);
@@ -978,7 +989,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     }
     this._haptic("light");
     const to = { block: pad.block, page: target };
-    if (this._wide) {
+    if (this._spread()) {
       // the open notebook of a wide screen: the sheet changes without the turning
       const ta = this.renderRoot.querySelector("textarea.ink");
       if (ta && this.renderRoot.activeElement === ta && target !== "new") ta.blur();
@@ -2323,6 +2334,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
             ? html`<header class="topbar"><div class="title">Memor<b>IA</b></div></header>`
             : nothing}
           ${!this._online ? html`<div class="offline">${icon("wifi-off")}<span>Sem conexão com o MemorIA. Reconectando…</span></div>` : nothing}
+          ${this._renderSide(view)}
           <main @touchstart=${(e) => this._onSwipeStart(e)} @touchend=${(e) => this._onSwipeEnd(e)}>${page}</main>
           ${this._editing != null ? this._renderWriteBar() : this._renderNav(view)}
         </div>
@@ -2332,6 +2344,49 @@ class MemoriaApp extends ChatMixin(LitElement) {
         <input id="mm-import" class="sr" type="file" accept=".zip,.json,application/zip,application/x-zip-compressed,application/json" tabindex="-1" aria-hidden="true" @change=${(e) => this._onImportFile(e)} />
       </div>
     `;
+  }
+
+  /**
+   * 1.35.0: no computador (1000 px ou mais, fora da Tela cheia), a barra lateral dos outros apps no lugar da barra de
+   * baixo: o Adicionar, Agora, Buscar, Blocos e Mais, os blocos (um toque abre) e a versão.
+   */
+  _renderSide(view) {
+    // the blocks of the person chosen in Blocos (De quem é), like the shelf
+    const who = this._shelfWho();
+    const blocks = this._blocks().filter((b) => this._ofWho(b, who));
+    const listed = view.name === "block" && blocks.some((b) => b.id === view.id);
+    const cur = view.name === "block" ? (listed ? "" : "shelf") : IN_MORE.includes(view.name) ? "more" : view.name;
+    const item = (name, path, label, ic) => html`<button class="side-link" aria-current=${cur === name ? "page" : "false"} @click=${() => this._goTab(path)}>${icon(ic)}<span>${label}</span></button>`;
+    return html`<aside class="side" aria-label="Navegação">
+      <div class="side-brand">${appIcon()}Memor<span>IA</span></div>
+      <button class="btn primary side-add" @click=${() => this._openNew()}>${icon("plus")}Adicionar</button>
+      <div class="side-nav">
+        ${item("now", "", "Agora", "clock-3")} ${item("search", "/buscar", "Buscar", "search")}
+        ${item("shelf", "/blocos", "Blocos", "library")} ${item("more", "/mais", "Mais", "ellipsis")}
+      </div>
+      ${blocks.length
+        ? html`<div class="side-h"><span>Blocos</span><small>${blocks.length}</small></div>
+            <div class="side-lists">
+              ${repeat(
+                blocks,
+                (b) => b.id,
+                (b) => html`<button class="side-list" aria-current=${view.name === "block" && view.id === b.id ? "page" : "false"} style=${this._cv(b)} @click=${() => this._sideOpen(b.id)}>
+                  <span class="side-tile">${icon("notebook")}</span><span class="sl-name">${b.name}</span><span class="sl-num">${this._pagesOf(b.id).length || ""}</span>
+                </button>`,
+              )}
+            </div>`
+        : nothing}
+      <div class="side-foot">MemorIA${this._version ? ` ${this._version}` : ""}</div>
+    </aside>`;
+  }
+
+  /** A block of the sidebar: its screen (also the one open on the Agora), on the last sheet seen. */
+  _sideOpen(id) {
+    const v = this._view();
+    if (v.name === "block" && v.id === id) return;
+    this._closeSheet();
+    this._openAt = { block: id, page: null };
+    this._go(`/bloco/${id}`, v.name === "block");
   }
 
   _renderNav(view) {
@@ -2357,7 +2412,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const name = this._userName();
     const st = !this._online ? { text: "Reconectando ao MemorIA…", tone: "off" } : status;
     return html`<header class="brand-head">
-      <div class="head-row"><p class="eyebrow"><span class="brand">Memor<span>IA</span></span>${name ? ` · Olá, ${name}` : ""}</p>${this._renderChatBtn()}${this._renderMicBtn()}${full ? this._renderFullBtn() : nothing}</div>
+      <div class="head-row"><p class="eyebrow"><span class="brand">Memor<span>IA</span></span>${name ? html`<span class="sep"> · </span>Olá, ${name}` : ""}</p>${this._renderChatBtn()}${this._renderMicBtn()}${full ? this._renderFullBtn() : nothing}</div>
       ${up ? html`<button class="uplink" @click=${() => this._toMenu()}>${icon("chevron-left")}Mais</button>` : nothing}
       <h1 class="page-title ${fit ? "fit-title" : ""}"><span class="mais-ic page-ic" aria-hidden="true">${icon(PAGE_IC[ic || title] || "notebook")}</span>${title}</h1>
       ${st ? html`<p class="status"><span class="dot ${st.tone || ""}" aria-hidden="true"></span><span>${st.text}</span>${st.extra || nothing}</p>` : nothing}
@@ -2497,7 +2552,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const label = `Folha ${idx + 1} de ${total} do bloco ${b.name}`;
     // 1.29.1: on a wide screen, the notebook open: the left page doesn't scroll, what doesn't fit on it goes on on the right
     // page (which scrolls); each page has its own part of the sheet to write in (whole lines: a line is never split)
-    const wide = this._wide;
+    const wide = this._spread();
     const sp = wide ? this._splitOf(page, viewing) : null;
     // 1.31.0: in Tela cheia the sheets go round (after the last, the first; before the first, the last), no new sheet
     const ring = readOnly && !!page && list.length > 1;
@@ -2932,7 +2987,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const second = tas.length > 1 && abs > tas[0].value.length;
     const ta = second ? tas[1] : tas[0];
     const at = second ? abs - tas[0].value.length - 1 : abs;
-    if (tas.length > 1 || this._wide) this._caretAbs = abs;
+    if (tas.length > 1 || this._spread()) this._caretAbs = abs;
     // inside the tap, so the phone opens the keyboard
     ta.focus({ preventScroll: true });
     ta.setSelectionRange(at, at);
@@ -3329,6 +3384,14 @@ class MemoriaApp extends ChatMixin(LitElement) {
   }
 
   // ---------- Tela cheia (1.30.0)
+
+  /**
+   * The open notebook, two pages (1.29.0): a wide screen; next to the sidebar of the computer (1.35.0), from 1200 px,
+   * so each page keeps its width (in Tela cheia the sidebar goes away: from 1100, as before).
+   */
+  _spread() {
+    return this._wide && (this._spreadWide || this._fullOn());
+  }
 
   /** Tela cheia is on and there is a notebook on screen (a wide screen: the block, or the Agora with one). */
   _fullOn() {

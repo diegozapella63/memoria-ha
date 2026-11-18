@@ -1,5 +1,10 @@
 # Mudanças
 
+## 1.35.0
+
+- **No computador** (1000 px ou mais): a barra lateral dos outros apps, no lugar da barra de baixo. No alto o MemorIA e o **Adicionar**; depois **Agora**, **Buscar**, **Blocos** e **Mais** (a tela aberta marcada), os seus blocos (um toque abre; o aberto fica marcado) e a versão embaixo. As telas ficam no meio do resto da tela e as janelas abrem no meio, como nos outros apps. Na Tela cheia, a lateral some, como antes.
+- O caderno aberto (as duas páginas lado a lado), ao lado da lateral, aparece a partir de 1200 px, para cada página manter a largura; as duas páginas ficam sempre do mesmo tamanho, com a espiral no meio.
+
 ## 1.34.0
 
 - **Integrações › IA** (antes "IA do Home Assistant"): agora dá para escolher uma IA **Para conversar** (a Conversa, o Falar e as mensagens coladas) e outra **Para ler fotos e PDFs** (o Escolher fotos ou PDF, o Digitalizar com IA e a Conversa com uma foto ou um PDF). Assim uma IA mais barata responde as perguntas e uma mais caprichada lê as fotos. A de fotos começa **Igual à de conversar**, então nada muda até você escolher.

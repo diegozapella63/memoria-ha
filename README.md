@@ -32,6 +32,7 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **Trechos com horário**: uma folha específica pode aparecer às 10h, por exemplo a pauta de uma reunião.
 - **Tela Agora** com o horário de agora e os dois próximos: toque num deles para espiar o que vem depois. Cada horário fica no Agora até o próximo ou pelo tempo escolhido (**Fica no Agora**), e as caixas marcadas ali valem só para aquela vez.
 - **Estante de blocos** com o **Seu dia**: os horários de hoje, com o de agora marcado.
+- **No computador**: a barra lateral dos outros apps, com o Adicionar, as telas e os seus blocos a um toque.
 - **Categorias** para agrupar os blocos (Trabalho, Casa, Estudos…), com filtro na estante.
 - **De quem é**: um bloco de uma pessoa da casa só abre sozinho no Agora dela; os de Todos, para todo mundo.
 - **Arquivar bloco**: sai da estante, do Agora e da busca sem apagar nada e fica em **Arquivados**, no fim de Blocos.

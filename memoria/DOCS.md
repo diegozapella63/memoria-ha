@@ -20,7 +20,9 @@ Na primeira vez já existem dois blocos de exemplo, **Diário** (abre à noite) 
 
 ### Caderno aberto na tela grande
 
-Numa tela larga (a partir de 1100 px, como um computador ou uma TV), o bloco aberto e o Agora mostram o caderno aberto, com a folha atual nas duas páginas. A página da esquerda não rola: as linhas que não cabem nela vão para a página da direita, que rola. Nada se repete, e uma linha nunca fica dividida entre as duas. Dá para escrever nas duas páginas: escrevendo, as linhas passam de uma para a outra e o cursor vai junto. As setas do teclado atravessam a espiral, e o Backspace no começo da direita junta a primeira linha dela com a última da esquerda. As caixas e os links funcionam nas duas, e as setas das bordas viram uma folha por vez.
+No computador (a partir de 1000 px de largura), a barra de baixo vira a barra lateral dos outros apps: o **Adicionar**, **Agora**, **Buscar**, **Blocos** e **Mais**, e os seus blocos (os do De quem é escolhido em Blocos), um toque abre. As janelas abrem no meio da tela.
+
+Numa tela larga (a partir de 1200 px ao lado da barra lateral, ou de 1100 px na Tela cheia), o bloco aberto e o Agora mostram o caderno aberto, com a folha atual nas duas páginas. A página da esquerda não rola: as linhas que não cabem nela vão para a página da direita, que rola. Nada se repete, e uma linha nunca fica dividida entre as duas. Dá para escrever nas duas páginas: escrevendo, as linhas passam de uma para a outra e o cursor vai junto. As setas do teclado atravessam a espiral, e o Backspace no começo da direita junta a primeira linha dela com a última da esquerda. As caixas e os links funcionam nas duas, e as setas das bordas viram uma folha por vez.
 
 ### Tela cheia
 
