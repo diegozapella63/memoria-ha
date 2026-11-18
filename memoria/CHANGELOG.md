@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.34.0
+
+- **Integrações › IA** (antes "IA do Home Assistant"): agora dá para escolher uma IA **Para conversar** (a Conversa, o Falar e as mensagens coladas) e outra **Para ler fotos e PDFs** (o Escolher fotos ou PDF, o Digitalizar com IA e a Conversa com uma foto ou um PDF). Assim uma IA mais barata responde as perguntas e uma mais caprichada lê as fotos. A de fotos começa **Igual à de conversar**, então nada muda até você escolher.
+
 ## 1.33.0
 
 - **Na tela cheia da CronologIA**: dá para ver as folhas dos próximos horários, uma depois da outra, sem sair da tela cheia (precisa da CronologIA 1.98.0 ou mais nova).

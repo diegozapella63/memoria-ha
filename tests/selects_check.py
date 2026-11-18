@@ -48,14 +48,14 @@ with sync_playwright() as p:
         a = pg.locator("memoria-app")
         a.evaluate("(el) => el._go('/config')")
         pg.wait_for_timeout(900)
-        sel = a.locator("#leitura-ia select")
-        check(sel.count() == 1, f"{scheme}: IA usada pelo app")
+        sel = a.locator("#leitura-ia select").first
+        check(a.locator("#leitura-ia select").count() == 2, f"{scheme}: IA para conversar and para ler fotos e PDFs (1.34.0)")
         check(sel.evaluate("(s) => getComputedStyle(s).pointerEvents") == "none", f"{scheme}: the box never gets the tap (the window of the phone doesn't open)")
         opts = [o.strip() for o in sel.locator("option").all_inner_texts()]
         tap(pg, sel)
         sheet = pg.locator(".ss-wrap.in .ss-sheet")
         check(sheet.count() == 1, f"{scheme}: a tap opens the sheet")
-        check(sheet.locator(".ss-head b").inner_text().strip() == "IA usada pelo app", f"{scheme}: its title is the name of the box")
+        check(sheet.locator(".ss-head b").inner_text().strip() == "Para conversar", f"{scheme}: its title is the name of the box")
         rows = [t.strip() for t in sheet.locator(".ss-opt").all_inner_texts()]
         check(rows == opts, f"{scheme}: the options in rows ({rows})")
         on = sheet.locator(".ss-opt.on")
@@ -100,7 +100,7 @@ with sync_playwright() as p:
     a = pg.locator("memoria-app")
     a.evaluate("(el) => el._go('/config')")
     pg.wait_for_timeout(900)
-    sel = a.locator("#leitura-ia select")
+    sel = a.locator("#leitura-ia select").first
     sel.scroll_into_view_if_needed()
     bx = sel.bounding_box()
     pg.mouse.click(bx["x"] + bx["width"] / 2, bx["y"] + bx["height"] / 2)

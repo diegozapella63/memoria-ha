@@ -52,7 +52,7 @@ if (!TOKEN) log.error("Sem SUPERVISOR_TOKEN. O homeassistant_api está ligado no
 
 const store = new Store(DATA_DIR, log);
 const ha = new HAClient(HA_URL, TOKEN, log);
-const ai = new AI({ ha, log, mediaDir: MEDIA_DIR, selected: () => store.data.app.ai_entity || "" });
+const ai = new AI({ ha, log, mediaDir: MEDIA_DIR, selected: () => store.data.app.ai_entity || "", selectedPhotos: () => store.data.app.ai_photos || "" });
 const voice = new Voice({ ha, rest: HA_REST, token: TOKEN, log, pick: () => store.data.app.voice_engine || "" });
 // Mais › Configurações › Integrações › Usar IA: off, nothing goes to the AI
 const aiOff = () => store.data.app.ai_off === true;

@@ -642,7 +642,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     } else if (ev.kind === "correria") {
       this._correria = { ...this._correria, ultimo: ev.ultimo || null };
     } else if (ev.kind === "settings") {
-      const aiChanged = (ev.app && ev.app.ai_entity) !== this._app("ai_entity", undefined);
+      const aiChanged = (ev.app && ev.app.ai_entity) !== this._app("ai_entity", undefined) || (ev.app && ev.app.ai_photos) !== this._app("ai_photos", undefined);
       const wasOn = this._aiOn();
       this._data = { ...this._data, periods: ev.periods, app: ev.app };
       if (aiChanged) this._refreshAi();
@@ -1518,8 +1518,9 @@ class MemoriaApp extends ChatMixin(LitElement) {
     this.requestUpdate();
   }
 
-  async _chooseAi(id) {
-    await this._saveSettings({ app: { ai_entity: id } });
+  /** 1.34.0: key ai_entity (for conversing and reading text) or ai_photos (for photos and PDFs; none: the same). */
+  async _chooseAi(id, key = "ai_entity") {
+    await this._saveSettings({ app: { [key]: id } });
     await this._refreshAi();
     this._showToast("IA do app atualizada");
   }
@@ -3736,7 +3737,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       this._go(this._configPath(k), true, history.state && history.state.rvUp ? { rvUp: true } : null);
     };
     let body;
-    // the order of the family: the other apps (none here) › CorrerIA › IA do Home Assistant › Falar › Uso da IA › Sensores
+    // the order of the family: the other apps (none here) › CorrerIA › IA › Falar › Uso da IA › Sensores
     if (tab === "integracoes")
       body = html`${this._renderCorreriaPanel()} ${this._renderAiPanel()} ${this._aiOn() && this.api.voiceStatus ? this._renderVoicePanel() : nothing}
         ${this._aiOn() ? this._renderUsage() : nothing} ${this._renderSensorPanel()}`;
@@ -3997,6 +3998,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const ai = this._ai || {};
     const ents = ai.entities || [];
     const sel = this._app("ai_entity", "");
+    const selPhotos = this._app("ai_photos", "");
     const tone = this._aiChecking ? "off" : ai.ready && ai.images ? "ok" : ai.ready ? "warn" : "bad";
     const title = this._aiChecking ? "Verificando…" : ai.ready && ai.images ? "Pronta para ler fotos" : ai.ready ? "Só lê mensagens" : "Não configurada";
     let detail = "";
@@ -4006,7 +4008,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     }
     if (ai.reason) detail = `${detail} ${ai.reason}`.trim();
     const on = this._aiOn();
-    const head = html`${this._secHead("sparkles", "IA do Home Assistant", "Lê mensagens, prints e fotos de anotações para criar folhas.")}
+    const head = html`${this._secHead("sparkles", "IA", "Lê mensagens, prints, fotos e PDFs de anotações para criar folhas, e conversa.")}
       <div class="row switch-row ai-switch">
         <div class="grow"><div class="label">${icon("sparkles", "lbl-ic")}Usar IA</div><div class="hint" style="white-space:normal">${on ? "Ligado." : "Desligado: sem leitura por IA, sem Falar e sem Conversar."}</div></div>
         ${this._switch(on, "Usar IA", (e) => this._setAiOn(e.target.checked))}
@@ -4016,15 +4018,23 @@ class MemoriaApp extends ChatMixin(LitElement) {
       ${head}
       <div class="sub-op"><div class="sub-box">
       <div class="ai-state ${tone}"><span class="dot"></span><div><b>${title}</b>${detail ? html`<span>${detail}</span>` : nothing}</div></div>
-      ${ents.length || sel
+      ${ents.length || sel || selPhotos
         ? html`<label class="field" style="margin:14px 0 0">
-            <span class="flabel">${icon("sparkles", "lbl-ic")}IA usada pelo app</span>
-            <select class="select" aria-label="IA usada pelo app" @change=${(e) => this._chooseAi(e.target.value)}>
-              <option value="" ?selected=${!sel}>Padrão do Home Assistant</option>
-              ${ents.map((e) => html`<option value=${e.id} ?selected=${e.id === sel}>${e.name}${e.images ? "" : " (só texto)"}${e.available ? "" : " (indisponível)"}</option>`)}
-              ${sel && !ents.some((e) => e.id === sel) ? html`<option value=${sel} selected>${sel} (não encontrada)</option>` : nothing}
-            </select>
-          </label>`
+              <span class="flabel">${icon("message-circle", "lbl-ic")}Para conversar</span>
+              <select class="select" aria-label="IA para conversar" @change=${(e) => this._chooseAi(e.target.value)}>
+                <option value="" ?selected=${!sel}>Padrão do Home Assistant</option>
+                ${ents.map((e) => html`<option value=${e.id} ?selected=${e.id === sel}>${e.name}${e.available ? "" : " (indisponível)"}</option>`)}
+                ${sel && !ents.some((e) => e.id === sel) ? html`<option value=${sel} selected>${sel} (não encontrada)</option>` : nothing}
+              </select>
+            </label>
+            <label class="field" style="margin:14px 0 0">
+              <span class="flabel">${icon("scan-text", "lbl-ic")}Para ler fotos e PDFs</span>
+              <select class="select" aria-label="IA para ler fotos e PDFs" @change=${(e) => this._chooseAi(e.target.value, "ai_photos")}>
+                <option value="" ?selected=${!selPhotos}>Igual à de conversar</option>
+                ${ents.filter((e) => e.images || e.id === selPhotos).map((e) => html`<option value=${e.id} ?selected=${e.id === selPhotos}>${e.name}${e.available ? "" : " (indisponível)"}</option>`)}
+                ${selPhotos && !ents.some((e) => e.id === selPhotos) ? html`<option value=${selPhotos} selected>${selPhotos} (não encontrada)</option>` : nothing}
+              </select>
+            </label>`
         : nothing}
       <div class="ai-actions"><button class="btn outline" ?disabled=${this._aiChecking} @click=${() => this._refreshAi()}>${icon("rotate-ccw")}Verificar de novo</button></div>
       ${ai.ready && ai.images
@@ -4388,7 +4398,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       </div>
       ${!ai.images && !ai.off
         ? html`<div class="imp-error soft">${icon("sparkles")}<span>${ai.reason || "Para ler fotos, o Home Assistant precisa de uma integração de IA com tarefa de IA que entenda imagens."}
-            <button class="text-btn inline" @click=${() => this._openAiSettings()}>${icon("sparkles")}Ver IA do Home Assistant</button></span></div>`
+            <button class="text-btn inline" @click=${() => this._openAiSettings()}>${icon("sparkles")}Ver IA</button></span></div>`
         : nothing}
       ${error}
     `;

@@ -77,6 +77,7 @@ export class MockApi {
       ready: true,
       images: using.images,
       selected: sel,
+      selected_photos: this.data.app.ai_photos || "",
       using: { id: using.id, name: using.name },
       entities,
       reason: using.images ? null : `${using.name} não lê fotos. Escolha outra IA em Mais › Configurações › Integrações.`,

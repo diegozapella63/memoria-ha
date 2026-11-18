@@ -116,7 +116,9 @@ No botão **Adicionar** (o do meio, embaixo):
 
 Você revisa e corrige o texto antes de criar a folha.
 
-### IA do Home Assistant
+### IA
+
+Com **Usar IA** ligado, dá para escolher uma IA do Home Assistant **Para conversar** (a Conversa, o Falar e as mensagens coladas) e outra **Para ler fotos e PDFs** (Escolher fotos ou PDF, Digitalizar com IA e a Conversa com uma foto ou um PDF; começa **Igual à de conversar**). Assim uma IA mais barata, como o Claude Haiku, responde as perguntas, e uma mais caprichada, como o Claude Sonnet, lê as fotos.
 
 O MemorIA não tem IA própria e não guarda chave de API. Ele usa a ação `ai_task.generate_data` do Home Assistant, então funciona com a integração de IA que você configurar lá, e dá para trocar quando quiser:
 
@@ -131,7 +133,7 @@ Para configurar:
 
 1. Em **Configurações › Dispositivos e serviços › Adicionar integração**, escolha a integração e siga os passos.
 2. Na página da integração, adicione uma **tarefa de IA** (AI Task). Para ler fotos, escolha um modelo que entenda imagens.
-3. No MemorIA, abra **Mais › Configurações › Integrações** e, em **IA do Home Assistant**, escolha essa IA (a caixa abre uma janela de baixo para cima com as opções; o Voltar do celular, o **X** ou tocar fora fecham sem mudar nada). "Padrão do Home Assistant" usa a IA preferida definida em **Configurações › Sistema › Geral**. Toque em **Verificar de novo** para conferir se ela está pronta.
+3. No MemorIA, abra **Mais › Configurações › Integrações** e, em **IA**, escolha essa IA em **Para conversar** (e, se quiser outra para fotos, em **Para ler fotos e PDFs**) (a caixa abre uma janela de baixo para cima com as opções; o Voltar do celular, o **X** ou tocar fora fecham sem mudar nada). "Padrão do Home Assistant" usa a IA preferida definida em **Configurações › Sistema › Geral**. Toque em **Verificar de novo** para conferir se ela está pronta.
 
 Na hora da leitura, o app copia a foto por alguns segundos para `media/memoria/ia-temp`, chama a IA pelo Home Assistant e apaga a cópia em seguida.
 

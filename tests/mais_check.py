@@ -115,8 +115,8 @@ with sync_playwright() as p:
         bar = a.locator(".more-tabs").evaluate("(x) => [x.scrollWidth, x.clientWidth, [...x.querySelectorAll('button')].map((b) => b.scrollWidth <= b.clientWidth + 1)]")
         check(bar[0] <= bar[1] + 1 and all(bar[2]), f"{tag}: the four tabs fit, no text cut ({bar})")
         heads = [t.strip() for t in a.locator("[role=tabpanel] .mais-head h2").all_inner_texts()]
-        check(heads == ["CorrerIA", "IA do Home Assistant", "Falar", "Uso da IA", "Sensores no Home Assistant"], f"{tag}: Integrações in the order of the family ({heads})")
-        check(a.locator("#leitura-ia select").count() == 1, f"{tag}: IA usada pelo app in Integrações")
+        check(heads == ["CorrerIA", "IA", "Falar", "Uso da IA", "Sensores no Home Assistant"], f"{tag}: Integrações in the order of the family ({heads})")
+        check(a.locator("#leitura-ia select").count() == 2, f"{tag}: IA para conversar and para ler fotos e PDFs in Integrações")
         uso = a.locator("#uso-ia")
         check(uso.locator(".uso-tile").count() == 3 and uso.locator(".uso-bar").count() == 7, f"{tag}: Uso da IA: today, 7 days, this month and a bar per day")
         check(a.locator("#sensor input[role=switch]").count() == 1 and a.locator("#sensor > .sub-op > .sub-box.sensor-list .sensor-row code").all_inner_texts() == ["sensor.memoria_agora", "sensor.memoria_ia_hoje"], f"{tag}: Sensores: Criar sensores and, in the box under it, each sensor (like the ResolvIA)")

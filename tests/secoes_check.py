@@ -106,7 +106,7 @@ with sync_playwright() as p:
         card.locator(":scope > .mais-head").click()
         pg.wait_for_timeout(300)
         h1 = card.bounding_box()["height"]
-        check(card.locator(":scope > .mais-head").get_attribute("aria-expanded") == "false" and not card.locator(".sub-box").is_visible() and h1 < h0 - 40, f"{tag}: a tap closes IA do Home Assistant ({h0:.0f} → {h1:.0f})")
+        check(card.locator(":scope > .mais-head").get_attribute("aria-expanded") == "false" and not card.locator(".sub-box").is_visible() and h1 < h0 - 40, f"{tag}: a tap closes IA ({h0:.0f} → {h1:.0f})")
         if w == 390:
             pg.screenshot(path=str(SHOTS / f"secoes-fechada-{scheme}.png"))
         pg.reload()

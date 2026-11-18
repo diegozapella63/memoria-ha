@@ -170,6 +170,7 @@ export function normalize(raw, current = {}) {
   if (a.owners_off === true) app.owners_off = true;
   // The AI and the speech-to-text belong to this Home Assistant, not to the file.
   if (current.ai_entity) app.ai_entity = current.ai_entity;
+  if (current.ai_photos) app.ai_photos = current.ai_photos;
   if (current.voice_engine) app.voice_engine = current.voice_engine;
   // So does the connection with the CorrerIA (its key is in /data, not in the file).
   if (current.correria === true) app.correria = true;
@@ -475,6 +476,8 @@ export class Store {
       if ("sensor_ia" in app) next.sensor_ia = app.sensor_ia === true ? true : undefined;
       // "" = the AI Home Assistant prefers.
       if ("ai_entity" in app) next.ai_entity = /^ai_task\.[a-z0-9_]+$/.test(app.ai_entity || "") ? app.ai_entity : undefined;
+      // 1.34.0: the AI for photos and PDFs; "" = the same as ai_entity
+      if ("ai_photos" in app) next.ai_photos = /^ai_task\.[a-z0-9_]+$/.test(app.ai_photos || "") ? app.ai_photos : undefined;
       // Usar IA (on unless turned off): off, no reading by AI, no Falar, no Conversa
       if ("ai_off" in app) next.ai_off = app.ai_off === true ? true : undefined;
       // Opções › Usar categorias and Controle por pessoa (1.11.0; on unless turned off)

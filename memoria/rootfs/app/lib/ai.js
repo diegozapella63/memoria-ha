@@ -56,12 +56,16 @@ export function cleanText(raw) {
 }
 
 export class AI {
-  /** `selected()` returns the entity chosen in the app ("" = Home Assistant's default). */
-  constructor({ ha, log, mediaDir, selected }) {
+  /**
+   * `selected()` returns the entity chosen in the app for conversing and reading text ("" = Home Assistant's default);
+   * `selectedPhotos()` (1.34.0), the one for photos and PDFs ("" = the same as for conversing).
+   */
+  constructor({ ha, log, mediaDir, selected, selectedPhotos }) {
     this.ha = ha;
     this.log = log;
     this.mediaDir = mediaDir;
     this.selected = selected || (() => "");
+    this.selectedPhotos = selectedPhotos || (() => "");
   }
 
   tmpDir() {
@@ -113,7 +117,8 @@ export class AI {
    */
   async resolve(needImages, list) {
     const ents = list || (await this.entities());
-    const sel = this.selected();
+    // 1.34.0: photos and PDFs go to the AI chosen for them (none: the one for conversing)
+    const sel = (needImages && this.selectedPhotos()) || this.selected();
     if (!ents.length) throw coded("no_ai", "Nenhuma IA configurada no Home Assistant (integração com tarefa de IA).");
     if (sel) {
       const e = ents.find((x) => x.id === sel);
@@ -135,7 +140,7 @@ export class AI {
   /** For Mais › Configurações › Integrações › Leitura por IA (and to enable the photo buttons). */
   async status() {
     const sel = this.selected();
-    const base = { ready: false, images: false, selected: sel, using: null, entities: [], reason: null };
+    const base = { ready: false, images: false, selected: sel, selected_photos: this.selectedPhotos(), using: null, entities: [], reason: null };
     if (!this.ha.ready) return { ...base, reason: "Sem conexão com o Home Assistant." };
     let ents;
     try {

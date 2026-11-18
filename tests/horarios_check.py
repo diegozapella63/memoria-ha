@@ -72,11 +72,11 @@ with sync_playwright() as p:
         pg.wait_for_timeout(500)
         natives = []
 
-        # ---- the other boxes of the app (IA usada pelo app), to compare
+        # ---- the other boxes of the app (IA para conversar), to compare
         a.evaluate("(el) => el._go('/config')")
         pg.wait_for_timeout(700)
         natives += a.evaluate(NATIVE)
-        other = a.locator("#leitura-ia select").evaluate(BOX)
+        other = a.locator("#leitura-ia select").first.evaluate(BOX)
 
         # ---- Opções › Períodos do dia
         a.evaluate("(el) => el._go('/config/opcoes')")
