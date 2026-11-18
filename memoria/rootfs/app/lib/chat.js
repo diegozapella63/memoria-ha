@@ -27,7 +27,7 @@ const ID_RE = /^[a-z0-9]{6,32}$/i;
 
 export const CHAT_STRUCTURE = {
   resposta: {
-    description: "A resposta para a pessoa, em português do Brasil: curta, direta, sem palavras em inglês e sem markdown.",
+    description: "A resposta para a pessoa, em português do Brasil com os acentos: curta, direta, sem palavras em inglês e sem markdown.",
     required: true,
     selector: { text: { multiline: true } },
   },
@@ -58,8 +58,10 @@ export function cleanChat(raw) {
   let sheets = MAX_SHEETS;
   let chars = MAX_CONTEXT;
   const blocos = [];
-  const list = (Array.isArray(c.blocos) ? c.blocos : []).filter((b) => b && typeof b.id === "string" && ID_RE.test(b.id)).slice(0, MAX_BLOCKS);
-  list.sort((a, b) => Number(b.aberto === true) - Number(a.aberto === true));
+  // 1.36.0: the open block first and only then the cut (before, a block open beyond the 40th was left out), and how many
+  const all = (Array.isArray(c.blocos) ? c.blocos : []).filter((b) => b && typeof b.id === "string" && ID_RE.test(b.id));
+  all.sort((a, b) => Number(b.aberto === true) - Number(a.aberto === true));
+  const list = all.slice(0, MAX_BLOCKS);
   for (const b of list) {
     const folhas = [];
     const each = b.aberto === true ? 2000 : 400;
@@ -84,7 +86,7 @@ export function cleanChat(raw) {
       folhas,
     });
   }
-  return { messages, context: { tela: oneLine(c.tela, 160), agora: oneLine(c.agora, 200), blocos } };
+  return { messages, context: { tela: oneLine(c.tela, 160), agora: oneLine(c.agora, 200), blocos, blocos_total: all.length } };
 }
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -102,14 +104,15 @@ export function chatInstructions({ messages, context, arquivos = 0 }, now = new 
             const body = f.texto.split("\n").slice(1).join("\n").trim();
             return `  - Folha ${f.n}: ${f.titulo}${meta ? ` (${meta})` : ""}${body ? `\n${body.split("\n").map((l) => `      ${l}`).join("\n")}` : ""}`;
           });
-          const more = b.total > b.folhas.length ? `  - … e mais ${b.total - b.folhas.length}` : "";
+          const more = b.total > b.folhas.length ? `  - … e mais ${b.total - b.folhas.length} folhas, que não couberam aqui` : "";
           return [head, ...rows, more].filter(Boolean).join("\n");
         })
+        .concat(context.blocos_total > context.blocos.length ? [`• … e mais ${context.blocos_total - context.blocos.length} blocos que não couberam aqui (são ${context.blocos_total} ao todo).`] : [])
         .join("\n")
     : "(nenhum bloco)";
   const talk = messages.map((m) => `${m.role === "user" ? "Pessoa" : "Você"}: ${m.role === "user" ? withFiles(m) : m.text}`).join("\n");
   return [
-    "Você é a IA do MemorIA, o app de blocos de anotações (cadernos) da casa no Home Assistant. Converse em português do Brasil, de forma curta e direta, sem palavras em inglês e sem markdown.",
+    "Você é a IA do MemorIA, o app de blocos de anotações (cadernos) da casa no Home Assistant. Converse em português do Brasil, com todos os acentos e o ç (você, às, não, alimentação), de forma curta e direta, sem palavras em inglês e sem markdown.",
     "A pessoa pode perguntar sobre os blocos, as folhas e a tela em que está, ou sobre qualquer outro assunto: responda das duas formas. Sobre as anotações, use só os dados abaixo; não invente folhas.",
     `Hoje é ${whenText(now)} (${ymd(now)}).`,
     context.tela ? `A pessoa está na tela: ${context.tela}.` : "",

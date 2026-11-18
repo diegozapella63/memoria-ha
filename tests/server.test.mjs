@@ -150,6 +150,10 @@ test("Mais › Relatório: the page and the PDF", async () => {
   res = await fetch(`${base}/selectsheet.js`);
   assert.equal(res.status, 200);
   assert.match(await res.text(), /Caixas de seleção no visual do app/);
+  // 1.36.0: the background and the cards of the Home Assistant theme, on the report page too
+  res = await fetch(`${base}/hatema.js`);
+  assert.equal(res.status, 200);
+  assert.match(await res.text(), /__haTema/);
   res = await fetch(`${base}/relatorio`, { method: "POST" });
   assert.equal(res.status, 404);
 });

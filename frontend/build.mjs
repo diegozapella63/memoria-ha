@@ -45,6 +45,8 @@ await build({
 
 // The report page (Mais › Relatório, made by the server) has the boxes of choice in the look of the app too.
 copyFileSync(resolve(here, "src/selectsheet.js"), resolve(root, "memoria/rootfs/app/www/selectsheet.js"));
+// the background and the cards of the Home Assistant theme, for the report page too
+copyFileSync(resolve(here, "src/hatema.js"), resolve(root, "memoria/rootfs/app/www/hatema.js"));
 
 // The preview is a single file, so fonts are inlined there.
 const out = await build({ ...common, entryPoints: [resolve(here, "preview/preview.js")], write: false });

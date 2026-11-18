@@ -330,6 +330,7 @@ const FILES = {
   "/index.html": ["index.html", "text/html; charset=utf-8"],
   "/memoria.js": ["memoria.js", "text/javascript; charset=utf-8"],
   "/selectsheet.js": ["selectsheet.js", "text/javascript; charset=utf-8"],
+  "/hatema.js": ["hatema.js", "text/javascript; charset=utf-8"],
 };
 
 function allowed(req) {

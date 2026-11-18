@@ -1,7 +1,7 @@
 // Conversa com a IA (memoria/rootfs/app/lib/chat.js): what goes to the AI and what its actions may do.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanChat, chatInstructions, parseChatActions, replyOf, MAX_ACTIONS } from "../memoria/rootfs/app/lib/chat.js";
+import { cleanChat, chatInstructions, parseChatActions, replyOf, MAX_ACTIONS, CHAT_STRUCTURE } from "../memoria/rootfs/app/lib/chat.js";
 
 const ctx = () => ({
   tela: 'o bloco "Mercado", na folha 2 de 2',
@@ -23,7 +23,7 @@ test("cleanChat: the last turns, the open block first, ids checked", () => {
   assert.deepEqual(c.context.blocos.map((b) => b.nome), ["Mercado", "Ideias soltas"]);
   assert.equal(c.context.blocos[0].folhas[1].horarios, "09:00");
   assert.equal(c.context.blocos[0].categoria, "Casa");
-  assert.deepEqual(cleanChat(null), { messages: [], context: { tela: "", agora: "", blocos: [] } });
+  assert.deepEqual(cleanChat(null), { messages: [], context: { tela: "", agora: "", blocos: [], blocos_total: 0 } });
 });
 
 test("cleanChat: a budget of text (more for the open block)", () => {
@@ -42,6 +42,9 @@ test("chatInstructions: today, the screen, the blocks with their sheets and the 
   const c = cleanChat({ messages: [{ role: "user", text: "O que tem no mercado?" }], context: ctx() });
   const p = chatInstructions(c, new Date(2026, 10, 8, 9, 30));
   assert.match(p, /Hoje é domingo, 8 de novembro de 2026, 09:30 \(2026-11-08\)/);
+  // 1.36.0: some AIs answered without the accents ("voce", "Alimentacao"): asked for them in words
+  assert.match(p, /português do Brasil, com todos os acentos e o ç \(você, às, não, alimentação\)/);
+  assert.match(CHAT_STRUCTURE.resposta.description, /com os acentos/);
   assert.match(p, /A pessoa está na tela: o bloco "Mercado", na folha 2 de 2\./);
   assert.match(p, /• Bloco "Mercado" \(categoria Casa\), abre manhã \(05:00\) — aberto na tela: 2 folhas/);
   assert.match(p, /- Folha 2: Churrasco do Beto \(escrita em 2026-11-07; aparece às 09:00\)\n {6}Carvão/);
@@ -87,4 +90,17 @@ test("replyOf", () => {
   assert.equal(replyOf("texto"), "texto");
   assert.equal(replyOf({}), "");
   assert.equal(replyOf(null), "");
+});
+
+test("1.36.0: the open block first and only then the cut of the 40; the blocks and sheets left out are said", () => {
+  const blocos = Array.from({ length: 50 }, (_, i) => ({ id: `bloco${String(i).padStart(5, "0")}`, nome: `B${i}`, total: 3, folhas: [{ n: 1, titulo: "F", texto: "F" }] }));
+  blocos[45].aberto = true; // open on screen, beyond the 40th
+  const c = cleanChat({ messages: [{ role: "user", text: "x" }], context: { blocos } });
+  assert.equal(c.context.blocos.length, 40);
+  assert.equal(c.context.blocos[0].nome, "B45", "the open one is in, first");
+  assert.equal(c.context.blocos_total, 50);
+  const p = chatInstructions(c, new Date(2026, 10, 8, 9, 30));
+  assert.match(p, /• … e mais 10 blocos que não couberam aqui \(são 50 ao todo\)\./);
+  assert.match(p, /  - … e mais 2 folhas, que não couberam aqui/);
+  assert.doesNotMatch(chatInstructions(cleanChat({ messages: [{ role: "user", text: "x" }], context: ctx() }), new Date(2026, 10, 8, 9, 30)), /blocos que não couberam/);
 });

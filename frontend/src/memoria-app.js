@@ -355,7 +355,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     if (changed.has("_dark")) {
       // the page around the app too (behind the keyboard and the edges of the phone)
       document.documentElement.style.colorScheme = this._dark ? "dark" : "light";
-      document.body.style.background = this._dark ? "#141217" : "#f8f6fb";
+      document.body.style.background = this._dark ? "var(--ha-bg-dark, #111111)" : "var(--ha-bg-light, #fafafa)";
     }
     if (this._turn && changed.has("_turn")) {
       const el = this.renderRoot.querySelector(".turn .face.front .ink");

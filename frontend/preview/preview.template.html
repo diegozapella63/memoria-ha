@@ -12,16 +12,16 @@
         height: 100%;
       }
       body {
-        background: #141217;
+        background: var(--ha-bg-dark, #111111);
         overflow: hidden;
       }
       @media (prefers-color-scheme: light) {
         :root:not([data-theme="dark"]) body {
-          background: #f8f6fb;
+          background: var(--ha-bg-light, #fafafa);
         }
       }
       :root[data-theme="light"] body {
-        background: #f8f6fb;
+        background: var(--ha-bg-light, #fafafa);
       }
     </style>
   </head>

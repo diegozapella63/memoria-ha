@@ -266,8 +266,8 @@ export function reportHtml(rep, { tema = null, cor = DEFAULT_COLOR } = {}) {
     return `<section class="bloco" style="--b:${s.color}"><h2><span><span class="hic">${svg("notebook")}</span>${esc(s.name)}</span><small>${esc(sub)}</small></h2>${s.pages.length ? s.pages.map(page).join("") : `<p class="vazio">Nenhuma folha escrita neste bloco.</p>`}</section>`;
   };
   const charts = graficos(rep);
-  const claro = "--bg:#f6f7f9;--card:#fff;--fg:#141a22;--mut:#5b6573;--linha:#e3e7ec;--linha2:#eef1f4;--borda:#d6dbe2;--g2:#aab3bd";
-  const escuro = "--bg:#0f1318;--card:#161c23;--fg:#e8edf3;--mut:#9aa6b4;--linha:#2a3340;--linha2:#1f2732;--borda:#334051;--g2:#66727f";
+  const claro = "--bg:var(--ha-bg-light,#fafafa);--card:var(--ha-card-light,#fff);--fg:#141a22;--mut:#5b6573;--linha:#e3e7ec;--linha2:#eef1f4;--borda:#d6dbe2;--g2:#aab3bd";
+  const escuro = "--bg:var(--ha-bg-dark,#111111);--card:var(--ha-card-dark,#1c1c1c);--fg:#e8edf3;--mut:#9aa6b4;--linha:#2a3340;--linha2:#1f2732;--borda:#334051;--g2:#66727f";
   return `<!doctype html><html lang="pt-BR"${attr}><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
@@ -331,7 +331,7 @@ h2 > span:first-child{display:inline-flex;align-items:center;gap:10px}
 .marca .nome i{font-style:normal;color:var(--a)}
 .marca small{display:block;margin-top:4px;color:var(--mut);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase}
 @media print{:root,:root[data-theme],:root:not([data-theme="light"]){${claro};--bg:#fff;color-scheme:light} .barra{display:none} body{padding:0} .folha,.marca{break-inside:avoid-page} .cab,section{border-color:#d6dbe2} .raio{box-shadow:none}}
-</style><script src="selectsheet.js"></script></head><body><main>
+</style><script src="selectsheet.js"></script><script src="hatema.js"></script></head><body><main>
 <div class="barra">
 ${catSel}${blockSel}
 <a href="./" onclick="if(history.length>1){history.back();return false}">${svg("chevron-left")}<span>Voltar</span></a><a class="pdf" href="${esc(pdfHref)}" download="${esc(pdfName(rep))}" onclick="${BAIXAR}">${svg("download")}<span>Baixar PDF</span></a>

@@ -1,5 +1,10 @@
 # Mudanças
 
+## 1.36.0
+
+- **O fundo e os cartões seguem o tema do Home Assistant**, no claro e no escuro: o mesmo fundo do Home Assistant e dos outros apps da família (antes, cada app tinha o seu, o do MemorIA meio lilás). Com um tema seu no Home Assistant, o app usa as cores dele; ao trocar o tema ou o modo no Home Assistant, o app muda junto. O mesmo vale para a página do Relatório.
+- **Conversa**: a IA responde com todos os acentos (algumas IAs escreviam "voce" e "Alimentacao"). Com muitos blocos, o bloco aberto na tela sempre vai para a IA (antes podia ficar de fora), e ela sabe quantos blocos e folhas não couberam.
+
 ## 1.35.0
 
 - **No computador** (1000 px ou mais): a barra lateral dos outros apps, no lugar da barra de baixo. No alto o MemorIA e o **Adicionar**; depois **Agora**, **Buscar**, **Blocos** e **Mais** (a tela aberta marcada), os seus blocos (um toque abre; o aberto fica marcado) e a versão embaixo. As telas ficam no meio do resto da tela e as janelas abrem no meio, como nos outros apps. Na Tela cheia, a lateral some, como antes.
