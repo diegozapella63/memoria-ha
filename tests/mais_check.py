@@ -8,6 +8,7 @@
 #
 # Uses the preview (no server): cd frontend && npm run build, then
 #   python3 tests/mais_check.py [folder for the screenshots]
+import unicodedata
 import os, re, sys, tempfile
 from datetime import date
 from pathlib import Path
@@ -296,7 +297,9 @@ with sync_playwright() as p:
         acc = a.evaluate("(el) => el._accent().id")
         check(acc == today, f"{tag}: the color of today ({acc}, {today})")
         on = a.locator(".tag-swatches .tsw.on")
-        check(on.count() == 1 and on.inner_text().strip().lower().replace("á", "a") == today, f"{tag}: today's color marked ({on.inner_text() if on.count() else ''})")
+        # sem acentos: Lilás é lilas e Índigo é indigo (antes só o á saía, e no dia do Índigo falhava)
+        nome = unicodedata.normalize("NFD", on.inner_text().strip().lower()).encode("ascii", "ignore").decode() if on.count() else ""
+        check(on.count() == 1 and nome == today, f"{tag}: today's color marked ({on.inner_text() if on.count() else ''})")
         # tomorrow, another color (the app open past midnight)
         nxt = a.evaluate("(el) => { const t = el._now; el._now = t + 86400000; const id = el._accent().id; el._now = t; return id; }")
         check(nxt == PALETTE[(PALETTE.index(today) + 1) % len(PALETTE)], f"{tag}: tomorrow the next color ({nxt})")
