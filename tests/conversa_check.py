@@ -86,7 +86,7 @@ with sync_playwright() as p:
         sheet = a.locator(".sheet")
         check(a.evaluate("(el) => el._sheet") == "chat" and sheet.locator(".chat-title").inner_text().strip() == "Conversa", f"{tag}: Conversa opens")
         ex = [t.strip() for t in sheet.locator(".chat-ex .pick").all_inner_texts()]
-        check(len(ex) == 2 and ex[0].startswith("Resuma o bloco"), f"{tag}: examples about the block on screen ({ex})")
+        check(len(ex) == 6 and ex[0].startswith("Resuma o bloco"), f"{tag}: 6 ready questions, the first ones about the block on screen ({ex})")
         pg.screenshot(path=str(SHOTS / f"conversa-vazia-{scheme}-{w}.png"))
         sheet.locator(".chat-input textarea").fill("crie uma folha no Ideias com Lista de compras; arroz; feijão")
         sheet.locator(".chat-send").click()
@@ -125,6 +125,21 @@ with sync_playwright() as p:
         pg.wait_for_timeout(250)
         qk = [t.strip() for t in sheet.locator(".chat-quick .chat-ex .pick").all_inner_texts()]
         check(len(qk) >= 1 and sheet.locator(".chat-quick .chat-ed-open").count() == 1, f"{tag}: Perguntas prontas at any moment, with Editar perguntas ({qk})")
+        # 1.37.0: Editar perguntas has 20 more models; a tap puts one in the list (and it leaves the models)
+        sheet.locator(".chat-quick .chat-ed-open").click()
+        pg.wait_for_timeout(200)
+        mods = [t.strip() for t in sheet.locator(".chat-ed-modelo").all_inner_texts()]
+        check(len(mods) == 20 and not set(mods) & set(qk), f"{tag}: 20 models beyond the ready ones ({len(mods)})")
+        check(sheet.locator(".chat-ed-mais").inner_text().strip() == "Mais perguntas (20)", f"{tag}: Mais perguntas (20)")
+        n0 = sheet.locator(".chat-ed > .chat-ed-row:not(.chat-ed-modelo)").count()
+        sheet.locator(".chat-ed-modelo").first.click()
+        pg.wait_for_timeout(150)
+        check(sheet.locator(".chat-ed > .chat-ed-row:not(.chat-ed-modelo)").count() == n0 + 1 and sheet.locator(".chat-ed-modelo").count() == 19, f"{tag}: a tap on a model puts it in the list")
+        pg.screenshot(path=str(SHOTS / f"conversa-modelos-{scheme}-{w}.png"))
+        sheet.locator(".chat-ed-acts .btn.outline").click()  # Padrão: back to the app's
+        pg.wait_for_timeout(150)
+        sheet.locator(".chat-ed-acts .btn.primary").click()
+        pg.wait_for_timeout(150)
         sheet.locator(".chat-qbtn").click()
         pg.wait_for_timeout(200)
         # 1.26.0: the round button (the microphone with the box empty, Enviar writing) and the clip

@@ -23,7 +23,7 @@ test("cleanChat: the last turns, the open block first, ids checked", () => {
   assert.deepEqual(c.context.blocos.map((b) => b.nome), ["Mercado", "Ideias soltas"]);
   assert.equal(c.context.blocos[0].folhas[1].horarios, "09:00");
   assert.equal(c.context.blocos[0].categoria, "Casa");
-  assert.deepEqual(cleanChat(null), { messages: [], context: { tela: "", agora: "", blocos: [], blocos_total: 0 } });
+  assert.deepEqual(cleanChat(null), { messages: [], context: { tela: "", agora: "", eu: "", blocos: [], blocos_total: 0 } });
 });
 
 test("cleanChat: a budget of text (more for the open block)", () => {
@@ -31,11 +31,11 @@ test("cleanChat: a budget of text (more for the open block)", () => {
   const c = cleanChat({ messages: [], context: { blocos: [{ id: "abertoo001", nome: "A", aberto: true, folhas: [{ n: 1, titulo: "t", texto: long }] }, { id: "outrooo001", nome: "B", folhas: [{ n: 1, titulo: "t", texto: long }] }] } });
   assert.equal(c.context.blocos[0].folhas[0].texto.length, 2000);
   assert.equal(c.context.blocos[1].folhas[0].texto.length, 400);
-  const many = cleanChat({ messages: [], context: { blocos: Array.from({ length: 60 }, (_, i) => ({ id: `bloco${String(i).padStart(5, "0")}`, nome: `B${i}`, folhas: Array.from({ length: 10 }, (_, k) => ({ n: k + 1, titulo: `F${k}`, texto: "y".repeat(400) })) })) } });
-  assert.equal(many.context.blocos.length, 40);
+  const many = cleanChat({ messages: [], context: { blocos: Array.from({ length: 80 }, (_, i) => ({ id: `bloco${String(i).padStart(5, "0")}`, nome: `B${i}`, folhas: Array.from({ length: 10 }, (_, k) => ({ n: k + 1, titulo: `F${k}`, texto: "y".repeat(400) })) })) } });
+  assert.equal(many.context.blocos.length, 60);
   const sheets = many.context.blocos.reduce((n, b) => n + b.folhas.length, 0);
   const chars = many.context.blocos.reduce((n, b) => n + b.folhas.reduce((m, f) => m + f.texto.length, 0), 0);
-  assert.ok(sheets <= 160 && chars <= 24000, `${sheets} sheets, ${chars} chars`);
+  assert.ok(sheets <= 300 && chars <= 40000, `${sheets} sheets, ${chars} chars`);
 });
 
 test("chatInstructions: today, the screen, the blocks with their sheets and the conversation", () => {
@@ -92,15 +92,29 @@ test("replyOf", () => {
   assert.equal(replyOf(null), "");
 });
 
-test("1.36.0: the open block first and only then the cut of the 40; the blocks and sheets left out are said", () => {
-  const blocos = Array.from({ length: 50 }, (_, i) => ({ id: `bloco${String(i).padStart(5, "0")}`, nome: `B${i}`, total: 3, folhas: [{ n: 1, titulo: "F", texto: "F" }] }));
-  blocos[45].aberto = true; // open on screen, beyond the 40th
+test("1.36.0: the open block first and only then the cut of the 60; the blocks and sheets left out are said", () => {
+  const blocos = Array.from({ length: 70 }, (_, i) => ({ id: `bloco${String(i).padStart(5, "0")}`, nome: `B${i}`, total: 3, folhas: [{ n: 1, titulo: "F", texto: "F" }] }));
+  blocos[65].aberto = true; // open on screen, beyond the 60th
   const c = cleanChat({ messages: [{ role: "user", text: "x" }], context: { blocos } });
-  assert.equal(c.context.blocos.length, 40);
-  assert.equal(c.context.blocos[0].nome, "B45", "the open one is in, first");
-  assert.equal(c.context.blocos_total, 50);
+  assert.equal(c.context.blocos.length, 60);
+  assert.equal(c.context.blocos[0].nome, "B65", "the open one is in, first");
+  assert.equal(c.context.blocos_total, 70);
   const p = chatInstructions(c, new Date(2026, 10, 8, 9, 30));
-  assert.match(p, /• … e mais 10 blocos que não couberam aqui \(são 50 ao todo\)\./);
+  assert.match(p, /• … e mais 10 blocos que não couberam aqui \(são 70 ao todo\)\./);
   assert.match(p, /  - … e mais 2 folhas, que não couberam aqui/);
   assert.doesNotMatch(chatInstructions(cleanChat({ messages: [{ role: "user", text: "x" }], context: ctx() }), new Date(2026, 10, 8, 9, 30)), /blocos que não couberam/);
+});
+
+test("1.37.0: who uses the app, the archived blocks (said so) and whose each block is", () => {
+  const c = cleanChat({ messages: [{ role: "user", text: "x" }], context: { eu: "Beto", blocos: [
+    { id: "pilates0001", nome: "Pilates", dono: "Ana", total: 1, folhas: [{ n: 1, titulo: "Aula", texto: "Aula" }] },
+    { id: "velho000001", nome: "Viagem 2024", arquivado: true, total: 1, folhas: [{ n: 1, titulo: "Malas", texto: "Malas" }] },
+  ] } });
+  const p = chatInstructions(c, new Date(2026, 10, 8, 9, 30));
+  assert.match(p, /Quem está usando o app agora: Beto\. "Você" é essa pessoa/);
+  assert.match(p, /• Bloco "Pilates" \(de Ana\)/);
+  assert.match(p, /• Bloco "Viagem 2024" \(arquivado\)/);
+  assert.equal(c.context.blocos[1].arquivado, true);
+  assert.match(p, /Um bloco arquivado não recebe folhas novas/);
+  assert.deepEqual(parseChatActions(["criar | Viagem 2024 | Nova mala", "criar | Pilates | Aula de sexta"], c.context).map((a) => a.nome), ["Pilates"], "nothing written in an archived block");
 });

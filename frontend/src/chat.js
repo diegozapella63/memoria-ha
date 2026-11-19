@@ -91,7 +91,7 @@ function saveQuestions(app, list) {
 }
 
 /** The chat. lit: {html, nothing}; icon(name). */
-export function renderChat({ lit, icon, app = "", messages = [], draft = "", busy = false, error = "", voice = null, examples = [], files = [], onDraft, onSend, onMic, onAction, onAll, onClear, onClose, onAttach = null, onFileRemove = () => {}, onRedraw = () => {} }) {
+export function renderChat({ lit, icon, app = "", messages = [], draft = "", busy = false, error = "", voice = null, examples = [], models = [], files = [], onDraft, onSend, onMic, onAction, onAll, onClear, onClose, onAttach = null, onFileRemove = () => {}, onRedraw = () => {} }) {
   const { html, nothing } = lit;
   const send = () => {
     const t = (draft || "").trim();
@@ -121,6 +121,11 @@ export function renderChat({ lit, icon, app = "", messages = [], draft = "", bus
             @input=${(e) => (ed.draft = e.target.value)} @keydown=${(e) => { if (e.key === "Enter") { e.preventDefault(); add(e.target); } }} />
           <button type="button" class="btn outline sm" @click=${(e) => add(e.currentTarget)}>${icon("plus")}Adicionar</button>
         </div>
+        ${((more) => (more.length ? html`<span class="chat-ed-h chat-ed-mais">${icon("sparkles")}Mais perguntas (${more.length})</span>
+          ${more.map((q) => html`<button type="button" class="chat-ed-row chat-ed-modelo" aria-label=${`Pôr “${q}”`} @click=${() => redraw({ editing: { ...ed, list: [...ed.list, q] } })}><span>${q}</span><span class="chat-ed-mais-ic">${icon("plus")}</span></button>`)}` : nothing))(
+          // os modelos do app que ainda não estão na lista: um toque põe
+          models.filter((q, i) => models.indexOf(q) === i && !ed.list.includes(q)),
+        )}
         <div class="chat-ed-acts">
           <button type="button" class="btn outline sm" @click=${() => (saveQuestions(app, null), redraw({ editing: { list: examples.slice(), draft: "" } }))}>${icon("rotate-ccw")}Padrão</button>
           <button type="button" class="btn primary sm" @click=${() => {
@@ -275,6 +280,10 @@ export const chatStyles = `
   .chat-ed-row span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
   .chat-ed-row .icon-btn { width: 40px; height: 40px; flex: none; }
   .chat-ed-new { display: flex; gap: 8px; }
+  .chat-ed-mais { margin-top: 6px; }
+  .chat-ed-modelo { width: 100%; background: none; color: inherit; font: inherit; font-size: 14.5px; text-align: left; cursor: pointer; border-style: dashed; padding-right: 0; }
+  .chat-ed-mais-ic { width: 40px; height: 40px; flex: none !important; display: grid; place-items: center; color: var(--rv-accent-ink, var(--rv-accent)); }
+  .chat-ed-mais-ic .i { width: 20px; height: 20px; }
   .chat-ed-new input { flex: 1; min-width: 0; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1.5px solid var(--rv-line-strong, var(--rv-line)); background: var(--rv-input-bg, transparent); color: var(--rv-text); font: inherit; font-size: 15px; }
   .chat-ed-new input:focus { outline: none; border-color: var(--rv-accent); }
   .chat-ed-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

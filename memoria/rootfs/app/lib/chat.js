@@ -8,9 +8,9 @@ import { fileNames, withFiles, filesNote } from "./anexos.js";
 const WEEKDAY = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
 const MONTH = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const MAX_TURNS = 16;
-const MAX_BLOCKS = 40;
-const MAX_SHEETS = 160;
-const MAX_CONTEXT = 24000; // characters of sheets in one call
+const MAX_BLOCKS = 60;
+const MAX_SHEETS = 300;
+const MAX_CONTEXT = 40000; // characters of sheets in one call (1.37.0: more, with the archived blocks too)
 export const MAX_ACTIONS = 10;
 
 const fold = (s) =>
@@ -82,11 +82,12 @@ export function cleanChat(raw) {
       dono: oneLine(b.dono, 80),
       abre: oneLine(b.abre, 120),
       aberto: b.aberto === true,
+      arquivado: b.arquivado === true,
       total: Number.isFinite(b.total) ? Math.max(folhas.length, Math.round(b.total)) : folhas.length,
       folhas,
     });
   }
-  return { messages, context: { tela: oneLine(c.tela, 160), agora: oneLine(c.agora, 200), blocos, blocos_total: all.length } };
+  return { messages, context: { tela: oneLine(c.tela, 160), agora: oneLine(c.agora, 200), eu: oneLine(c.eu, 80), blocos, blocos_total: all.length } };
 }
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -98,7 +99,7 @@ export function chatInstructions({ messages, context, arquivos = 0 }, now = new 
   const blocks = context.blocos.length
     ? context.blocos
         .map((b) => {
-          const head = `• Bloco "${b.nome}"${b.categoria ? ` (categoria ${b.categoria})` : ""}${b.dono ? ` (de ${b.dono})` : ""}${b.abre ? `, ${b.abre}` : ""}${b.aberto ? " — aberto na tela" : ""}: ${b.total ? `${b.total} ${b.total === 1 ? "folha" : "folhas"}` : "nenhuma folha"}`;
+          const head = `• Bloco "${b.nome}"${b.categoria ? ` (categoria ${b.categoria})` : ""}${b.dono ? ` (de ${b.dono})` : ""}${b.abre ? `, ${b.abre}` : ""}${b.arquivado ? " (arquivado)" : ""}${b.aberto ? " — aberto na tela" : ""}: ${b.total ? `${b.total} ${b.total === 1 ? "folha" : "folhas"}` : "nenhuma folha"}`;
           const rows = b.folhas.map((f) => {
             const meta = [f.escrita ? `escrita em ${f.escrita}` : "", f.horarios ? `aparece às ${f.horarios}` : ""].filter(Boolean).join("; ");
             const body = f.texto.split("\n").slice(1).join("\n").trim();
@@ -117,6 +118,9 @@ export function chatInstructions({ messages, context, arquivos = 0 }, now = new 
     `Hoje é ${whenText(now)} (${ymd(now)}).`,
     context.tela ? `A pessoa está na tela: ${context.tela}.` : "",
     context.agora ? `Agora: ${context.agora}.` : "",
+    // 1.37.0: quem usa e de quem é cada bloco: "você" é só o que é dessa pessoa ou da casa
+    context.eu ? `Quem está usando o app agora: ${context.eu}. "Você" é essa pessoa: um bloco de outra pessoa é dela (diga de quem é); sem dono, é da casa.` : "",
+    context.blocos.some((b) => b.arquivado) ? "Um bloco arquivado não recebe folhas novas: para escrever nele, a pessoa desarquiva antes." : "",
     "Blocos e folhas:",
     blocks,
     'Quando a pessoa pedir para escrever, criar uma folha ou acrescentar algo, escreva em "acoes" uma linha por pedido ("criar | bloco | texto" ou "acrescentar | bloco | número da folha | texto") e, na resposta, diga o que vai fazer: ela confirma na tela antes. Sem pedido, deixe "acoes" vazio.',
@@ -160,7 +164,8 @@ export function parseChatActions(raw, context) {
     const parts = String(line || "").split("|");
     const tipo = fold(parts[0]);
     if (parts.length < 3) continue;
-    const b = findBlock(context.blocos, parts[1]);
+    // 1.37.0: an archived block takes no sheets (as on screen and in the tools of the CorrerIA) until it comes back
+    const b = findBlock(context.blocos.filter((x) => !x.arquivado), parts[1]);
     if (!b) continue;
     if (tipo.startsWith("cri")) {
       const texto = sheetText(parts.slice(2).join("|"));

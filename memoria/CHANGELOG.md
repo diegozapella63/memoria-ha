@@ -1,5 +1,10 @@
 # Mudanças
 
+## 1.37.0
+
+- **Conversa**: 6 perguntas prontas. Em **Editar perguntas**, embaixo, ficam **Mais perguntas (20)**: um toque põe a pergunta na sua lista.
+- **Conversa**: a IA sabe quem está usando o app e de quem é cada bloco, vê também os blocos arquivados (sem escrever neles) e mais folhas de cada bloco.
+
 ## 1.36.0
 
 - **O fundo e os cartões seguem o tema do Home Assistant**, no claro e no escuro: o mesmo fundo do Home Assistant e dos outros apps da família (antes, cada app tinha o seu, o do MemorIA meio lilás). Com um tema seu no Home Assistant, o app usa as cores dele; ao trocar o tema ou o modo no Home Assistant, o app muda junto. O mesmo vale para a página do Relatório.

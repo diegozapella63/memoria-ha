@@ -78,6 +78,7 @@ export const ChatMixin = (Base) =>
         error: c.error,
         voice: { ready: !!v.ready && this._micOk(), on: c.rec === "on", starting: c.rec === "starting" },
         examples: this._chatExamples(),
+        models: this._chatModels(),
         onDraft: (t) => this._setChat({ draft: t }),
         onSend: (t) => this._chatSend(t),
         onMic: () => this._chatMic(),
@@ -129,10 +130,49 @@ export const ChatMixin = (Base) =>
       return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
     }
 
+    /** 1.37.0: the questions of the app: the 6 at hand come first, the others are the models of Editar perguntas. */
+    _chatPool() {
+      const first = clip((this._blocks()[0] || { name: "Diário" }).name, 20);
+      return [
+        "O que abre agora?",
+        "O que eu anotei esta semana?",
+        `Crie uma folha no ${first} com uma lista de compras`,
+        "Quais blocos são meus?",
+        "Onde anotei o telefone do encanador?",
+        "O que abre amanhã de manhã?",
+        "Qual foi a última coisa que eu anotei?",
+        "O que eu anotei ontem?",
+        "Quais folhas têm horário hoje?",
+        "Quais blocos abrem à noite?",
+        "Lista os blocos por categoria",
+        "Quantas folhas tem cada bloco?",
+        "Quais blocos estão arquivados?",
+        "Escreve um resumo da semana",
+        "O que ficou sem marcar nas minhas listas?",
+        "Transforma a última folha numa lista de tarefas",
+        "Junta as compras anotadas numa lista só",
+        "O que eu anotei sobre o médico?",
+        "Procura receitas nas minhas anotações",
+        "Quais anotações falam de viagem?",
+        "Cria uma folha com as ideias desta conversa",
+        "O que abre no fim de semana?",
+        "Quais blocos são da casa toda?",
+        "Resume cada bloco em uma frase",
+        "Quais são as anotações mais antigas?",
+        "Cria uma folha com o texto desta foto",
+      ];
+    }
+
     _chatExamples() {
       const b = this._chatOpenBlock();
-      if (b) return [`Resuma o bloco ${clip(b.name, 24)}`, "O que eu anotei de mais importante?"];
-      return ["O que abre agora?", "O que eu anotei esta semana?", `Crie uma folha no ${clip((this._blocks()[0] || { name: "Diário" }).name, 20)} com uma lista de compras`];
+      const at = b ? [`Resuma o bloco ${clip(b.name, 24)}`, "O que eu anotei de mais importante?"] : [];
+      return [...new Set([...at, ...this._chatPool()])].slice(0, 6);
+    }
+
+    /** The 20 models of Editar perguntas: the others of the app, beyond the 6 at hand. */
+    _chatModels() {
+      const at = this._chatExamples();
+      return this._chatPool().filter((t) => !at.includes(t)).slice(0, 20);
     }
 
     /** The block on screen (its own screen, or the one open in Agora). */
@@ -178,12 +218,13 @@ export const ChatMixin = (Base) =>
       const per = PERIODS.find((p) => p.id === periodAt(min, periods));
       const { cur } = this._slot();
       const curBlock = cur && cur.entries[0] ? this._block(cur.entries[0].block) : null;
-      // the blocks in use (an archived one only when it is open on screen)
-      const blocks = this._blocks().slice();
-      if (open && open.archived) blocks.push(open);
-      blocks.sort((a, b) => Number(b === open) - Number(a === open));
+      // 1.37.0: all the blocks, the archived ones too, after the others (before, an archived one only when open)
+      const blocks = this._allBlocks().slice();
+      blocks.sort((a, b) => Number(b === open) - Number(a === open) || Number(!!a.archived) - Number(!!b.archived));
       return {
         tela: this._chatScreen(),
+        // 1.37.0: who uses the app now ("você")
+        eu: this._me ? this._me() : "",
         agora: `${per ? per.label.toLowerCase() : ""}${curBlock ? `; o bloco do momento é "${curBlock.name}"` : ""}`,
         blocos: blocks.map((b) => {
           const pages = this._pagesOf(b.id);
@@ -198,8 +239,10 @@ export const ChatMixin = (Base) =>
               .join(", ")
               .replace(/^(.)/, (x) => (x ? `abre ${x}` : x)),
             aberto: b === open,
+            arquivado: !!b.archived,
             total: pages.length,
-            folhas: pages.slice(-(b === open ? 60 : 20)).map((p) => ({
+            // 1.37.0: more sheets of each block (30; the open one 60; an archived one 10)
+            folhas: pages.slice(-(b === open ? 60 : b.archived ? 10 : 30)).map((p) => ({
               n: pages.indexOf(p) + 1,
               titulo: firstLine(linksToText(p.text)),
               texto: linksToText(p.text, { domain: true }),
