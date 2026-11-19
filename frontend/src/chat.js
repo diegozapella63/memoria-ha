@@ -5,7 +5,8 @@
 // messages: [{role: "user"|"ia", text, actions?: [{label, icon, state: "todo"|"doing"|"done"|"failed", note?}]}]
 //
 // Perguntas prontas: the questions of the app (examples) until the person edits them (Editar perguntas, kept on the
-// device in <app>-perguntas); with an empty chat they are there, and the sparkles button by the box shows them at any
+// device in <app>-perguntas; there, a tap on a question changes it, and Perguntas prontas and Mais perguntas close by the title, in
+// <app>-perguntas-fechadas); with an empty chat they are there, and the sparkles button by the box shows them at any
 // moment. The state of the panel is here (one chat per page); onRedraw draws the chat again.
 //
 // The clip (with onAttach): Tirar foto, Escolher fotos and Escolher arquivo; the files chosen (files: [{nome, pdf,
@@ -90,6 +91,28 @@ function saveQuestions(app, list) {
   }
 }
 
+/** Editar perguntas: Perguntas prontas ("prontas") and Mais perguntas ("mais") close by the title; the device keeps the
+ * closed ones in <app>-perguntas-fechadas (at first, both open). */
+function edShut(app) {
+  try {
+    const v = JSON.parse(localStorage.getItem(`${app}-perguntas-fechadas`) || "[]");
+    return new Set(Array.isArray(v) ? v : []);
+  } catch (e) {
+    return new Set();
+  }
+}
+
+function edToggle(app, k) {
+  const shut = edShut(app);
+  if (shut.has(k)) shut.delete(k);
+  else shut.add(k);
+  try {
+    localStorage.setItem(`${app}-perguntas-fechadas`, JSON.stringify([...shut]));
+  } catch (e) {
+    /* modo privado: fica até fechar */
+  }
+}
+
 /** The chat. lit: {html, nothing}; icon(name). */
 export function renderChat({ lit, icon, app = "", messages = [], draft = "", busy = false, error = "", voice = null, examples = [], models = [], files = [], onDraft, onSend, onMic, onAction, onAll, onClear, onClose, onAttach = null, onFileRemove = () => {}, onRedraw = () => {} }) {
   const { html, nothing } = lit;
@@ -113,23 +136,31 @@ export function renderChat({ lit, icon, app = "", messages = [], draft = "", bus
         if (box) box.value = ""; // (o valor do campo não volta sozinho: ele muda sem desenhar de novo)
         if (t) redraw({ editing: { list: [...ed.list, t], draft: "" } });
       };
+      // Perguntas prontas e Mais perguntas fecham num toque no título, com a seta no canto (o aparelho lembra)
+      const shut = edShut(app);
+      const head = (k, ic, title, cls = "") =>
+        html`<button type="button" class="chat-ed-h chat-ed-dobra ${cls}" data-dobra=${k} aria-expanded=${shut.has(k) ? "false" : "true"} @click=${() => (edToggle(app, k), redraw({}))}>${icon(ic)}<span>${title}</span><span class="chat-ed-seta">${icon("chevron-down")}</span></button>`;
       return html`<div class="chat-ed">
-        <span class="chat-ed-h">${icon("pencil")}Perguntas prontas</span>
-        ${ed.list.map((q, i) => html`<div class="chat-ed-row"><span>${q}</span><button type="button" class="icon-btn" aria-label=${`Tirar “${q}”`} @click=${() => redraw({ editing: { ...ed, list: ed.list.filter((_, j) => j !== i) } })}>${icon("x")}</button></div>`)}
+        ${head("prontas", "pencil", `Perguntas prontas (${ed.list.length})`)}
+        ${shut.has("prontas") ? nothing : html`${ed.list.map((q, i) => html`<div class="chat-ed-row">
+            <textarea class="chat-ed-txt" rows=${Math.min(4, Math.max(1, Math.ceil(q.length / 32)))} maxlength="120" data-size="off" enterkeyhint="done" aria-label=${`Mudar “${q}”`} .value=${q}
+              @input=${(e) => (ed.list[i] = e.target.value)} @keydown=${(e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } }}></textarea>
+            <button type="button" class="icon-btn" aria-label=${`Tirar “${q}”`} @click=${() => redraw({ editing: { ...ed, list: ed.list.filter((_, j) => j !== i) } })}>${icon("x")}</button></div>`)}
         <div class="chat-ed-new">
           <input type="text" maxlength="120" .value=${ed.draft || ""} placeholder="Nova pergunta" aria-label="Nova pergunta" enterkeyhint="done"
             @input=${(e) => (ed.draft = e.target.value)} @keydown=${(e) => { if (e.key === "Enter") { e.preventDefault(); add(e.target); } }} />
           <button type="button" class="btn outline sm" @click=${(e) => add(e.currentTarget)}>${icon("plus")}Adicionar</button>
-        </div>
-        ${((more) => (more.length ? html`<span class="chat-ed-h chat-ed-mais">${icon("sparkles")}Mais perguntas (${more.length})</span>
-          ${more.map((q) => html`<button type="button" class="chat-ed-row chat-ed-modelo" aria-label=${`Pôr “${q}”`} @click=${() => redraw({ editing: { ...ed, list: [...ed.list, q] } })}><span>${q}</span><span class="chat-ed-mais-ic">${icon("plus")}</span></button>`)}` : nothing))(
+        </div>`}
+        ${((more) => (more.length ? html`${head("mais", "sparkles", `Mais perguntas (${more.length})`, "chat-ed-mais")}
+          ${shut.has("mais") ? nothing : more.map((q) => html`<button type="button" class="chat-ed-row chat-ed-modelo" aria-label=${`Pôr “${q}”`} @click=${() => redraw({ editing: { ...ed, list: [...ed.list, q] } })}><span>${q}</span><span class="chat-ed-mais-ic">${icon("plus")}</span></button>`)}` : nothing))(
           // os modelos do app que ainda não estão na lista: um toque põe
           models.filter((q, i) => models.indexOf(q) === i && !ed.list.includes(q)),
         )}
         <div class="chat-ed-acts">
           <button type="button" class="btn outline sm" @click=${() => (saveQuestions(app, null), redraw({ editing: { list: examples.slice(), draft: "" } }))}>${icon("rotate-ccw")}Padrão</button>
           <button type="button" class="btn primary sm" @click=${() => {
-            const list = ed.list.concat((ed.draft || "").trim() ? [(ed.draft || "").trim()] : []);
+            // uma pergunta mudada vale como ficou; uma apagada até ficar vazia sai
+            const list = ed.list.map((q) => String(q || "").trim()).filter(Boolean).concat((ed.draft || "").trim() ? [(ed.draft || "").trim()] : []);
             saveQuestions(app, list.join("\n") === examples.join("\n") ? null : list); // as do app: seguem a tela
             redraw({ editing: null });
           }}>${icon("check")}Pronto</button>
@@ -276,8 +307,17 @@ export const chatStyles = `
   .chat-ed { display: grid; gap: 8px; color: var(--rv-text); }
   .chat-ed-h { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
   .chat-ed-h .i { width: 18px; height: 18px; color: var(--rv-accent-ink, var(--rv-accent)); }
+  .chat-ed-dobra { display: flex; width: 100%; min-height: 40px; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 700; font-size: 15px; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .chat-ed-dobra > span:not(.chat-ed-seta) { flex: 1; min-width: 0; }
+  .chat-ed-seta { flex: none; display: grid; place-items: center; transition: transform 0.2s; }
+  .chat-ed-dobra .chat-ed-seta .i { width: 20px; height: 20px; color: var(--rv-muted); }
+  .chat-ed-dobra[aria-expanded="false"] .chat-ed-seta { transform: rotate(-90deg); }
+  .chat-ed-dobra:focus-visible { outline: 2px solid var(--rv-accent); outline-offset: 4px; border-radius: 12px; }
   .chat-ed-row { display: flex; align-items: center; gap: 8px; padding: 4px 0 4px 12px; border-radius: 12px; border: 1.5px solid var(--rv-line); font-size: 14.5px; }
   .chat-ed-row span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .chat-ed-txt { flex: 1; min-width: 0; min-height: 24px; padding: 6px 0; border: 0; background: none; color: inherit; font: inherit; font-size: 14.5px; line-height: 1.35; resize: none; field-sizing: content; overflow-wrap: anywhere; }
+  .chat-ed-txt:focus { outline: none; }
+  .chat-ed-row:has(.chat-ed-txt:focus) { border-color: var(--rv-accent); }
   .chat-ed-row .icon-btn { width: 40px; height: 40px; flex: none; }
   .chat-ed-new { display: flex; gap: 8px; }
   .chat-ed-mais { margin-top: 6px; }

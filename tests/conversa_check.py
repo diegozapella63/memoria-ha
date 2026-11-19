@@ -131,10 +131,21 @@ with sync_playwright() as p:
         mods = [t.strip() for t in sheet.locator(".chat-ed-modelo").all_inner_texts()]
         check(len(mods) == 20 and not set(mods) & set(qk), f"{tag}: 20 models beyond the ready ones ({len(mods)})")
         check(sheet.locator(".chat-ed-mais").inner_text().strip() == "Mais perguntas (20)", f"{tag}: Mais perguntas (20)")
+        check(sheet.locator('.chat-ed-dobra[data-dobra="prontas"]').inner_text().strip().startswith("Perguntas prontas ("), f"{tag}: Perguntas prontas with the count")
         n0 = sheet.locator(".chat-ed > .chat-ed-row:not(.chat-ed-modelo)").count()
         sheet.locator(".chat-ed-modelo").first.click()
         pg.wait_for_timeout(150)
         check(sheet.locator(".chat-ed > .chat-ed-row:not(.chat-ed-modelo)").count() == n0 + 1 and sheet.locator(".chat-ed-modelo").count() == 19, f"{tag}: a tap on a model puts it in the list")
+        # 1.38.0: a tap on a question changes it; Perguntas prontas and Mais perguntas fold by the title
+        txt = sheet.locator(".chat-ed > .chat-ed-row:not(.chat-ed-modelo) > .chat-ed-txt").first
+        txt.fill("Pergunta mudada?")
+        txt.press("Enter")
+        check(txt.input_value() == "Pergunta mudada?", f"{tag}: a question changed in place")
+        sheet.locator('.chat-ed-dobra[data-dobra="mais"]').click()
+        pg.wait_for_timeout(150)
+        check(sheet.locator(".chat-ed-modelo").count() == 0 and sheet.locator('.chat-ed-dobra[data-dobra="mais"]').get_attribute("aria-expanded") == "false", f"{tag}: Mais perguntas closes")
+        sheet.locator('.chat-ed-dobra[data-dobra="mais"]').click()
+        pg.wait_for_timeout(150)
         pg.screenshot(path=str(SHOTS / f"conversa-modelos-{scheme}-{w}.png"))
         sheet.locator(".chat-ed-acts .btn.outline").click()  # Padrão: back to the app's
         pg.wait_for_timeout(150)
