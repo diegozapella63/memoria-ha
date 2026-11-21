@@ -62,7 +62,7 @@ with sync_playwright() as p:
         check(not a.evaluate(SEEN, ".dh-row") and not a.evaluate(SEEN, ".when-line"), f"{tag}: somem os botões do alto e o Abre sozinho")
         check(a.evaluate(SEEN, ".dh-text h1"), f"{tag}: o nome do bloco fica")
         after = a.evaluate(LEAF)
-        check(after > before + 80, f"{tag}: a folha cresce ({before} → {after})")
+        check(after > before + 40, f"{tag}: a folha cresce (1.42.0: o alto ficou mais baixo, a folha já começa maior) ({before} → {after})")
         span = a.evaluate("(el) => { const r = el.renderRoot.querySelector('.pad').getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right)]; }")
         check(span[0] <= 60 and span[1] >= w - 60, f"{tag}: o caderno na largura toda, pouca borda dos lados ({span} de {w})")
         nav = a.evaluate(NAV)
