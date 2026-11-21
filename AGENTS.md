@@ -103,6 +103,8 @@ Aqui não há aviso no celular (o componente Quem recebe/Testar no meu celular n
 
 1.42.1: `frontend/src/teclado.js` (`tecladoCalmo`, chamado na entrada da tela; o mesmo código em todos os apps): com o foco num campo de texto, ou quando o teclado muda a altura da tela, as páginas em volta do app (a do Home Assistant) voltam para o começo. `SO_MATERIAL`/`soMaterial` no `lib/ai.js`: a guarda na frente de toda instrução que vai para a IA (o `tests/ai-guarda.test.mjs` confere que nenhuma chamada fica sem).
 
+1.42.2: na Conversa, no celular (`noCelular()`: `(hover: none) and (pointer: coarse)`, o dedo como jeito principal), o Enter é uma linha nova e o botão envia (`enterkeyhint="enter"`); com teclado de verdade, o Enter envia. Vale em todos os apps da família.
+
 ## Conversa com o dono
 
 Respostas curtas, em português. Ao terminar uma mudança: o que mudou, a versão e se está publicado. Ele usa o app do Home Assistant no Android: pense no Voltar do celular, no teclado e na câmera.

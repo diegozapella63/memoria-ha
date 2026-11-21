@@ -15,6 +15,9 @@
 // check (send what was said) and the clip gives way to Cancelar (onMicCancel: the microphone stops, nothing is sent).
 
 const UI = { quick: false, editing: null, menu: false };
+/** O celular, com o teclado da tela (sem mouse nem teclado de verdade): ali o Enter da Conversa é uma linha nova. */
+export const noCelular = () => typeof matchMedia === "function" && matchMedia("(hover: none) and (pointer: coarse)").matches;
+
 export const CHAT_MAX_FILES = 4;
 
 /**
@@ -228,9 +231,11 @@ export function renderChat({ lit, icon, app = "", messages = [], draft = "", bus
       ${clip ? html`<button type="button" class="icon-btn chat-clip ${menu ? "on" : ""}" aria-label="Anexar" title="Anexar" aria-expanded=${menu ? "true" : "false"} ?disabled=${busy} @click=${() => redraw({ menu: !UI.menu, quick: false, editing: null })}>${icon("paperclip")}</button>` : nothing}
       ${rec && onMicCancel ? html`<button type="button" class="icon-btn chat-cancel" aria-label="Cancelar: não enviar o que falei" title="Cancelar" @click=${() => onMicCancel()}>${icon("x")}</button>` : nothing}
       <textarea rows="1" data-size="off" .value=${draft} placeholder=${rec ? "Ouvindo…" : "Pergunte o que quiser"} aria-label="Mensagem para a IA" ?disabled=${rec}
+        enterkeyhint=${noCelular() ? "enter" : "send"}
         @input=${(e) => onDraft(e.target.value)}
         @keydown=${(e) => {
-          if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+          // no celular (o teclado da tela), o Enter vai para a próxima linha e quem envia é o botão; com teclado de verdade, envia
+          if (e.key === "Enter" && !e.shiftKey && !e.isComposing && !noCelular()) {
             e.preventDefault();
             send();
           }

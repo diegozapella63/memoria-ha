@@ -109,7 +109,7 @@ with sync_playwright() as p:
         check("Feito" in act.inner_text(), f"{tag}: the card says Feito")
         # add to a sheet
         sheet.locator(".chat-input textarea").fill("acrescente Comprar pilhas na folha 1 do Ideias")
-        sheet.locator(".chat-input textarea").press("Enter")
+        sheet.locator(".chat-send").click()  # 1.42.2: no celular (a tela do teste), o Enter é uma linha nova e quem envia é o botão
         pg.wait_for_timeout(1300)
         act = sheet.locator(".chat-act").last
         check("Acrescentar" in act.inner_text() and "folha 1 de Ideias" in act.inner_text(), f"{tag}: a card to add to sheet 1 ({act.inner_text()})")
