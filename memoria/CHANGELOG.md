@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.41.1
+
+- **Integrações › IA**: o texto de cima igual ao dos outros apps.
+
 ## 1.41.0
 
 - **Emojis no PDF do Relatório**: os ícones das folhas (☕, 👉…) agora saem no PDF, no lugar deles. Ao abrir o Relatório, a tela desenha cada ícone uma vez e o app guarda a figura; os que já estavam em relatórios antigos aparecem a partir da próxima vez que o Relatório for aberto.

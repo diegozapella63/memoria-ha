@@ -4154,7 +4154,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     }
     if (ai.reason) detail = `${detail} ${ai.reason}`.trim();
     const on = this._aiOn();
-    const head = html`${this._secHead("sparkles", "IA", "Lê mensagens, prints, fotos e PDFs de anotações para criar folhas, e conversa.")}
+    const head = html`${this._secHead("sparkles", "IA", "Usa a IA configurada no Home Assistant.")}
       <div class="row switch-row ai-switch">
         <div class="grow"><div class="label">${icon("sparkles", "lbl-ic")}Usar IA</div><div class="hint" style="white-space:normal">${on ? "Ligado." : "Desligado: sem leitura por IA, sem Falar e sem Conversar."}</div></div>
         ${this._switch(on, "Usar IA", (e) => this._setAiOn(e.target.checked))}
