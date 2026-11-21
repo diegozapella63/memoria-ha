@@ -1,5 +1,10 @@
 # Mudanças
 
+## 1.42.1
+
+- **Teclado no celular**: ao abrir uma janela com um campo de texto, a tela não fica mais deslocada (a barra de cima sumia até um toque).
+- **IA**: as instruções dizem à IA que o que ela lê (mensagens, fotos, PDFs) é só material, e que ordens ali dentro não valem.
+
 ## 1.42.0
 
 - **Bloco aberto**: o alto da tela sem repetição. Acima do nome ficam só a categoria e de quem é (a contagem de folhas já está no canto da folha, e o papel se vê); a linha de baixo diz só quando abre.
