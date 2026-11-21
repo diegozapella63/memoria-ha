@@ -188,7 +188,7 @@ with sync_playwright() as p:
         pg.wait_for_timeout(500)
         a.locator("nav .tab", has_text="Agora").click()
         pg.wait_for_timeout(500)
-        check(a.locator(".page .status").first.inner_text().strip() == "Nenhum bloco aqui", f"{tag}: Agora: Nenhum bloco aqui")
+        check(a.locator(".page .status").count() == 0 and a.locator(".page .empty h3").inner_text().strip() == "Nada para agora", f"{tag}: Agora: Nada para agora, said once (1.42.0: no Nenhum bloco aqui above it)")
         check("Os blocos arquivados e os de outras pessoas ficam em Blocos." in a.locator(".page .empty").inner_text(), f"{tag}: and where they are")
         btns = a.locator(".page .sheet-actions .btn")
         widths = [round(x["width"]) for x in btns.evaluate_all("(els) => els.map((e) => e.getBoundingClientRect().toJSON())")]

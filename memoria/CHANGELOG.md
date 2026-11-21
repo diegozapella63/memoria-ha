@@ -1,5 +1,10 @@
 # Mudanças
 
+## 1.42.0
+
+- **Bloco aberto**: o alto da tela sem repetição. Acima do nome ficam só a categoria e de quem é (a contagem de folhas já está no canto da folha, e o papel se vê); a linha de baixo diz só quando abre.
+- **Agora vazio**: "Nada para agora" aparece uma vez só, no cartão.
+
 ## 1.41.1
 
 - **Integrações › IA**: o texto de cima igual ao dos outros apps.

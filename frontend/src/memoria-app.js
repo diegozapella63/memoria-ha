@@ -2509,11 +2509,11 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const b = pad ? this._block(pad.block) : null;
     if (!b) {
       if (!this._data.blocks.length) {
-        return this._renderNowEmpty({ text: "Nenhum bloco ainda" }, "Comece um bloco", html`<p>Crie um bloco de anotações e escolha quando ele abre sozinho: de manhã, à tarde, à noite ou num horário exato.</p>`, true);
+        return this._renderNowEmpty(null, "Comece um bloco", html`<p>Crie um bloco de anotações e escolha quando ele abre sozinho: de manhã, à tarde, à noite ou num horário exato.</p>`, true);
       }
       // there are blocks, but none for this Agora: archived, or someone else's (De quem é)
       if (!this._blocks().some((x) => this._mine(x))) {
-        return this._renderNowEmpty({ text: "Nenhum bloco aqui", tone: "off" }, "Nada para agora", html`<p>Os blocos arquivados e os de outras pessoas ficam em Blocos.</p>`);
+        return this._renderNowEmpty(null, "Nada para agora", html`<p>Os blocos arquivados e os de outras pessoas ficam em Blocos.</p>`);
       }
       // something has a time, but its Fica no Agora is over: nothing until the next one (tap a time to peek)
       if (entries.length && !cur) {
@@ -2534,7 +2534,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
             ? `Os blocos de outras pessoas (${others.slice(0, 3).map((x) => clip(x.name, 24)).join(", ")}${others.length > 3 ? "…" : ""}) só abrem no Agora delas.`
             : "";
       return this._renderNowEmpty(
-        { text: `${period.label} · nada com horário`, tone: "off" },
+        { text: period.label, tone: "off" },
         "Nada com horário",
         html`<p>Um bloco ou uma folha com horário abre aqui sozinho. Escolha nos ajustes do bloco ou no ⋯ da folha.</p>${whose ? html`<p class="now-whose">${whose}</p>` : nothing}`,
       );
@@ -3449,7 +3449,12 @@ class MemoriaApp extends ChatMixin(LitElement) {
             <button class="icon-btn" @click=${() => this._openBlockSheet(b)} aria-label="Ajustes do bloco">${icon("sliders-horizontal")}</button>
           </div>
           <div class="dh-text">
-            <div class="overline">${[this._catsOn() && this._cat(b.category) && this._cat(b.category).name, plural(n, "folha", "folhas"), this._owner(b) ? `de ${this._owner(b)}` : "", PAPER_LABEL[b.paper] || ""].filter(Boolean).join(" · ")}</div>
+            ${(() => {
+              // 1.42.0: só o que a tela não diz em outro lugar: a categoria e de quem é (quantas folhas há está no canto da
+              // folha, 4/4; o papel se vê; quando abre, na linha de baixo)
+              const over = [this._catsOn() && this._cat(b.category) && this._cat(b.category).name, this._owner(b) ? `de ${this._owner(b)}` : ""].filter(Boolean).join(" · ");
+              return over ? html`<div class="overline">${over}</div>` : nothing;
+            })()}
             <h1 class="display fit-title">${b.name}</h1>
           </div>
         </div>
@@ -3457,7 +3462,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
           ? html`<div class="hint-card arch-card">${icon("archive")}<span>Arquivado ${this._day(b.archived)}. Não abre sozinho.</span><button class="text-btn" @click=${() => this._setArchived(b, false)}>${icon("archive-restore")}Desarquivar</button></div>`
           : html`<button class="when-line" @click=${() => this._openBlockSheet(b)}>
           ${when.length
-            ? html`${icon("calendar-clock")}<span>Abre sozinho${this._owner(b) && !this._mine(b) ? ` no Agora de ${this._owner(b)}` : ""}: ${when.map((w, i) => html`${i ? " · " : ""}<b>${w}</b>`)}</span>`
+            ? html`${icon("calendar-clock")}<span>Abre sozinho: ${when.map((w, i) => html`${i ? " · " : ""}<b>${w}</b>`)}</span>`
             : html`${icon("calendar-clock")}<span>Não abre sozinho. <b>Escolher horário</b></span>`}
         </button>`}
         ${this._renderPad({ tall: true })}
