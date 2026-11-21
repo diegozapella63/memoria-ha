@@ -254,10 +254,11 @@ export const chatStyles = `
   @media (max-width: 340px) { .chat-nova span { display: none; } }
   .chat-head .text-btn .i { width: 16px; height: 16px; }
   .chat-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 6px 2px 12px; overscroll-behavior: contain; }
-  .chat-empty { margin: auto 0 0; color: var(--rv-muted); font-size: 15px; line-height: 1.45; }
+  /* as perguntas prontas no meio da largura, uma por linha, como no CorrerIA (igual em todos os apps) */
+  .chat-empty { margin: auto 0 0; color: var(--rv-muted); font-size: 15px; line-height: 1.45; text-align: center; }
   .chat-empty p { margin: 0 0 12px; }
-  .chat-ex { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chat-ex .pick { font-size: 14px; padding: 8px 12px; min-height: 0; display: inline-flex; align-items: center; gap: 6px; }
+  .chat-ex { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .chat-ex .pick { font-size: 14px; padding: 8px 12px; min-height: 0; max-width: 100%; display: inline-flex; align-items: center; gap: 6px; text-align: left; }
   .chat-ex .pick .i { width: 16px; height: 16px; flex: none; color: var(--rv-accent-ink, var(--rv-accent)); }
   .chat-msg { display: flex; flex-direction: column; gap: 6px; max-width: 88%; }
   .chat-msg.me { align-self: flex-end; align-items: flex-end; }
@@ -304,10 +305,10 @@ export const chatStyles = `
   .chat-file .icon-btn { width: 36px; height: 36px; flex: none; }
   .chat-arq { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; }
   .chat-arq .i { width: 15px; height: 15px; flex: none; }
-  .chat-quick { max-height: 42vh; overflow-y: auto; padding: 10px 2px; border-top: 1px solid var(--rv-line); }
+  .chat-quick { max-height: 42vh; overflow-y: auto; padding: 10px 2px; border-top: 1px solid var(--rv-line); text-align: center; }
   .chat-ed-open { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; }
   .chat-ed-open .i { width: 16px; height: 16px; }
-  .chat-ed { display: grid; gap: 8px; color: var(--rv-text); }
+  .chat-ed { display: grid; gap: 8px; color: var(--rv-text); text-align: left; }
   .chat-ed-h { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
   .chat-ed-h .i { width: 18px; height: 18px; color: var(--rv-accent-ink, var(--rv-accent)); }
   .chat-ed-dobra { display: flex; width: 100%; min-height: 40px; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 700; font-size: 15px; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }

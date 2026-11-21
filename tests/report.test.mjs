@@ -1,7 +1,7 @@
 // Mais › Relatório (memoria/rootfs/app/lib/report.js): what goes in, the page and the PDF. An invented house.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { anotacoes, countText, sheetParts, pdfName, reportHtml, reportPdf, graficos } from "../memoria/rootfs/app/lib/report.js";
+import { anotacoes, countText, sheetParts, pdfName, reportHtml, reportPdf, graficos, lineHtml, lineRuns, wrapRuns } from "../memoria/rootfs/app/lib/report.js";
 import { casa } from "./fixtures/casa.mjs";
 
 const NOW = new Date(2026, 10, 8, 10, 30).getTime();
@@ -172,4 +172,57 @@ test("Arquivar bloco and De quem é (1.9.0): the archived out of all but a choic
   assert.equal(rep.cat, "sem");
   assert.deepEqual(rep.sections, []);
   assert.match(reportHtml(rep), /<p class="vazio">Só blocos arquivados: escolha um no alto\.<\/p>/);
+});
+
+// 1.40.0: the bold, the bigger and the colors of a sheet show in the Relatório too (the page and the PDF)
+const FORMATADA = "++Feira++ de **sábado**\n{azul:Levar sacolas} e **{vermelho:não esquecer}** o pão\n\n☐ **Leite** 🥛 em [Mercado](https://mercado.example.com/ofertas)";
+
+test("the page: bold, bigger and colors as on the sheet, in the title too; the marks never show", () => {
+  const data = casa();
+  data.pages[0].text = FORMATADA;
+  const h = reportHtml(anotacoes(data, { now: NOW }));
+  assert.match(h, /<h3><span class="fg">Feira<\/span> de <span class="fb">sábado<\/span><\/h3>/);
+  assert.match(h, /<div class="tx"><span class="fc-azul">Levar sacolas<\/span> e <span class="fb fc-vermelho">não esquecer<\/span> o pão\n\n☐ <span class="fb">Leite<\/span> 🥛 em <a href="https:\/\/mercado\.example\.com\/ofertas"/);
+  assert.doesNotMatch(h.slice(h.indexOf("<article"), h.indexOf("</article>")), /\*\*|\+\+|\{azul:/);
+  // the ink of each color on the light paper, on the dark one, and the light one again when printing
+  assert.match(h, /\.folha \.fb\{font-weight:700\}\.folha \.fg\{font-size:1\.25em/);
+  assert.match(h, /\.fc-azul\{color:#0b67a8\}/);
+  assert.match(h, /:root\[data-theme="dark"\] \.fc-azul\{color:#62b5ff\}/);
+  assert.match(h, /@media \(prefers-color-scheme:dark\)\{[^}]*:root:not\(\[data-theme="light"\]\) \.fc-vermelho\{color:#ff7a70\}/);
+  assert.match(h, /@media print\{[^@]*\.fc-azul\{color:#0b67a8\}/);
+  assert.equal(lineHtml("{verde:<i>} ++a++"), '<span class="fc-verde">&lt;i&gt;</span> <span class="fg">a</span>', "what was written is escaped inside a part too");
+});
+
+test("the PDF: each part with its bold, size and color; the links, the boxes and the emojis as before", () => {
+  const data = casa();
+  data.pages[0].text = FORMATADA;
+  const s = reportPdf(anotacoes(data, { now: NOW })).toString("latin1");
+  assert.match(s, /BT \/F2 14\.375 Tf 0\.078 0\.102 0\.133 rg 40 [\d.]+ Td \(Feira\) Tj ET/, "the bigger part of the title: 1.25 of its size");
+  assert.match(s, /BT \/F2 11\.5 Tf 0\.078 0\.102 0\.133 rg [\d.]+ [\d.]+ Td \(de s\\341bado\) Tj ET/, "the rest of the title, bold as always");
+  assert.match(s, /BT \/F1 10\.5 Tf 0\.043 0\.404 0\.659 rg 40 [\d.]+ Td \(Levar sacolas\) Tj ET/, "blue, not bold");
+  assert.match(s, /BT \/F2 10\.5 Tf 0\.769 0\.165 0\.122 rg [\d.]+ [\d.]+ Td \(n\\343o esquecer\) Tj ET/, "bold and red");
+  assert.match(s, /BT \/F1 10\.5 Tf 0\.078 0\.102 0\.133 rg [\d.]+ [\d.]+ Td \(o p\\343o\) Tj ET/);
+  assert.match(s, /Td \(\[ \]\) Tj ET\nBT \/F2 10\.5 Tf [\d. ]+ rg [\d.]+ [\d.]+ Td \(Leite\) Tj ET\nBT \/F1 10\.5 Tf [\d. ]+ rg [\d.]+ [\d.]+ Td \(em Mercado \\\(mercado\.example\.com\\\)\) Tj ET/);
+  assert.doesNotMatch(s, /\(\*\*|\+\+\)|azul:/, "no marks");
+  // the pieces of a line, one after the other on the same baseline
+  const y = (re) => Number(re.exec(s)[1]);
+  assert.equal(y(/ ([\d.]+) Td \(Levar sacolas\)/), y(/ ([\d.]+) Td \(o p\\343o\)/));
+});
+
+test("the runs of a line and how they break: the look of each word is kept, and a look is one piece of text", () => {
+  assert.deepEqual(lineRuns("☑ **Pão** 🍞 {azul:quente}"), [{ text: "[x] ", bold: false, big: false, color: "" }, { text: "Pão", bold: true, big: false, color: "" }, { text: "  ", bold: false, big: false, color: "" }, { text: "quente", bold: false, big: false, color: "azul" }]);
+  assert.deepEqual(lineRuns(""), []);
+  const lines = wrapRuns(lineRuns("um dois **três quatro** cinco {verde:seis sete oito} nove"), 80, 10.5);
+  assert.ok(lines.length > 1);
+  assert.equal(lines.map((l) => l.map((r) => r.text).join(" ")).join(" "), "um dois três quatro cinco seis sete oito nove", "nothing lost");
+  for (const l of lines) {
+    assert.equal(l[0].x, 0, "each line starts at the margin");
+    for (let i = 1; i < l.length; i++) assert.ok(l[i].x > l[i - 1].x && (l[i].bold !== l[i - 1].bold || l[i].color !== l[i - 1].color), "a new piece only when the look changes");
+  }
+  assert.ok(lines.flat().some((r) => r.bold && /três|quatro/.test(r.text)) && lines.flat().some((r) => r.color === "verde"));
+  // a part of a word in bold stays glued to the rest; a word wider than the line is cut; a title is all bold
+  assert.deepEqual(wrapRuns(lineRuns("Su**per**"), 200, 10.5).map((l) => l.map((r) => [r.text, r.bold, r.x > 0])), [[["Su", false, false], ["per", true, true]]]);
+  assert.ok(wrapRuns(lineRuns("Inconstitucionalissimamente"), 40, 10.5).length > 1);
+  assert.deepEqual(wrapRuns(lineRuns("++Lista++ da feira"), 300, 11.5, true).map((l) => l.map((r) => [r.text, r.bold, r.size])), [[["Lista", true, 14.375], ["da feira", true, 11.5]]]);
+  assert.deepEqual(wrapRuns([], 100, 10.5), []);
 });

@@ -86,6 +86,9 @@ with sync_playwright() as p:
         sheet = a.locator(".sheet")
         check(a.evaluate("(el) => el._sheet") == "chat" and sheet.locator(".chat-title").inner_text().strip() == "Conversa", f"{tag}: Conversa opens")
         ex = [t.strip() for t in sheet.locator(".chat-ex .pick").all_inner_texts()]
+        # 1.40.0: the ready questions in the middle of the width, one per line, as in the CorrerIA (the same in every app)
+        mid = sheet.locator(".chat-ex").evaluate("(x) => { const b = x.getBoundingClientRect(), c = (b.left + b.right) / 2; const rs = [...x.querySelectorAll('.pick')].map((p) => p.getBoundingClientRect()); return { off: Math.max(...rs.map((r) => Math.abs((r.left + r.right) / 2 - c))), lines: new Set(rs.map((r) => Math.round(r.top))).size, n: rs.length }; }")
+        check(mid["off"] <= 1 and mid["lines"] == mid["n"], f"the questions centered, one per line ({mid})")
         check(len(ex) == 6 and ex[0].startswith("Resuma o bloco"), f"{tag}: 6 ready questions, the first ones about the block on screen ({ex})")
         pg.screenshot(path=str(SHOTS / f"conversa-vazia-{scheme}-{w}.png"))
         sheet.locator(".chat-input textarea").fill("crie uma folha no Ideias com Lista de compras; arroz; feijão")

@@ -1,10 +1,13 @@
 // Negrito e cor numa parte do texto (1.27.0) e, desde a 1.29.0, Maior. A folha guarda o texto como foi escrito, com as
 // marcas: **negrito**, ++maior++ e {cor:texto} (as cores da paleta abaixo). Fora do editor, a parte aparece em negrito,
-// maior ou na cor e as marcas somem; no relatório, nos títulos, na busca e nos outros apps fica só o texto. Shared by the screen (frontend), the report,
+// maior ou na cor e as marcas somem; o Relatório (a página e o PDF, 1.40.0) também mostra o negrito, o maior e as cores; nos títulos das listas, na busca e nos outros apps fica só o texto. Shared by the screen (frontend), the report,
 // the sensor and the integration, like links.js.
 
 /** The colors of a part of the text (ids of the palette of the app). */
 export const FORMAT_COLORS = ["vermelho", "laranja", "verde", "azul", "lilas"];
+/** The ink of each color on a light paper and on a dark one (the same of the screen: .c-<cor> in frontend/src/styles.js). */
+export const FORMAT_INK = { vermelho: "#c42a1f", laranja: "#b45309", verde: "#3f7a17", azul: "#0b67a8", lilas: "#6d3fd6" };
+export const FORMAT_INK_DARK = { vermelho: "#ff7a70", laranja: "#ffa23e", verde: "#8bd45f", azul: "#62b5ff", lilas: "#b99bff" };
 const COLOR_ALT = FORMAT_COLORS.join("|");
 // **bold** or ++bigger++ (not starting or ending with a space) or {color:text} (one line, no braces inside)
 const FMT = () => new RegExp(`\\*\\*(?=\\S)([^\\n]*?\\S)\\*\\*|\\+\\+(?=\\S)([^\\n]*?\\S)\\+\\+|\\{(${COLOR_ALT}):([^{}\\n]+)\\}`, "g");

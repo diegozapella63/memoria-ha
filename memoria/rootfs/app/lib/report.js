@@ -4,7 +4,7 @@
 // Voltar and Baixar PDF, the charts (by category, by block), a part per block with its sheets and, at the end, the
 // mark of CorrerIA Code as in Mais › Sobre. The PDF is made here (the app Home Assistant on the phone doesn't print
 // a page): the same parts, and the mark and the page at the foot of each page.
-import { stripFormat } from "./format.js";
+import { parseFormat, FORMAT_INK, FORMAT_INK_DARK } from "./format.js";
 import { Pdf, wrap, textWidth } from "./pdf.js";
 import { parseLinks, linksToText, domainOf } from "./links.js";
 
@@ -39,11 +39,83 @@ export const readable = (text) =>
     .replace(/(?![©®™])\p{Extended_Pictographic}|[\u{FE0F}\u{200D}\u{20E3}\u{1F3FB}-\u{1F3FF}]/gu, "")
     .replace(/(\S) {2,}/g, "$1 ");
 
-/** A line of a sheet in the page: each link as its name and site, a link that opens outside. */
+// what the Helvetica of the PDF has not: the emojis out, and the spaces they leave
+const noEmoji = (t) => t.replace(/(?![©®™])\p{Extended_Pictographic}|[\u{FE0F}\u{200D}\u{20E3}\u{1F3FB}-\u{1F3FF}]/gu, "");
+
+/** 1.40.0: a piece of text of a sheet in the page, with its bold, bigger and colors (the marks of format.js). */
+const fmtHtml = (text) =>
+  parseFormat(text)
+    .map((p) => {
+      const cls = [p.bold && "fb", p.big && "fg", p.color && `fc-${p.color}`].filter(Boolean).join(" ");
+      return cls ? `<span class="${cls}">${esc(p.text)}</span>` : esc(p.text);
+    })
+    .join("");
+
+/** A line of a sheet in the page: the bold, the bigger and the colors as on the sheet; each link as its name and site,
+ * a link that opens outside. */
 export function lineHtml(text) {
   return parseLinks(text)
-    .map((p) => (p.type === "text" ? esc(stripFormat(p.text)) : `<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.name ? `${p.name} (${domainOf(p.url)})` : p.label)}</a>`))
+    .map((p) => (p.type === "text" ? fmtHtml(p.text) : `<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.name ? `${p.name} (${domainOf(p.url)})` : p.label)}</a>`))
     .join("");
+}
+
+/**
+ * 1.40.0: a line of a sheet for the PDF, in runs [{text, bold, big, color}]: as readable() reads it (the links as name
+ * and site, the boxes as [ ] and [x], no emojis), keeping the bold, the bigger and the color of each part.
+ */
+export function lineRuns(text) {
+  const runs = [];
+  for (const p of parseLinks(text)) {
+    if (p.type !== "text") runs.push({ text: p.name ? `${p.name} (${domainOf(p.url)})` : p.label, bold: false, big: false, color: "" });
+    else for (const f of parseFormat(p.text)) runs.push({ text: f.text, bold: f.bold, big: f.big, color: f.color });
+  }
+  if (runs.length) runs[0].text = runs[0].text.replace(/^([ \t]*)(?:☐|\[ \])[ \t]?/, "$1[ ] ").replace(/^([ \t]*)(?:☑|\[[xX]\])[ \t]?/, "$1[x] ");
+  for (const r of runs) r.text = noEmoji(r.text);
+  return runs.filter((r) => r.text);
+}
+
+/**
+ * The runs of a line broken into the lines that fit the width: [[{text, bold, big, color, x, size}]], each piece with
+ * where it starts. `base`: the size and the bold of the line (a title is all bold); a bigger part is 1.25 of the size.
+ */
+export function wrapRuns(runs, width, size, baseBold = false) {
+  const BIG = 1.25;
+  const words = [];
+  for (const r of runs) {
+    const st = { bold: baseBold || r.bold, big: r.big, color: r.color, size: r.big ? size * BIG : size };
+    const parts = r.text.split(/(\s+)/);
+    parts.forEach((t, i) => {
+      if (!t) return;
+      if (i % 2) return void (words.length && (words[words.length - 1].after = true)); // a space: after the last word
+      // a word wider than the line is cut, like wrap()
+      for (const piece of textWidth(t, st.size, st.bold) > width ? wrap(t, width, st.size, st.bold) : [t]) words.push({ ...st, text: piece, glued: words.length > 0 && !words[words.length - 1].after && piece === t });
+    });
+  }
+  const lines = [];
+  let line = [];
+  let x = 0;
+  const space = (w) => textWidth(" ", w.size, w.bold);
+  for (const w of words) {
+    const ww = textWidth(w.text, w.size, w.bold);
+    const gap = line.length && !w.glued ? space(w) : 0;
+    if (line.length && x + gap + ww > width) {
+      lines.push(line);
+      line = [];
+      x = 0;
+    }
+    const last = line[line.length - 1];
+    const lead = line.length && !w.glued ? " " : "";
+    if (last && last.bold === w.bold && last.big === w.big && last.color === w.color) {
+      last.text += lead + w.text; // the same look: one piece of text
+      x = last.x + textWidth(last.text, last.size, last.bold);
+    } else {
+      const at = x + (lead ? space(w) : 0);
+      line.push({ text: w.text, bold: w.bold, big: w.big, color: w.color, size: w.size, x: at });
+      x = at + ww;
+    }
+  }
+  if (line.length) lines.push(line);
+  return lines;
 }
 
 /** The lines of a sheet (as written): the first one with text is its title; the rest keeps its line breaks. */
@@ -304,6 +376,11 @@ h2 small{color:var(--mut);font-size:13px;font-weight:400}
 .fm{margin:0;color:var(--mut);font-size:12.5px}
 .folha h3{margin:2px 0 0;font-size:16px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
 .tx{margin-top:4px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14.5px}
+.folha .fb{font-weight:700}.folha .fg{font-size:1.25em;line-height:1.2}
+${Object.keys(FORMAT_INK).map((c) => `.fc-${c}{color:${FORMAT_INK[c]}}`).join("")}
+${Object.keys(FORMAT_INK_DARK).map((c) => `:root[data-theme="dark"] .fc-${c}{color:${FORMAT_INK_DARK[c]}}`).join("")}
+@media (prefers-color-scheme:dark){${Object.keys(FORMAT_INK_DARK).map((c) => `:root:not([data-theme="light"]) .fc-${c}{color:${FORMAT_INK_DARK[c]}}`).join("")}}
+@media print{${Object.keys(FORMAT_INK).map((c) => `:root .fc-${c},:root[data-theme] .fc-${c},:root:not([data-theme="light"]) .fc-${c}{color:${FORMAT_INK[c]}}`).join("")}}
 .folha a{color:inherit;text-decoration-color:var(--a);text-decoration-thickness:2px;text-underline-offset:2px}
 .vazio{color:var(--mut);margin:10px 0}
 .graficos{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;margin-top:14px;align-items:start}
@@ -474,26 +551,32 @@ export function reportPdf(rep, { cor = DEFAULT_COLOR } = {}) {
     }
     s.pages.forEach((p, i) => {
       const meta = [`Folha ${p.n}`, day(p.created), ...(p.times.length ? [`às ${p.times.join(", ")}`] : [])].join(" · ");
-      const title = wrap(readable(p.title), W, 11.5, true);
-      if (y + 16 + title.length * 15 + 14 > BOTTOM) {
+      // 1.40.0: o negrito, o maior e as cores de cada parte, como na folha
+      const title = wrapRuns(lineRuns(p.title), W, 11.5, true);
+      const lineH = (ln, h) => (ln.some((r) => r.big) ? h + 3 : h);
+      const draw = (ln, base, h) => {
+        for (const r of ln) pdf.text(M + r.x, y + base + (lineH(ln, h) - h), r.text, { size: r.size, bold: r.bold, color: FORMAT_INK[r.color] || C.fg });
+      };
+      if (y + 16 + title.reduce((n, ln) => n + lineH(ln, 15), 0) + 14 > BOTTOM) {
         newPage();
         sectionHead(s, true);
       }
       pdf.text(M, y + 10, meta, { size: 8.5, color: C.mut });
       y += 14;
-      for (const t of title) {
-        pdf.text(M, y + 11, t, { size: 11.5, bold: true, color: C.fg });
-        y += 15;
+      for (const ln of title) {
+        draw(ln, 11, 15);
+        y += lineH(ln, 15);
       }
       for (const raw of p.body) {
-        const lines = raw.trim() ? wrap(readable(raw), W, 10.5) : [""];
-        for (const t of lines) {
-          if (y + 14 > BOTTOM) {
+        const lines = raw.trim() ? wrapRuns(lineRuns(raw), W, 10.5) : [];
+        if (!lines.length) y += 8; // a blank line of the sheet
+        for (const ln of lines) {
+          if (y + lineH(ln, 14) > BOTTOM) {
             newPage();
             sectionHead(s, true);
           }
-          if (t) pdf.text(M, y + 11, t, { size: 10.5, color: C.fg });
-          y += t ? 14 : 8;
+          draw(ln, 11, 14);
+          y += lineH(ln, 14);
         }
       }
       y += 8;

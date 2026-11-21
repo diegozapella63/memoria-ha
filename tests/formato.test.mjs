@@ -24,7 +24,7 @@ test("without the marks: the titles, the report, the other apps", () => {
   assert.equal(stripFormat("**Feira** de {verde:sábado}"), "Feira de sábado");
   assert.equal(linksToText("**Receita** [Bolo](https://site.com/bolo)"), "Receita Bolo");
   assert.equal(readable("☐ **pão** {azul:quente}"), "[ ] pão quente");
-  assert.equal(lineHtml("**a** <b>"), "a &lt;b&gt;");
+  assert.equal(lineHtml("**a** <b>"), '<span class="fb">a</span> &lt;b&gt;', "1.40.0: the report shows the bold (and escapes what was written)");
 });
 
 test("Negrito: puts the marks on the selection and takes them again; without a selection, to write", () => {

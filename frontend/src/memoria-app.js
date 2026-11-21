@@ -3937,7 +3937,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       }
     }
     return html`<div class="panel" id="correria">
-      ${this._secHead("zap", "CorrerIA")}
+      ${this._secHead("zap", "CorrerIA", "O CorrerIA junta os apps da casa no WhatsApp, no Claude e no Gemini.")}
       <div class="row switch-row">
         <div class="grow"><div class="label">${icon("zap", "lbl-ic")}Usar com o CorrerIA</div><div class="hint" style="white-space:normal">${on ? "Ligado: pelo WhatsApp, o Claude e o Gemini leem e mudam os seus blocos." : "Desligado."}</div></div>
         ${this._switch(on, "Usar com o CorrerIA", (e) => this._saveSettings({ app: { correria: e.target.checked ? true : null } }))}

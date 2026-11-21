@@ -1,5 +1,11 @@
 # Mudanças
 
+## 1.40.0
+
+- **Relatório de anotações**: o **negrito**, o **maior** e as **cores** de cada parte do texto aparecem na página e no PDF, como na folha (também no título da folha). Antes ia só o texto.
+- **Conversa**: as perguntas prontas ficam no meio da tela, uma por linha, como no CorrerIA.
+- **Integrações › CorrerIA**: o cartão ganhou a mesma explicação dos outros apps.
+
 ## 1.39.0
 
 - **Conversa › Falar**: ouvindo, o clipe dá lugar ao **Cancelar**: o microfone para e nada é enviado. Antes só dava para mandar.
