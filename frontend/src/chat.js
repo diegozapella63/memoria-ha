@@ -11,7 +11,8 @@
 //
 // The clip (with onAttach): Tirar foto, Escolher fotos and Escolher arquivo; the files chosen (files: [{nome, pdf,
 // url}], from chatFiles) go with the next message (onSend) and their names stay in it (anexos). The round button on
-// the right is the microphone with the box empty and Enviar with text or a file, as in WhatsApp.
+// the right is the microphone with the box empty and Enviar with text or a file, as in WhatsApp. Listening, it is the
+// check (send what was said) and the clip gives way to Cancelar (onMicCancel: the microphone stops, nothing is sent).
 
 const UI = { quick: false, editing: null, menu: false };
 export const CHAT_MAX_FILES = 4;
@@ -114,7 +115,7 @@ function edToggle(app, k) {
 }
 
 /** The chat. lit: {html, nothing}; icon(name). */
-export function renderChat({ lit, icon, app = "", messages = [], draft = "", busy = false, error = "", voice = null, examples = [], models = [], files = [], onDraft, onSend, onMic, onAction, onAll, onClear, onClose, onAttach = null, onFileRemove = () => {}, onRedraw = () => {} }) {
+export function renderChat({ lit, icon, app = "", messages = [], draft = "", busy = false, error = "", voice = null, examples = [], models = [], files = [], onDraft, onSend, onMic, onMicCancel, onAction, onAll, onClear, onClose, onAttach = null, onFileRemove = () => {}, onRedraw = () => {} }) {
   const { html, nothing } = lit;
   const send = () => {
     const t = (draft || "").trim();
@@ -192,7 +193,8 @@ export function renderChat({ lit, icon, app = "", messages = [], draft = "", bus
   const clip = !!onAttach && !rec;
   const menu = clip && UI.menu;
   const attach = (kind) => (redraw({ menu: false }), onAttach(kind));
-  // the round button on the right: the microphone with the box empty (listening: the check), Enviar with text or a file
+  // the round button on the right: the microphone with the box empty (listening: the check), Enviar with text or a file;
+  // listening, the clip on the left gives way to Cancelar (the microphone stops and nothing is sent)
   const micMode = !!(voice && voice.ready) && (rec || (!(draft || "").trim() && !files.length));
   return html`<div class="chat">
     <div class="chat-head">
@@ -224,6 +226,7 @@ export function renderChat({ lit, icon, app = "", messages = [], draft = "", bus
       : nothing}
     <form class="chat-input" @submit=${(e) => (e.preventDefault(), send())}>
       ${clip ? html`<button type="button" class="icon-btn chat-clip ${menu ? "on" : ""}" aria-label="Anexar" title="Anexar" aria-expanded=${menu ? "true" : "false"} ?disabled=${busy} @click=${() => redraw({ menu: !UI.menu, quick: false, editing: null })}>${icon("paperclip")}</button>` : nothing}
+      ${rec && onMicCancel ? html`<button type="button" class="icon-btn chat-cancel" aria-label="Cancelar: não enviar o que falei" title="Cancelar" @click=${() => onMicCancel()}>${icon("x")}</button>` : nothing}
       <textarea rows="1" data-size="off" .value=${draft} placeholder=${rec ? "Ouvindo…" : "Pergunte o que quiser"} aria-label="Mensagem para a IA" ?disabled=${rec}
         @input=${(e) => onDraft(e.target.value)}
         @keydown=${(e) => {

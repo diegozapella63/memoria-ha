@@ -1510,7 +1510,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
       onDay: (d) => ((this._usageDay = d), this.requestUpdate()),
       head: this._secHead("chart-column", "Uso da IA", "As chamadas do app para a IA. Os tokens são estimados."),
       app: "MemorIA",
-      using: (ai.using && ai.using.id) || "",
+      using: [ai.using && ai.using.id, ai.photos && ai.photos.id], // a de conversar e a de ler fotos: o consumo de cada uma
       names: Object.fromEntries((ai.entities || []).map((e) => [e.id, e.name])),
     });
   }

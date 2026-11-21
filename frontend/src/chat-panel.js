@@ -82,6 +82,7 @@ export const ChatMixin = (Base) =>
         onDraft: (t) => this._setChat({ draft: t }),
         onSend: (t) => this._chatSend(t),
         onMic: () => this._chatMic(),
+        onMicCancel: () => this._chatMicCancel(),
         onAction: (k, j) => this._chatDo(k, j),
         onAll: (k) => this._chatDoAll(k),
         onClear: () => this._setChat({ messages: [], error: "" }),
@@ -358,6 +359,14 @@ export const ChatMixin = (Base) =>
       if (this._chatRec !== rec) return rec.cancel();
       this._setChat({ rec: "on" });
       this._chatRecTimer = setTimeout(() => this._chatState().rec === "on" && this._chatMic(), VOICE_MAX_S * 1000);
+    }
+
+    /** Cancelar while listening: the microphone stops and nothing is transcribed or sent. */
+    _chatMicCancel() {
+      clearTimeout(this._chatRecTimer);
+      if (this._chatRec) this._chatRec.cancel();
+      this._chatRec = null;
+      this._setChat({ rec: null, error: "" });
     }
 
     /** Leaving the chat stops the microphone. */

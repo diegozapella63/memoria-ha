@@ -1,5 +1,10 @@
 # Mudanças
 
+## 1.39.0
+
+- **Conversa › Falar**: ouvindo, o clipe dá lugar ao **Cancelar**: o microfone para e nada é enviado. Antes só dava para mandar.
+- **Uso da IA**: o rodapé mostra onde ver o consumo e o saldo de **cada IA em uso** (antes, só de uma). O do Gemini agora leva ao Google AI Studio, onde o consumo e os créditos ficam de verdade; o do Claude, ao Claude Console e ao saldo dos créditos.
+
 ## 1.38.0
 
 - **Conversa › Editar perguntas**: toque numa pergunta para mudar o texto dela. **Perguntas prontas** e **Mais perguntas** fecham e abrem num toque no título, com a seta no canto, e o aparelho lembra.

@@ -24,17 +24,26 @@ const when = (iso, now) => {
   return ymdOf(d) === ymdOf(now) ? `hoje ${t}` : `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${t}`;
 };
 
-function provider(ids) {
-  const j = ids.join(" ").toLowerCase();
-  if (/google|gemini/.test(j)) return html`Consumo exato e cota: <a href="https://console.cloud.google.com/apis/dashboard" target="_blank" rel="noopener">Google Cloud Console</a>.`;
-  if (/openai|chatgpt|gpt/.test(j)) return html`Consumo exato e custo: <a href="https://platform.openai.com/usage" target="_blank" rel="noopener">platform.openai.com/usage</a>.`;
-  if (/anthropic|claude/.test(j)) return html`Consumo exato e custo: <a href="https://platform.claude.com/usage" target="_blank" rel="noopener">Claude Console</a>.`;
-  return "O consumo exato fica no painel do provedor da IA.";
+// Where the exact use and the balance are, for each provider of the AIs in use (by the entity id and its name; one
+// line for each: Google for the chat and Claude for the photos shows both). The addresses are the ones each provider
+// documents: the Gemini API in Google AI Studio (Dashboard > Usage; the credits in Billing), the Claude API in the
+// Claude Console (Usage; the credit balance in Settings > Billing).
+const link = (href, text) => html`<a href=${href} target="_blank" rel="noopener">${text}</a>`;
+const PROVIDERS = [
+  [/google|gemini/, () => html`Gemini: consumo e cota no ${link("https://aistudio.google.com/", "Google AI Studio")}, em Dashboard › Usage; o saldo dos créditos, em Billing.`],
+  [/openai|chatgpt|gpt/, () => html`OpenAI: consumo e custo em ${link("https://platform.openai.com/usage", "platform.openai.com/usage")}.`],
+  [/anthropic|claude/, () => html`Claude: consumo e custo no ${link("https://platform.claude.com/usage", "Claude Console")}; o saldo dos créditos, em ${link("https://platform.claude.com/settings/billing", "Billing")}.`],
+];
+function provider(ids, names = {}) {
+  const j = ids.map((id) => `${id} ${names[id] || ""}`).join(" ").toLowerCase();
+  const found = PROVIDERS.filter(([re]) => re.test(j));
+  return found.length ? found.map(([, note]) => html`<p class="uso-note">${note()}</p>`) : html`<p class="uso-note">O consumo exato fica no painel do provedor da IA.</p>`;
 }
 
 /**
  * u: the summary from the server (null while loading); day: the chosen bar; onDay(day);
- * head: the section heading; app: "CronologIA" | "ResolvIA"; using: the AI entity in use;
+ * head: the section heading; app: "CronologIA" | "ResolvIA"; using: the AI entity in use (or a list: the one to chat
+ * and the one to read photos);
  * names: {entity_id: friendly name} of the AI tasks.
  */
 export function usagePanel({ u, day, onDay, head, app, using = "", names = {} }) {
@@ -49,7 +58,7 @@ export function usagePanel({ u, day, onDay, head, app, using = "", names = {} })
   const sel = days.find((d) => d.dia === day) || days.find((d) => d.dia === today) || { dia: today, chamadas: 0, erros: 0, cota: 0 };
   const label = (d) => (d.dia === today ? "hoje" : WD[dayOf(d.dia).getDay()]);
   const tipos = (u.semana && u.semana.tipos) || {};
-  const ids = [...Object.keys((u.mes && u.mes.ias) || {}), ...Object.keys((u.semana && u.semana.ias) || {}), using];
+  const ids = [...Object.keys((u.mes && u.mes.ias) || {}), ...Object.keys((u.semana && u.semana.ias) || {}), ...[].concat(using)].filter(Boolean);
   const last = u.ultimas || [];
   return html`<div class="panel uso-panel" id="uso-ia">
     ${head}
@@ -78,7 +87,7 @@ export function usagePanel({ u, day, onDay, head, app, using = "", names = {} })
           : html`<li>Nenhuma chamada ainda.</li>`}
       </ul>
     </details>
-    <p class="uso-note">${provider(ids)}</p>
+    ${provider(ids, names)}
   </div>`;
 }
 
