@@ -5,6 +5,6 @@ set -u
 cd "$(dirname "$0")/.."
 export TZ=America/Sao_Paulo
 if [ "${1:-}" = "--cobertura" ]; then
-  exec node --test --experimental-test-coverage --test-coverage-exclude='tests/**' 'tests/*.test.mjs'
+  exec node --test --experimental-test-coverage --test-coverage-lines=95 --test-coverage-exclude='tests/**' 'tests/*.test.mjs'
 fi
 exec node --test 'tests/*.test.mjs'

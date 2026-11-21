@@ -25,3 +25,37 @@ describe("AI: one for conversing, one for photos and PDFs", () => {
     assert.deepEqual([st.selected, st.selected_photos, st.using.id, st.photos.id], ["ai_task.conversa", "ai_task.leitura", "ai_task.conversa", "ai_task.leitura"]);
   });
 });
+
+describe("AI: what the screen is told when something is missing", () => {
+  const withHa = (h, o = {}) => new AI({ ha: h, log, mediaDir: o.mediaDir || fs.mkdtempSync(path.join(os.tmpdir(), "memoria-ai-")), selected: () => o.sel || "", selectedPhotos: () => o.photos || "" });
+  const states = (list, prefs = async () => null) => ({ ready: true, send: async (m) => (m.type === "get_states" ? list : m.type === "ai_task/preferences/get" ? prefs() : null) });
+  const off = (s) => ({ ...s, state: "unavailable" });
+
+  it("no connection, a Home Assistant that does not answer, no AI at all", async () => {
+    assert.equal((await withHa({ ready: false }).status()).reason, "Sem conexão com o Home Assistant.");
+    const broken = await withHa({ ready: true, send: async () => { throw new Error("tempo esgotado"); } }).status();
+    assert.deepEqual([broken.ready, broken.reason], [false, "Não deu para consultar o Home Assistant: tempo esgotado"]);
+    const none = await withHa(states([])).status();
+    assert.deepEqual([none.ready, none.entities, none.reason], [false, [], "Nenhuma IA configurada no Home Assistant (integração com tarefa de IA)."]);
+  });
+
+  it("every AI unavailable; none reads photos; an older Home Assistant (no preferred AI): the first that can", async () => {
+    const down = withHa(states(STATES.map(off)));
+    await assert.rejects(down.resolve(false), { code: "unavailable", message: "As IAs do Home Assistant estão indisponíveis." });
+    await assert.rejects(down.resolve(true), { code: "no_vision" });
+    const text = await withHa(states([STATES[0]])).status();
+    assert.deepEqual([text.ready, text.images, text.using.id, text.reason], [true, false, "ai_task.conversa", "Nenhuma IA do Home Assistant lê fotos. Use um modelo que entenda imagens."]);
+    const old = withHa(states(STATES, async () => { throw new Error("unknown command"); }));
+    assert.equal(await old.preferred(), null);
+    assert.equal((await old.resolve(false)).id, "ai_task.leitura", "the ones that read photos come first");
+  });
+
+  it("the media folder out of reach: the AI answers, but no photos", async () => {
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "memoria-ai-")), "um-arquivo");
+    fs.writeFileSync(file, "x");
+    const ai = withHa(states(STATES), { mediaDir: file });
+    assert.equal(ai.mediaWritable(), false);
+    const st = await ai.status();
+    assert.deepEqual([st.ready, st.images, st.reason], [true, false, "A pasta media do Home Assistant não está disponível para o app."]);
+  });
+});

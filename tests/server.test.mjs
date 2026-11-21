@@ -5,6 +5,7 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
+import http from "node:http";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -519,4 +520,76 @@ test("Mais › Configurações › Dados over the server: export, import, backup
   await assert.rejects(a.call("memoria/nada"), /Comando desconhecido/);
   a.ws.send("isto não é json");
   a.ws.close();
+});
+
+test("the edges of the server: what is too big, what is not JSON, a page already seen, another path", async () => {
+  const a = await screen();
+  const b = await screen();
+  // ping (the screen checks the connection), the people and the state of the AI
+  const pong = new Promise((resolve) => a.ws.addEventListener("message", (m) => JSON.parse(m.data).type === "pong" && resolve(JSON.parse(m.data))));
+  a.ws.send(JSON.stringify({ id: 9001, type: "ping" }));
+  assert.deepEqual(await pong, { id: 9001, type: "pong" });
+  const who = await a.call("memoria/people");
+  assert.ok(Array.isArray(who.people));
+  const st = await a.call("memoria/ai/status");
+  assert.equal(st.ready, true);
+  // a block deleted: the other screens hear it; a screen that stopped listening does not
+  const sub = await new Promise((resolve) => {
+    const id = 9002;
+    b.ws.addEventListener("message", function on(m) {
+      if (JSON.parse(m.data).id === id) (b.ws.removeEventListener("message", on), resolve(id));
+    });
+    b.ws.send(JSON.stringify({ id, type: "memoria/subscribe" }));
+  });
+  const block = await a.call("memoria/block/save", { block: { name: "Para apagar" } });
+  const del = await a.call("memoria/block/delete", { block_id: block.id });
+  assert.ok(Array.isArray(del.pages));
+  assert.ok(await waitFor(() => b.events.some((e) => e.kind === "block_deleted" && e.id === block.id)));
+  await b.call("unsubscribe_events", { subscription: sub });
+  const heard = b.events.length;
+  const outro = await a.call("memoria/block/save", { block: { name: "Outro" } });
+  await a.call("memoria/block/delete", { block_id: outro.id });
+  await new Promise((r) => setTimeout(r, 150));
+  assert.equal(b.events.length, heard, "no more events for it");
+  // a body that is not JSON; one larger than 30 MB is refused (the connection may close before the answer is read)
+  for (const route of ["/api/extract", "/api/chat"]) {
+    const res = await fetch(`${base}${route}`, { method: "POST", body: "isto não é json" });
+    assert.deepEqual([res.status, (await res.json()).error], [400, "JSON inválido"], route);
+  }
+  const big = (route) =>
+    new Promise((resolve) => {
+      const req = http.request(`${base}${route}`, { method: "POST", headers: { "content-type": "application/octet-stream" } }, (res) => {
+        res.resume();
+        resolve(res.statusCode);
+      });
+      req.on("error", () => resolve("fechou"));
+      const chunk = Buffer.alloc(1024 * 1024, 97);
+      let sent = 0;
+      const more = () => {
+        while (sent < 32) {
+          sent++;
+          if (!req.write(chunk)) return req.once("drain", more);
+        }
+        req.end();
+      };
+      more();
+    });
+  for (const route of ["/api/extract", "/api/chat", "/api/import"]) assert.ok([413, "fechou"].includes(await big(route)), route);
+  assert.equal((await fetch(`${base}/api/export/json`)).status, 200, "the server goes on after it");
+  // a page the browser already has: 304, nothing sent again; HEAD: only the headers
+  const first = await fetch(`${base}/`);
+  const etag = first.headers.get("etag");
+  assert.ok(etag);
+  await first.arrayBuffer();
+  const again = await fetch(`${base}/`, { headers: { "If-None-Match": etag } });
+  assert.equal(again.status, 304);
+  const head = await fetch(`${base}/`, { method: "HEAD" });
+  assert.deepEqual([head.status, (await head.arrayBuffer()).byteLength], [200, 0]);
+  assert.equal((await fetch(`${base}/nada.js`)).status, 404);
+  assert.equal((await fetch(`${base}/`, { method: "DELETE" })).status, 404);
+  // the WebSocket only at /ws
+  const other = new WebSocket(`${base.replace("http", "ws")}/outro`);
+  assert.equal(await new Promise((resolve) => ((other.onopen = () => resolve("abriu")), (other.onerror = () => resolve("recusado")))), "recusado");
+  a.ws.close();
+  b.ws.close();
 });
