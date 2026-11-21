@@ -120,11 +120,13 @@ with sync_playwright() as p:
         check(saved in (None, "☐ Feira\n☑ Pão\n☐ Leite\nFim da lista"), f"{tag}: e fica salvo ({saved!r})")
         tap(pg, boxes.nth(1))
         check(boxes.nth(1).get_attribute("aria-checked") == "false", f"{tag}: outro toque desmarca")
-        # Caixa de marcar fora do editor (no alto da folha): um item novo no fim, com o teclado
-        got = [tools.nth(i).get_attribute("aria-label") for i in range(tools.count())]
-        check(got == ["Caixa de marcar"], f"{tag}: fora do editor, no alto da folha, Caixa de marcar ({got})")
-        tap(pg, tools.nth(0))
-        check(a.evaluate(VALUE).endswith("\nFim da lista\n☐ ") and a.evaluate(FOCUSED), f"{tag}: fora do editor, um item novo no fim ({a.evaluate(VALUE)[-12:]!r})")
+        # 1.41.0: fora do editor não há mais a Caixa de marcar no alto da folha: ela fica só junto do Negrito, do Maior, da
+        # Cor e do Emoji, na barra de escrever (um toque na folha abre a barra)
+        check(tools.count() == 0 and a.locator(".leaf-top [aria-label='Caixa de marcar']").count() == 0, f"{tag}: fora do editor, o alto da folha sem a Caixa de marcar")
+        tap(pg, a.locator(".pad .ink-view, .pad textarea.ink").first)
+        pg.wait_for_timeout(500)
+        barra = a.locator("nav.write .wtools > button").evaluate_all("(bs) => bs.map((b) => b.getAttribute('aria-label') || b.textContent.trim())")
+        check(barra == ["Caixa de marcar", "Negrito", "Maior", "Cor", "Emoji", "Pronto"], f"{tag}: escrevendo, a Caixa de marcar junto das outras opções ({barra})")
         check(not errs, f"{tag}: sem erros {errs}")
         ctx.close()
     b.close()

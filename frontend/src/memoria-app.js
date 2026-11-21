@@ -94,6 +94,13 @@ export const confirmIc = (label = "") =>
   /^Apagar/.test(label) ? "trash" : /^Restaurar/.test(label) ? "archive-restore" : /^Importar/.test(label) ? "upload" : "circle-alert";
 /** Where the closed sections of this device are kept, and the name of each one: its id, its card or its title. */
 const FOLD_KEY = "memoria-fechadas";
+// 1.41.0: os campos de escolhas das janelas (Cor da capa, Folha, Quando abrir sozinho, De quem é, Categoria) fecham e
+// abrem num toque no título, como no ResolvIA; o aparelho lembra os fechados (a chave é o título)
+const FIELD_KEY = "memoria-campos";
+export const fieldKeyOf = (field) => {
+  const l = field && field.querySelector(":scope > .flabel");
+  return l ? l.textContent.trim().replace(/\s*\(.*\)$/, "") : "";
+};
 export const foldKeyOf = (card) => {
   if (!card) return "";
   const h2 = card.querySelector(":scope > .mais-head h2");
@@ -179,7 +186,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     this._cache = { data: null, pages: new Map(), schedule: [] };
     this._onPopState = this._onPopState.bind(this);
     this._onVisible = this._onVisible.bind(this);
-    this._onResize = () => (this._fitTitles(), this._measureSplit());
+    this._onResize = () => (this._fitTitles(), this._fitPad(), this._measureSplit());
     this._mql = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
     // 1.29.0: a wide screen (a computer): two sheets side by side, like an open notebook
     this._wideMq = window.matchMedia ? window.matchMedia(`(min-width: ${WIDE_MIN}px)`) : null;
@@ -311,6 +318,52 @@ class MemoriaApp extends ChatMixin(LitElement) {
     }
   }
 
+  _closedFields() {
+    if (!this._camposFechados) {
+      try {
+        this._camposFechados = new Set(JSON.parse(localStorage.getItem(FIELD_KEY) || "[]"));
+      } catch (e) {
+        this._camposFechados = new Set();
+      }
+    }
+    return this._camposFechados;
+  }
+
+  /** The fields of choices of the windows fold (see fieldKeyOf): closed, only the title shows. */
+  _applyFieldFolds() {
+    const root = this.renderRoot;
+    if (!root || !root.querySelectorAll) return;
+    const shut = this._closedFields();
+    for (const field of root.querySelectorAll(".sheet .field")) {
+      const lab = field.querySelector(":scope > .flabel");
+      // not the ones of Alterar vários blocos (a window with one or two fields: nothing to tidy up)
+      if (!lab || field.querySelector(":scope > .bulk-pick") || !field.querySelector(":scope > .chip-row, :scope > .swatches, :scope > .papers, :scope > .time-list")) continue;
+      const key = fieldKeyOf(field);
+      if (!key) continue;
+      const off = shut.has(key);
+      field.classList.add("dobravel");
+      field.classList.toggle("shut", off);
+      lab.setAttribute("role", "button");
+      lab.setAttribute("tabindex", "0");
+      lab.setAttribute("aria-expanded", off ? "false" : "true");
+    }
+  }
+
+  _toggleField(lab) {
+    const key = fieldKeyOf(lab.parentElement);
+    if (!key) return;
+    const shut = this._closedFields();
+    if (shut.has(key)) shut.delete(key);
+    else shut.add(key);
+    try {
+      localStorage.setItem(FIELD_KEY, JSON.stringify([...shut]));
+    } catch (e) {
+      /* private window: only for now */
+    }
+    this._haptic("light");
+    this._applyFieldFolds();
+  }
+
   _toggleFold(head) {
     const key = foldKeyOf(head.parentElement);
     if (!key) return;
@@ -331,16 +384,23 @@ class MemoriaApp extends ChatMixin(LitElement) {
       const head = e.target.closest && e.target.closest(".panel.dobra > .mais-head");
       return head && !e.target.closest("button, a, input, select, textarea, label") ? head : null;
     };
+    const fieldOf = (e) => (e.target.closest && e.target.closest(".sheet .field.dobravel > .flabel")) || null;
     this.renderRoot.addEventListener("click", (e) => {
       const head = foldOf(e);
-      if (head) this._toggleFold(head);
+      if (head) return this._toggleFold(head);
+      const lab = fieldOf(e);
+      if (lab) {
+        e.preventDefault(); // inside a <label>, the tap would go to its field
+        this._toggleField(lab);
+      }
     });
     this.renderRoot.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" && e.key !== " ") return;
-      const head = foldOf(e);
+      const head = foldOf(e) || fieldOf(e);
       if (!head) return;
       e.preventDefault();
-      this._toggleFold(head);
+      if (head.classList.contains("flabel")) this._toggleField(head);
+      else this._toggleFold(head);
     });
   }
 
@@ -348,9 +408,11 @@ class MemoriaApp extends ChatMixin(LitElement) {
     this.toggleAttribute("dark", this._dark);
     this.toggleAttribute("full", this._fullOn());
     for (const t of this.renderRoot.querySelectorAll("textarea.ink.live")) this._syncMirror(t);
+    this._fitPad();
     this._measureSplit();
     this._markTabs();
     this._applyFolds();
+    this._applyFieldFolds();
     this._chatAfterRender();
     if (changed.has("_dark")) {
       // the page around the app too (behind the keyboard and the edges of the phone)
@@ -2652,6 +2714,29 @@ class MemoriaApp extends ChatMixin(LitElement) {
   }
 
   /** After drawing the open notebook: how many lines fit on the left page; then the cursor where it was in the sheet. */
+  /**
+   * 1.41.0: the screen of a block never scrolls: the sheet takes exactly the room left under the heading (which can
+   * have one line or three), and a long text scrolls inside the sheet. Before, the height was a guess (the screen
+   * minus 330 px) and a taller heading pushed the sheet past the end, with a scroll of the page besides the one of the sheet.
+   */
+  _fitPad() {
+    const root = this.renderRoot;
+    const main = root && root.querySelector && root.querySelector("main");
+    const pad = main && main.querySelector(".pad");
+    if (!pad) return;
+    if (this._view().name !== "block" || this._fullOn() || !pad.closest(".page")) {
+      if (pad.style.getPropertyValue("--page-h")) pad.style.removeProperty("--page-h");
+      return;
+    }
+    const sec = pad.closest(".page");
+    const BASE = 300;
+    pad.style.setProperty("--page-h", `${BASE}px`);
+    const cs = getComputedStyle(main);
+    const rest = sec.offsetHeight - BASE + (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    const free = Math.floor(main.clientHeight - rest - 1);
+    pad.style.setProperty("--page-h", `${Math.max(170, free)}px`);
+  }
+
   _measureSplit() {
     const leaf = this.renderRoot.querySelector(".pad.spread .leaf.left");
     const m = leaf && leaf.querySelector(".measure");
@@ -3020,9 +3105,6 @@ class MemoriaApp extends ChatMixin(LitElement) {
     return html`<div class="leaf-top">
       <span class="when">${s.created ? writtenAt(s.created, new Date(this._now)) : "folha nova"}</span>
       ${(s.times || []).length ? html`<span class="pin">${icon("clock")}${s.times.join(" · ")}</span>` : nothing}
-      ${tools && !editing
-        ? html`<button type="button" class="icon-btn tool" @pointerdown=${keep} @mousedown=${keep} @click=${() => this._inkCheck()} aria-label="Caixa de marcar" title="Caixa de marcar">${icon("square-check")}</button>`
-        : nothing}
       <span class="num">${s.num}/${s.total}</span>
       ${menu ? html`<button class="icon-btn" @click=${() => this._openPageMenu()} aria-label="Opções da folha">${icon("ellipsis")}</button>` : html`<span class="icon-btn ghost"></span>`}
     </div>`;
@@ -3547,7 +3629,8 @@ class MemoriaApp extends ChatMixin(LitElement) {
    */
   _renderSearchBlocks(blocks, q) {
     const sel = this._sel;
-    const can = this._cats().length > 0 || this._ownersOn();
+    // 1.41.0: Selecionar só com algo para alterar: as categorias em uso (ligadas e com alguma criada) ou o Controle por pessoa
+    const can = (this._catsOn() && this._cats().length > 0) || this._ownersOn();
     const n = sel ? blocks.filter((b) => sel.has(b.id)).length : 0;
     const all = n > 0 && n === blocks.length;
     const head = sel
@@ -3641,7 +3724,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const changed = f.category !== null || f.owner !== null;
     return html`
       ${this._sheetHead(`Alterar ${n}`)}
-      ${cats.length
+      ${this._catsOn() && cats.length
         ? html`<div class="field">
             <span class="flabel" id="bk-cat">${icon("tag", "lbl-ic")}Categoria</span>
             <div class="chip-row grid bulk-pick" role="radiogroup" aria-labelledby="bk-cat">

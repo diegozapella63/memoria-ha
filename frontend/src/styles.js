@@ -1490,6 +1490,37 @@ export const styles = css`
     gap: 8px;
     margin-bottom: 18px;
   }
+  /* 1.41.0: os campos de escolhas de uma janela fecham e abrem num toque no título (a seta no fim), como no ResolvIA */
+  .sheet .field.dobravel > .flabel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .sheet .field.dobravel > .flabel::after {
+    content: "";
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-left: auto;
+    background: var(--rv-muted);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / 18px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / 18px no-repeat;
+    transition: transform 0.2s;
+  }
+  .sheet .field.dobravel.shut > .flabel::after {
+    transform: rotate(-90deg);
+  }
+  .sheet .field.dobravel.shut > :not(.flabel) {
+    display: none !important;
+  }
+  .sheet .field.dobravel > .flabel:focus-visible {
+    outline: 2px solid var(--rv-accent);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
   .field > .flabel {
     font-size: 14px;
     font-weight: 500;

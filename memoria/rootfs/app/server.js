@@ -23,7 +23,8 @@ import { Sensor } from "./lib/sensor.js";
 import { AiUsage, resultOf } from "./lib/usage.js";
 import { VERSION } from "./lib/version.js";
 import { Backups, backupZip, toCSV, parseImport, listVersions, readVersion, fileStamp } from "./lib/data.js";
-import { anotacoes, reportHtml, reportPdf, pdfName } from "./lib/report.js";
+import { anotacoes, reportHtml, reportPdf, pdfName, emojisOf } from "./lib/report.js";
+import { Emojis } from "./lib/emojis.js";
 import { Correria, ROTA as TOOLS_ROUTE } from "./lib/correria.js";
 import { Integracao, ROUTE as NOW_ROUTE, trechos, clockOf, panelOf } from "./lib/integracao.js";
 import { listTools, callTool, ToolError, UnknownTool } from "./lib/ferramentas.js";
@@ -51,6 +52,7 @@ const log = {
 if (!TOKEN) log.error("Sem SUPERVISOR_TOKEN. O homeassistant_api está ligado no app?");
 
 const store = new Store(DATA_DIR, log);
+const emojis = new Emojis(DATA_DIR, log); // 1.41.0: the pictures of the emojis, for the Relatório in PDF
 const ha = new HAClient(HA_URL, TOKEN, log);
 const ai = new AI({ ha, log, mediaDir: MEDIA_DIR, selected: () => store.data.app.ai_entity || "", selectedPhotos: () => store.data.app.ai_photos || "" });
 const voice = new Voice({ ha, rest: HA_REST, token: TOKEN, log, pick: () => store.data.app.voice_engine || "" });
@@ -574,16 +576,43 @@ function handleImport(req, res) {
  * Mais › Relatório: the blocks (?categoria=, ?bloco=) and their sheets, as a page (?tema=claro|escuro, ?cor=#rrggbb,
  * the ones of the app) or as a PDF to download (the app Home Assistant on the phone doesn't print a page).
  */
+/** 1.41.0: the page of the Relatório sends the pictures of the emojis the PDF has not yet: {glifos: {emoji: base64}}. */
+function handleEmojis(req, res) {
+  const chunks = [];
+  let size = 0;
+  let aborted = false;
+  req.on("data", (c) => {
+    size += c.length;
+    if (size > 3_000_000) {
+      aborted = true;
+      sendJson(res, 413, { error: "Grande demais" });
+      req.destroy();
+      return;
+    }
+    chunks.push(c);
+  });
+  req.on("end", () => {
+    if (aborted) return;
+    try {
+      const body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+      sendJson(res, 200, { guardados: emojis.save(body && body.glifos) });
+    } catch (err) {
+      sendJson(res, 400, { error: "Não entendi o que veio." });
+    }
+  });
+}
+
 function handleReport(url, res, pdf) {
   const rep = anotacoes(store.data, { categoria: url.searchParams.get("categoria") || "", bloco: url.searchParams.get("bloco") || "" });
   const cor = url.searchParams.get("cor");
+  const need = emojisOf(rep);
   if (pdf) {
-    const file = reportPdf(rep, { cor });
+    const file = reportPdf(rep, { cor, emojis: emojis.load(need) });
     res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${pdfName(rep)}"`, "Cache-Control": "no-store", "Content-Length": file.length, "X-Content-Type-Options": "nosniff" });
     return res.end(file);
   }
   const tema = url.searchParams.get("tema");
-  const body = Buffer.from(reportHtml(rep, { tema: tema === "claro" || tema === "escuro" ? tema : null, cor }), "utf8");
+  const body = Buffer.from(reportHtml(rep, { tema: tema === "claro" || tema === "escuro" ? tema : null, cor, faltam: emojis.missing(need) }), "utf8");
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "Content-Length": body.length, "X-Content-Type-Options": "nosniff" });
   res.end(body);
 }
@@ -615,6 +644,7 @@ const server = http.createServer((req, res) => {
   if (url.pathname === "/api/voice" && req.method === "POST") return handleVoice(req, res);
   const exp = url.pathname.match(/^\/api\/export\/(json|csv|zip)$/);
   if (exp && req.method === "GET") return handleExport(exp[1], res);
+  if (url.pathname === "/relatorio/emojis" && req.method === "POST") return handleEmojis(req, res);
   if ((url.pathname === "/relatorio" || url.pathname === "/relatorio.pdf") && req.method === "GET") {
     try {
       return handleReport(url, res, url.pathname.endsWith(".pdf"));

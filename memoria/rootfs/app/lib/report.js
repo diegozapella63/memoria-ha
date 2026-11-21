@@ -5,7 +5,7 @@
 // mark of CorrerIA Code as in Mais › Sobre. The PDF is made here (the app Home Assistant on the phone doesn't print
 // a page): the same parts, and the mark and the page at the foot of each page.
 import { parseFormat, FORMAT_INK, FORMAT_INK_DARK } from "./format.js";
-import { Pdf, wrap, textWidth } from "./pdf.js";
+import { Pdf, wrap, textWidth, glyphChar } from "./pdf.js";
 import { parseLinks, linksToText, domainOf } from "./links.js";
 
 // The colors of the app (frontend/src/util.js PALETTE)
@@ -42,6 +42,25 @@ export const readable = (text) =>
 // what the Helvetica of the PDF has not: the emojis out, and the spaces they leave
 const noEmoji = (t) => t.replace(/(?![©®™])\p{Extended_Pictographic}|[\u{FE0F}\u{200D}\u{20E3}\u{1F3FB}-\u{1F3FF}]/gu, "");
 
+// 1.41.0: the emojis in the PDF, as pictures. One emoji as it is written: a pictograph with its variation or skin tone,
+// the ones joined to it (👨‍👩‍👧), a flag (two letters) or a key (1️⃣). The screen draws each one once and sends the picture
+// (server.js keeps them in /data/emojis); an emoji without a picture is left out, as before.
+export const EMOJI_RE =
+  /(?:(?![©®™])\p{Extended_Pictographic}(?:\u{FE0F}|[\u{1F3FB}-\u{1F3FF}])?(?:\u{200D}(?![©®™])\p{Extended_Pictographic}(?:\u{FE0F}|[\u{1F3FB}-\u{1F3FF}])?)*|[\u{1F1E6}-\u{1F1FF}]{2}|[0-9#*]\u{FE0F}?\u{20E3})/gu;
+/** The emojis of a text, each one once, in the order they appear. */
+export const emojisIn = (text) => [...new Set(String(text || "").match(EMOJI_RE) || [])];
+/** The emojis of a report: of the names of the blocks and of the sheets (up to 300). */
+export function emojisOf(rep) {
+  const out = new Set();
+  for (const s of (rep && rep.sections) || []) {
+    for (const e of emojisIn(s.name)) out.add(e);
+    for (const p of s.pages || []) for (const e of emojisIn(`${p.title || ""}\n${p.text || ""}\n${(p.body || []).join("\n")}`)) out.add(e);
+  }
+  return [...out].slice(0, 300);
+}
+/** A text with each emoji as emo(emoji) says (a character with its picture, or nothing), then the leftovers out. */
+const withEmoji = (t, emo) => noEmoji(String(t || "").replace(EMOJI_RE, (m) => emo(m) || ""));
+
 /** 1.40.0: a piece of text of a sheet in the page, with its bold, bigger and colors (the marks of format.js). */
 const fmtHtml = (text) =>
   parseFormat(text)
@@ -63,14 +82,14 @@ export function lineHtml(text) {
  * 1.40.0: a line of a sheet for the PDF, in runs [{text, bold, big, color}]: as readable() reads it (the links as name
  * and site, the boxes as [ ] and [x], no emojis), keeping the bold, the bigger and the color of each part.
  */
-export function lineRuns(text) {
+export function lineRuns(text, emo = null) {
   const runs = [];
   for (const p of parseLinks(text)) {
     if (p.type !== "text") runs.push({ text: p.name ? `${p.name} (${domainOf(p.url)})` : p.label, bold: false, big: false, color: "" });
     else for (const f of parseFormat(p.text)) runs.push({ text: f.text, bold: f.bold, big: f.big, color: f.color });
   }
   if (runs.length) runs[0].text = runs[0].text.replace(/^([ \t]*)(?:☐|\[ \])[ \t]?/, "$1[ ] ").replace(/^([ \t]*)(?:☑|\[[xX]\])[ \t]?/, "$1[x] ");
-  for (const r of runs) r.text = noEmoji(r.text);
+  for (const r of runs) r.text = emo ? withEmoji(r.text, emo) : noEmoji(r.text);
   return runs.filter((r) => r.text);
 }
 
@@ -273,6 +292,21 @@ export const BAIXAR =
   "d.body.appendChild(a);a.dispatchEvent(new MouseEvent('click'));d.body.removeChild(a);var b=this.querySelector('span')||this;b.textContent='Baixando…';" +
   "setTimeout(function(){b.textContent='Baixar PDF'},4000);return false}catch(e){return true}";
 
+/**
+ * 1.41.0: the emojis of the PDF. The page draws each emoji the server has no picture of (48 × 48, with transparency) and
+ * sends them (relatorio/emojis); Baixar PDF waits for that (at most 4 seconds). Nothing of the notes goes: only how
+ * this device draws each emoji.
+ */
+export const emojiScript = (faltam) =>
+  `(function(){var f=${JSON.stringify(faltam.slice(0, 150)).replace(/</g, "\\u003c")},a=document.querySelector('a.pdf'),S=48;` +
+  "function fim(){if(a)a.style.pointerEvents=''}try{if(a)a.style.pointerEvents='none';setTimeout(fim,4000);" +
+  "var c=document.createElement('canvas');c.width=c.height=S;var x=c.getContext('2d',{willReadFrequently:true}),g={},n=0;" +
+  "f.forEach(function(e){x.clearRect(0,0,S,S);x.font='38px \"Noto Color Emoji\",\"Apple Color Emoji\",\"Segoe UI Emoji\",\"Twemoji Mozilla\",sans-serif';" +
+  "x.textAlign='center';x.textBaseline='middle';x.fillStyle='#141a22';x.fillText(e,S/2,S/2+2);var d=x.getImageData(0,0,S,S).data,t=false,s='',i;" +
+  "for(i=3;i<d.length;i+=4)if(d[i]>8){t=true;break}if(!t)return;for(i=0;i<d.length;i++)s+=String.fromCharCode(d[i]);g[e]=btoa(s);n++});" +
+  "if(!n)return fim();fetch('relatorio/emojis',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glifos:g})}).then(fim,fim)" +
+  "}catch(e){fim()}})();";
+
 /** The mark of CorrerIA Code (as in Mais › Sobre). */
 const MARCA = `<footer class="marca"><span class="raio" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M${ZAP.map((p) => p.join(" ")).join("L")}Z"/></svg></span>` +
   `<span><b class="nome">Correr<i>IA</i> Code</b><small>desenvolvimento de softwares</small></span></footer>`;
@@ -311,7 +345,7 @@ const query = (rep, extra = {}) => {
  * The page (HTML). tema: "claro" | "escuro" (the one of the app; none: the one of the device); cor: the color of the
  * app (#rrggbb). On paper it is always light.
  */
-export function reportHtml(rep, { tema = null, cor = DEFAULT_COLOR } = {}) {
+export function reportHtml(rep, { tema = null, cor = DEFAULT_COLOR, faltam = [] } = {}) {
   const accent = okColor(cor);
   const attr = tema === "claro" ? ' data-theme="light"' : tema === "escuro" ? ' data-theme="dark"' : "";
   const pdfHref = `relatorio.pdf?${query(rep, { cor: accent })}`;
@@ -417,7 +451,7 @@ ${catSel}${blockSel}
 ${charts.length ? `<div class="graficos">${charts.map(chartHtml).join("")}</div>` : ""}
 ${rep.sections.length ? rep.sections.map(section).join("") : `<p class="vazio">${emptyText(rep)}</p>`}
 ${MARCA}
-</main></body></html>`;
+</main>${faltam && faltam.length ? `<script>${emojiScript(faltam)}</script>` : ""}</body></html>`;
 }
 
 // ------------------------------------------------------------------ the PDF
@@ -440,10 +474,21 @@ function tiltedSquare(cx, cy, s, r, deg) {
 const circle = (cx, cy, r, k = 20) => Array.from({ length: k }, (_, i) => [cx + r * Math.cos((i * 2 * Math.PI) / k), cy + r * Math.sin((i * 2 * Math.PI) / k)]);
 
 /** The report as a PDF (A4, always light). cor: the color of the app. */
-export function reportPdf(rep, { cor = DEFAULT_COLOR } = {}) {
+export function reportPdf(rep, { cor = DEFAULT_COLOR, emojis = null } = {}) {
   const A = okColor(cor);
   const C = { fg: "#141a22", mut: "#5b6573", line: "#e3e7ec", line2: "#eef1f4", card: "#f6f7f9" };
   const pdf = new Pdf({ title: "Relatório de anotações · MemorIA", producer: "MemorIA" });
+  // 1.41.0: emojis: Map(emoji -> {w, h, rgba}), the pictures the screen sent; each one used gets a character of its own
+  const chars = new Map();
+  const emo = (e) => {
+    if (!emojis || !emojis.has(e)) return "";
+    if (!chars.has(e)) {
+      const ch = glyphChar(chars.size);
+      pdf.setGlyph(ch, emojis.get(e));
+      chars.set(e, pdf.glyphs.has(ch) ? ch : "");
+    }
+    return chars.get(e);
+  };
   const M = 40;
   const W = pdf.W - 2 * M;
   const BOTTOM = pdf.H - 64; // the foot: a line and the mark of CorrerIA Code
@@ -532,7 +577,7 @@ export function reportPdf(rep, { cor = DEFAULT_COLOR } = {}) {
 
   const sectionHead = (s, cont = false) => {
     const meta = sectionMeta(s);
-    const title = `${s.name}${cont ? " (continuação)" : ""}`;
+    const title = `${withEmoji(s.name, emo)}${cont ? " (continuação)" : ""}`;
     pdf.text(M, y + 14, title, { size: 14, bold: true, color: C.fg });
     const room = W - textWidth(title, 14, true) - 16;
     const metaLine = wrap(meta, Math.max(80, room), 9)[0] || "";
@@ -552,7 +597,7 @@ export function reportPdf(rep, { cor = DEFAULT_COLOR } = {}) {
     s.pages.forEach((p, i) => {
       const meta = [`Folha ${p.n}`, day(p.created), ...(p.times.length ? [`às ${p.times.join(", ")}`] : [])].join(" · ");
       // 1.40.0: o negrito, o maior e as cores de cada parte, como na folha
-      const title = wrapRuns(lineRuns(p.title), W, 11.5, true);
+      const title = wrapRuns(lineRuns(p.title, emo), W, 11.5, true);
       const lineH = (ln, h) => (ln.some((r) => r.big) ? h + 3 : h);
       const draw = (ln, base, h) => {
         for (const r of ln) pdf.text(M + r.x, y + base + (lineH(ln, h) - h), r.text, { size: r.size, bold: r.bold, color: FORMAT_INK[r.color] || C.fg });
@@ -568,7 +613,7 @@ export function reportPdf(rep, { cor = DEFAULT_COLOR } = {}) {
         y += lineH(ln, 15);
       }
       for (const raw of p.body) {
-        const lines = raw.trim() ? wrapRuns(lineRuns(raw), W, 10.5) : [];
+        const lines = raw.trim() ? wrapRuns(lineRuns(raw, emo), W, 10.5) : [];
         if (!lines.length) y += 8; // a blank line of the sheet
         for (const ln of lines) {
           if (y + lineH(ln, 14) > BOTTOM) {

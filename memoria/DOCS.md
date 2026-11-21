@@ -32,14 +32,14 @@ Numa tela larga, o botão **Tela cheia** (ao lado do Conversar e do Falar, no bl
 
 Escrevendo, a barra de baixo (no lugar das abas, logo acima do teclado) vira a barra da escrita: **Caixa de marcar**, **Negrito**, **Maior**, **Cor**, **Emoji** e **Pronto**. Usar não fecha o teclado, e ali o menu do celular sobre uma seleção (Copiar, Colar…) não cobre os botões. **Pronto** sai da escrita (o teclado fecha, e as caixas e os links aparecem de novo). Fora da escrita, a **Caixa de marcar** fica no alto da folha, ao lado do número. No celular, a folha tem margens estreitas, para caber mais texto em cada linha.
 
-- **Caixa de marcar** transforma a linha onde está o cursor num item com caixa (☐); tocar de novo tira a caixa. Fora da escrita, ela põe um item novo no fim da folha.
+- **Caixa de marcar** transforma a linha onde está o cursor num item com caixa (☐); tocar de novo tira a caixa.
 - **Negrito** e **Cor** valem para a palavra onde está o cursor, sem precisar selecionar; para uma parte maior, selecione antes. **Cor** abre cinco cores (vermelho, laranja, verde, azul e lilás) e **Sem cor**. O negrito e as cores já aparecem enquanto você escreve, com as marcas apagadas em volta (`**negrito**`, `{azul:texto}`); fora da escrita, as marcas somem. Tocar de novo no Negrito ou na mesma cor tira; outra cor troca. No **Relatório** (a página e o PDF) e no Agora do CronologIA, a folha aparece com o negrito, o maior e as cores; nos títulos das listas e na busca vai só o texto.
 - **Maior** deixa maior a linha do cursor (um título), sem precisar selecionar; para só uma parte, selecione antes. Combina com o negrito e a cor. Escrevendo, a parte maior fica sublinhada com pontinhos (a marca é `++texto++`); o tamanho aparece no **Pronto**. Tocar de novo tira.
 - **Emoji** abre uma lista de emojis; cada um entra onde está o cursor. Os que você usou vêm primeiro (guardados no aparelho). Os do teclado do celular também valem.
 - Num item, o **Enter** já faz outro item embaixo. Enter num item vazio acaba a lista.
 - Fora da escrita, cada item mostra uma caixa: um toque marca como feito (o texto fica riscado), outro toque desmarca. Tocar no texto abre a escrita, como sempre.
 - No **Agora**, marcar vale só para aquela vez do trecho: a folha não muda (em **Blocos** ela aparece como está) e, na próxima vez que o trecho aparecer, as caixas voltam desmarcadas. Serve para listas de todo dia, como as refeições ou os remédios. Fora do Agora, em **Blocos**, marcar grava na folha.
-- Na folha, a caixa fica guardada como ☐ (a fazer) e ☑ (feito); listas escritas como `[ ]` e `[x]` também viram caixas. No PDF do Relatório, aparecem como [ ] e [x], e os emojis ficam de fora (a letra do PDF não tem).
+- Na folha, a caixa fica guardada como ☐ (a fazer) e ☑ (feito); listas escritas como `[ ]` e `[x]` também viram caixas. No PDF do Relatório, aparecem como [ ] e [x]; os emojis saem como figuras, no lugar deles (a tela do Relatório desenha cada um e o app guarda a figura).
 
 ### Links
 

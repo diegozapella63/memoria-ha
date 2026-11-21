@@ -157,6 +157,24 @@ test("Mais › Relatório: the page and the PDF", async () => {
   assert.match(await res.text(), /__haTema/);
   res = await fetch(`${base}/relatorio`, { method: "POST" });
   assert.equal(res.status, 404);
+  // 1.41.0: the emojis in the PDF: the page asks for the pictures it lacks, the screen sends them, the PDF has them
+  const ws = await screen();
+  const nova = await ws.call("memoria/page/save", { page: { block: "mercado0001", text: "Compras ☕\n👉 pão" } });
+  let pg2 = await (await fetch(`${base}/relatorio?bloco=mercado0001`)).text();
+  assert.match(pg2, /<script>\(function\(\)\{var f=\[[^\]]*"☕"[^\]]*\]/, "the page draws the ones the server has not");
+  let semFig = Buffer.from(await (await fetch(`${base}/relatorio.pdf?bloco=mercado0001`)).arrayBuffer()).toString("latin1");
+  assert.doesNotMatch(semFig, /XObject/);
+  const fig = Buffer.alloc(48 * 48 * 4, 150).toString("base64");
+  res = await fetch(`${base}/relatorio/emojis`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ glifos: { "☕": fig, "👉": fig, "x": fig } }) });
+  assert.deepEqual([res.status, await res.json()], [200, { guardados: 2 }]);
+  res = await fetch(`${base}/relatorio/emojis`, { method: "POST", body: "{torto" });
+  assert.equal(res.status, 400);
+  const comFig = Buffer.from(await (await fetch(`${base}/relatorio.pdf?bloco=mercado0001`)).arrayBuffer()).toString("latin1");
+  assert.match(comFig, /\/XObject << \/Im1 \d+ 0 R \/Im2 \d+ 0 R >>/, "the PDF with the pictures");
+  pg2 = await (await fetch(`${base}/relatorio?bloco=mercado0001`)).text();
+  assert.doesNotMatch(pg2, /relatorio\/emojis/, "nothing left to draw");
+  await ws.call("memoria/page/delete", { page_id: nova.id });
+  ws.ws.close();
 });
 
 test("Falar: the speech-to-text of Home Assistant", async () => {

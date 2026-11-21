@@ -1,7 +1,12 @@
 // Mais › Relatório (memoria/rootfs/app/lib/report.js): what goes in, the page and the PDF. An invented house.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { anotacoes, countText, sheetParts, pdfName, reportHtml, reportPdf, graficos, lineHtml, lineRuns, wrapRuns } from "../memoria/rootfs/app/lib/report.js";
+import { anotacoes, countText, sheetParts, pdfName, reportHtml, reportPdf, graficos, lineHtml, lineRuns, wrapRuns, emojisIn, emojisOf, emojiScript } from "../memoria/rootfs/app/lib/report.js";
+import { Pdf, glyphChar, isGlyph, textWidth, winAnsi } from "../memoria/rootfs/app/lib/pdf.js";
+import { Emojis, oneEmoji, fileOf, SIZE } from "../memoria/rootfs/app/lib/emojis.js";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { casa } from "./fixtures/casa.mjs";
 
 const NOW = new Date(2026, 10, 8, 10, 30).getTime();
@@ -225,4 +230,87 @@ test("the runs of a line and how they break: the look of each word is kept, and 
   assert.ok(wrapRuns(lineRuns("Inconstitucionalissimamente"), 40, 10.5).length > 1);
   assert.deepEqual(wrapRuns(lineRuns("++Lista++ da feira"), 300, 11.5, true).map((l) => l.map((r) => [r.text, r.bold, r.size])), [[["Lista", true, 14.375], ["da feira", true, 11.5]]]);
   assert.deepEqual(wrapRuns([], 100, 10.5), []);
+});
+
+// ------------------------------------------------------------ 1.41.0: the emojis in the PDF, as pictures
+const RGBA = (v = 180) => Buffer.alloc(SIZE * SIZE * 4, v);
+
+test("the emojis of a text: one for each, with its variation, the joined ones, the flags and the keys", () => {
+  assert.deepEqual(emojisIn("Café ☕ e 👉 isso 👨‍👩‍👧 🇧🇷 1️⃣ ok ☕ ©"), ["☕", "👉", "👨‍👩‍👧", "🇧🇷", "1️⃣"]);
+  assert.deepEqual(emojisIn("sem nenhum, só ç e ã"), []);
+  const data = casa();
+  data.blocks[0].name = `${data.blocks[0].name} 📓`;
+  data.pages[0].text = "Feira ☕\n👉 levar sacolas\n👉 e o pão";
+  const rep = anotacoes(data, { now: NOW });
+  assert.deepEqual(emojisOf(rep).sort(), ["☕", "👉", "📓"].sort(), "of the names of the blocks and of the sheets, each one once");
+  assert.deepEqual(emojisOf(null), []);
+});
+
+test("the PDF writer: a character with a picture is drawn as the picture, one em wide; without one it is left out", () => {
+  const g = glyphChar(0);
+  assert.ok(isGlyph(g) && !isGlyph("a"));
+  assert.equal(textWidth(g, 10), 10, "one em");
+  assert.ok(Math.abs(textWidth(`a${g}`, 10) - textWidth("a", 10) - 10) < 1e-9);
+  assert.equal(winAnsi(`a${g}b`).toString("latin1"), "ab");
+  const pdf = new Pdf({ title: "t", producer: "x" });
+  pdf.setGlyph(g, { w: SIZE, h: SIZE, rgba: RGBA() });
+  pdf.setGlyph(glyphChar(1), { w: SIZE, h: SIZE, rgba: Buffer.alloc(10) }); // the wrong size: ignored
+  pdf.setGlyph("a", { w: SIZE, h: SIZE, rgba: RGBA() }); // not a character of pictures: ignored
+  assert.equal(pdf.glyphs.size, 1);
+  pdf.text(40, 60, `Café ${g} fim ${glyphChar(1)}!`, { size: 10 });
+  pdf.text(300, 80, `${g}${g}`, { size: 10, align: "right" });
+  const s = pdf.build().toString("latin1");
+  assert.match(s, /\(Caf\\351 \) Tj ET\nq 9\.2 0 0 9\.2 [\d.]+ [\d.]+ cm \/Im1 Do Q\nBT \/F1 10 Tf [\d. ]+ rg [\d.]+ [\d.]+ Td \( fim \) Tj ET\nBT[^\n]+\(!\) Tj ET/, "the text, the picture, the text; the one without a picture leaves its room and nothing else");
+  assert.equal((s.match(/\/Im1 Do/g) || []).length, 3);
+  assert.match(s, /\/Subtype \/Image \/Width 48 \/Height 48 \/ColorSpace \/DeviceGray \/BitsPerComponent 8 \/Filter \/FlateDecode/, "the transparency");
+  assert.match(s, /\/ColorSpace \/DeviceRGB \/BitsPerComponent 8 \/SMask \d+ 0 R \/Filter \/FlateDecode/);
+  assert.match(s, /\/Resources << \/Font << \/F1 \d+ 0 R \/F2 \d+ 0 R >> \/XObject << \/Im1 \d+ 0 R >> >>/);
+  // right-aligned: the two pictures end at x
+  const xs = [...s.matchAll(/q 9\.2 0 0 9\.2 ([\d.]+) /g)].map((m) => Number(m[1])).slice(-2);
+  assert.ok(Math.abs(xs[1] + 9.2 + 0.4 - 300) < 0.01 && Math.abs(xs[1] - xs[0] - 10) < 0.01, `${xs}`);
+  assert.doesNotMatch(new Pdf().text(10, 10, "sem figura").build().toString("latin1"), /XObject/, "without pictures, the file as before");
+});
+
+test("the report in PDF with the emojis the screen sent: each one in its place; one without a picture is left out", () => {
+  const data = casa();
+  data.pages[0].text = "Feira ☕ de sábado\n👉 levar **sacolas** 🛒\n👉 e o pão";
+  const rep = anotacoes(data, { now: NOW });
+  const antes = reportPdf(rep).toString("latin1");
+  assert.doesNotMatch(antes, /XObject|Do Q/, "without the pictures, no emoji (as before)");
+  const s = reportPdf(rep, { emojis: new Map([["☕", { w: SIZE, h: SIZE, rgba: RGBA() }], ["👉", { w: SIZE, h: SIZE, rgba: RGBA(90) }]]) }).toString("latin1");
+  assert.match(s, /\/XObject << \/Im1 \d+ 0 R \/Im2 \d+ 0 R >>/, "one picture for each emoji used");
+  assert.equal((s.match(/\/Im1 Do/g) || []).length, 1, "the coffee, once");
+  assert.equal((s.match(/\/Im2 Do/g) || []).length, 2, "the hand, twice, with the same picture");
+  assert.match(s, /\(Feira \) Tj ET\nq [\d.]+ 0 0 [\d.]+ [\d.]+ [\d.]+ cm \/Im1 Do Q\nBT[^\n]+\( de s\\341bado\) Tj ET/, "in the middle of the title");
+  assert.match(s, /\(sacolas\) Tj ET/, "the bold word next to it is kept");
+  assert.match(s, /\(sacolas\) Tj ET\nq [\d.]+ 0 0 [\d.]+ [\d.]+ [\d.]+ cm \/Im2 Do Q/, "the one without a picture (the cart) is left out: after the word comes the next line");
+  // the page: the script that draws the ones the server has not, and nothing when it has them all
+  const page = reportHtml(rep, { faltam: ["☕", "<"] });
+  assert.match(page, /<script>\(function\(\)\{var f=\["☕","\\u003c"\]/, "the list, safe inside the page");
+  assert.match(page, /fetch\('relatorio\/emojis',\{method:'POST'/);
+  assert.match(page, /a\.style\.pointerEvents='none';setTimeout\(fim,4000\)/, "Baixar PDF waits for the pictures, 4 seconds at most");
+  assert.doesNotMatch(reportHtml(rep), /relatorio\/emojis/, "all there: no script");
+  assert.equal(emojiScript(Array.from({ length: 400 }, () => "☕")).match(/☕/g).length, 150, "150 at a time");
+});
+
+test("the pictures of the emojis kept in /data/emojis: only an emoji, only the right size, never over one kept", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "memoria-emo-"));
+  const E = new Emojis(dir);
+  assert.deepEqual([oneEmoji("☕"), oneEmoji("👨‍👩‍👧"), oneEmoji("☕☕"), oneEmoji("a"), oneEmoji("../x"), oneEmoji(""), oneEmoji(7)], [true, true, false, false, false, false, false]);
+  assert.equal(fileOf("☕"), "2615.rgba");
+  assert.deepEqual(E.missing(["☕", "👉", "x"]), ["☕", "👉"]);
+  assert.equal(E.save(null), 0);
+  assert.equal(E.save([1]), 0);
+  const ok = RGBA().toString("base64");
+  const n = E.save({ "☕": ok, "👉": RGBA(0).toString("base64"), "🛒": "curto", "../../x": ok, "☕☕": ok, "📌": 5 });
+  assert.equal(n, 1, "only the coffee: the hand is all transparent, the cart is the wrong size, the others are not one emoji");
+  assert.deepEqual(fs.readdirSync(path.join(dir, "emojis")), ["2615.rgba"]);
+  assert.equal(E.save({ "☕": RGBA(10).toString("base64") }), 0, "never over one already kept");
+  const got = E.load(["☕", "👉", "nada"]);
+  assert.deepEqual([...got.keys()], ["☕"]);
+  assert.deepEqual([got.get("☕").w, got.get("☕").h, got.get("☕").rgba[0]], [SIZE, SIZE, 180]);
+  assert.deepEqual(E.missing(["☕", "👉"]), ["👉"]);
+  fs.writeFileSync(path.join(dir, "emojis", fileOf("📌")), "torto");
+  assert.equal(E.load(["📌"]).size, 0, "a file of the wrong size is not a picture");
+  fs.rmSync(dir, { recursive: true, force: true });
 });

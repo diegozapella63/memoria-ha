@@ -2,6 +2,11 @@
 // Portuguese), lines, rectangles (rounded too) and paths. Coordinates from the top-left, in points. It makes the
 // report of the app a file to download, since the app Home Assistant on the phone doesn't print a page.
 // The same file in the ResolvIA and the MemorIA (tools/iguais.py): the name of the app goes in `producer`.
+//
+// Small pictures in the middle of a text (the emojis, which Helvetica has not): setGlyph(ch, {w, h, rgba}) gives a
+// character of the Private Use Area (U+E000..U+F8FF) a picture (RGBA, 8 bits); in a text, that character is drawn as the
+// picture, one em wide. A character of that area without a picture is left out.
+import zlib from "node:zlib";
 
 // Widths of the characters 32..255 (WinAnsi) in 1/1000 of the size, from the metrics of the standard fonts
 const REGULAR = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584,350,556,350,222,556,333,1000,556,556,333,1000,667,333,1000,350,611,350,350,222,222,333,333,350,556,1000,333,1000,500,333,944,350,500,667,278,333,556,556,556,556,260,556,333,737,370,556,584,333,737,333,400,584,333,333,333,556,537,278,333,333,365,556,834,834,834,611,667,667,667,667,667,667,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,500,556,556,556,556,278,278,278,278,556,556,556,556,556,556,556,584,611,556,556,556,556,500,556,500];
@@ -18,18 +23,28 @@ function byteOf(ch) {
   return 63;
 }
 
-/** Text as WinAnsi bytes. */
+/** A character that stands for a picture (see setGlyph). */
+export const isGlyph = (ch) => {
+  const c = ch.codePointAt(0);
+  return c >= 0xe000 && c <= 0xf8ff;
+};
+/** The character of the n-th picture (0..6399). */
+export const glyphChar = (n) => String.fromCodePoint(0xe000 + n);
+const GLYPH_W = 1000; // one em
+const HAS_GLYPH = /[\ue000-\uf8ff]/;
+
+/** Text as WinAnsi bytes (the characters that stand for pictures are left out). */
 export function winAnsi(s) {
-  return Buffer.from([...String(s ?? "").normalize("NFC")].map(byteOf));
+  return Buffer.from([...String(s ?? "").normalize("NFC")].filter((ch) => !isGlyph(ch)).map(byteOf));
 }
 
 /** The width of a text in points (spacing: points between the letters). */
 export function textWidth(s, size, bold = false, spacing = 0) {
   const t = bold ? BOLD : REGULAR;
-  const bytes = winAnsi(s);
+  const chars = [...String(s ?? "").normalize("NFC")];
   let w = 0;
-  for (const b of bytes) w += t[b - 32] || 0;
-  return (w * size) / 1000 + spacing * Math.max(0, bytes.length - 1);
+  for (const ch of chars) w += isGlyph(ch) ? GLYPH_W : t[byteOf(ch) - 32] || 0;
+  return (w * size) / 1000 + spacing * Math.max(0, chars.length - 1);
 }
 
 /** A text broken into lines that fit the width (a long word is cut). */
@@ -76,7 +91,23 @@ export class Pdf {
     this.title = title;
     this.producer = producer;
     this.pages = [];
+    this.glyphs = new Map();
     this.addPage();
+  }
+
+  /** A picture for a character of the Private Use Area: {w, h, rgba: Buffer of w × h × 4}. Wrong sizes are ignored. */
+  setGlyph(ch, { w, h, rgba } = {}) {
+    if (!isGlyph(String(ch || "")) || !Number.isInteger(w) || !Number.isInteger(h) || w < 1 || h < 1 || w > 256 || h > 256 || !Buffer.isBuffer(rgba) || rgba.length !== w * h * 4) return this;
+    const rgb = Buffer.alloc(w * h * 3);
+    const alpha = Buffer.alloc(w * h);
+    for (let i = 0; i < w * h; i++) {
+      rgb[i * 3] = rgba[i * 4];
+      rgb[i * 3 + 1] = rgba[i * 4 + 1];
+      rgb[i * 3 + 2] = rgba[i * 4 + 2];
+      alpha[i] = rgba[i * 4 + 3];
+    }
+    this.glyphs.set(ch, { name: `Im${this.glyphs.size + 1}`, w, h, rgb: zlib.deflateSync(rgb), alpha: zlib.deflateSync(alpha) });
+    return this;
   }
 
   addPage() {
@@ -90,6 +121,29 @@ export class Pdf {
   text(x, y, s, { size = 11, bold = false, color = "#141a22", align = "left", spacing = 0 } = {}) {
     const w = align === "left" ? 0 : textWidth(s, size, bold, spacing);
     const left = align === "right" ? x - w : align === "center" ? x - w / 2 : x;
+    if (HAS_GLYPH.test(String(s ?? ""))) {
+      // the text in pieces: the letters as text, each picture in its place (one em wide, a little under the baseline)
+      let cx = left;
+      let run = "";
+      const flush = () => {
+        if (!run) return;
+        this.text(cx, y, run, { size, bold, color, spacing });
+        cx += textWidth(run, size, bold, spacing) + spacing;
+        run = "";
+      };
+      for (const ch of [...String(s).normalize("NFC")]) {
+        if (!isGlyph(ch)) {
+          run += ch;
+          continue;
+        }
+        flush();
+        const g = this.glyphs.get(ch);
+        if (g) this.ops.push(`q ${n(size * 0.92)} 0 0 ${n(size * 0.92)} ${n(cx + size * 0.04)} ${n(this.H - y - size * 0.16)} cm /${g.name} Do Q`);
+        cx += (GLYPH_W * size) / 1000 + spacing;
+      }
+      flush();
+      return this;
+    }
     // the spacing is kept by the graphics state: q … Q gives it back to the next texts
     const t = `BT /${bold ? "F2" : "F1"} ${size} Tf ${spacing ? `${n(spacing)} Tc ` : ""}${rgb(color)} rg ${n(left)} ${n(this.H - y)} Td ${lit(winAnsi(s))} Tj ET`;
     this.ops.push(spacing ? `q ${t} Q` : t);
@@ -139,11 +193,19 @@ export class Pdf {
     const pagesId = add(null);
     const f1 = add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
     const f2 = add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+    // the pictures (the emojis): each one with its transparency
+    const stream = (dict, data) => Buffer.concat([Buffer.from(`<< ${dict} /Filter /FlateDecode /Length ${data.length} >>\nstream\n`), data, Buffer.from("\nendstream")]);
+    const xobjs = [];
+    for (const g of this.glyphs.values()) {
+      const mask = add(stream(`/Type /XObject /Subtype /Image /Width ${g.w} /Height ${g.h} /ColorSpace /DeviceGray /BitsPerComponent 8`, g.alpha));
+      xobjs.push(`/${g.name} ${add(stream(`/Type /XObject /Subtype /Image /Width ${g.w} /Height ${g.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /SMask ${mask} 0 R`, g.rgb))} 0 R`);
+    }
+    const xres = xobjs.length ? ` /XObject << ${xobjs.join(" ")} >>` : "";
     const kids = [];
     for (const ops of this.pages) {
       const content = Buffer.from(ops.join("\n"), "latin1");
       const c = add(Buffer.concat([Buffer.from(`<< /Length ${content.length} >>\nstream\n`), content, Buffer.from("\nendstream")]));
-      kids.push(add(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${this.W} ${this.H}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >> >> /Contents ${c} 0 R >>`));
+      kids.push(add(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${this.W} ${this.H}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >>${xres} >> /Contents ${c} 0 R >>`));
     }
     objs[catalog - 1] = `<< /Type /Catalog /Pages ${pagesId} 0 R >>`;
     objs[pagesId - 1] = `<< /Type /Pages /Kids [${kids.map((k) => `${k} 0 R`).join(" ")}] /Count ${kids.length} >>`;

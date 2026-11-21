@@ -1,5 +1,13 @@
 # Mudanças
 
+## 1.41.0
+
+- **Emojis no PDF do Relatório**: os ícones das folhas (☕, 👉…) agora saem no PDF, no lugar deles. Ao abrir o Relatório, a tela desenha cada ícone uma vez e o app guarda a figura; os que já estavam em relatórios antigos aparecem a partir da próxima vez que o Relatório for aberto.
+- **Bloco aberto**: a tela não rola mais. A folha ocupa o que sobra embaixo do nome do bloco e um texto comprido rola só dentro da folha.
+- **Novo bloco** e **Ajustes do bloco**: Categoria, De quem é, Cor da capa, Folha e Quando abrir sozinho fecham e abrem num toque no título, e o aparelho lembra.
+- **Caixa de marcar**: saiu do alto da folha e fica só junto do Negrito, do Maior, da Cor e do Emoji, na barra de escrever.
+- **Alterar vários blocos**: a Categoria só aparece se as categorias estão em uso; sem nada para alterar, o **Selecionar** não aparece.
+
 ## 1.40.3
 
 - **Conversa**: a IA sabe quais são os outros apps da casa e, quando a pergunta é de outro app, diz em qual deles está.
