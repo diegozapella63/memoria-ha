@@ -1,7 +1,7 @@
 // Conversa com a IA (memoria/rootfs/app/lib/chat.js): what goes to the AI and what its actions may do.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanChat, chatInstructions, parseChatActions, replyOf, MAX_ACTIONS, CHAT_STRUCTURE } from "../memoria/rootfs/app/lib/chat.js";
+import { cleanChat, chatInstructions, parseChatActions, replyOf, MAX_ACTIONS, CHAT_STRUCTURE, FAMILIA } from "../memoria/rootfs/app/lib/chat.js";
 
 const ctx = () => ({
   tela: 'o bloco "Mercado", na folha 2 de 2',
@@ -50,6 +50,11 @@ test("chatInstructions: today, the screen, the blocks with their sheets and the 
   assert.match(p, /- Folha 2: Churrasco do Beto \(escrita em 2026-11-07; aparece às 09:00\)\n {6}Carvão/);
   assert.match(p, /Pessoa: O que tem no mercado\?$/);
   assert.match(chatInstructions(cleanChat({ messages: [{ role: "user", text: "oi" }] })), /\(nenhum bloco\)/);
+  // 1.40.3: the context of the family (the same sentence in every app): the other apps and that it only sees this one
+  const fam = chatInstructions(cleanChat({ messages: [{ role: "user", text: "oi" }] }));
+  assert.ok(fam.includes(FAMILIA) && fam.indexOf(FAMILIA) < fam.indexOf("Hoje é"), "right after what the app is");
+  for (const app of ["ResolvIA (listas de tarefas)", "CronologIA (agenda", "GerencIA (finanças)", "InventarIA (inventário", "MemorIA (blocos", "EconomIA (lista de compras", "CorrerIA (os apps no WhatsApp"]) assert.ok(FAMILIA.includes(app), app);
+  assert.match(FAMILIA, /Você só vê os dados deste app: se a pessoa perguntar algo que é de outro, diga em qual app está, sem inventar\.$/);
   // De quem é (1.9.0): whose the block is
   const owned = ctx();
   owned.blocos[0].dono = "Ana";

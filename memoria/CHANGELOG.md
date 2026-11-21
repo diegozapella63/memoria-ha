@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.40.3
+
+- **Conversa**: a IA sabe quais são os outros apps da casa e, quando a pergunta é de outro app, diz em qual deles está.
+
 ## 1.40.2
 
 - **Falar › Como configurar**: o **Home Assistant Cloud** abre o site num toque.
