@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.40.1
+
+- **Aparência › Cor do app**: o texto de cima igual ao dos outros apps.
+
 ## 1.40.0
 
 - **Relatório de anotações**: o **negrito**, o **maior** e as **cores** de cada parte do texto aparecem na página e no PDF, como na folha (também no título da folha). Antes ia só o texto.

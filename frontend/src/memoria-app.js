@@ -3833,7 +3833,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         ${themePicker({ theme: this._theme, onTheme: (k) => this._setTheme(k), icon })}
       </div>
       <div class="panel">
-        ${this._secHead("palette", "Cor do app", "Em todos os aparelhos. Num bloco, vale a cor dele.")}
+        ${this._secHead("palette", "Cor do app", "Vale para todos os aparelhos. Num bloco, vale a cor dele.")}
         <div class="row switch-row daily-row">
           <div class="grow"><div class="label">${icon("calendar-days", "lbl-ic")}Cor do dia</div><div class="hint">Muda a cor do app todo dia.</div></div>
           ${this._switch(daily, "Cor do dia", (e) => this._saveSettings({ app: { accent_daily: e.target.checked ? null : false } }))}

@@ -5485,7 +5485,7 @@ ${o.indent}${Ut} `;this._inkSet(e,a.slice(0,i)+l+a.slice(i),i+l.length)}_inkDone
         ${mi({theme:this._theme,onTheme:a=>this._setTheme(a),icon:d})}
       </div>
       <div class="panel">
-        ${this._secHead("palette","Cor do app","Em todos os aparelhos. Num bloco, vale a cor dele.")}
+        ${this._secHead("palette","Cor do app","Vale para todos os aparelhos. Num bloco, vale a cor dele.")}
         <div class="row switch-row daily-row">
           <div class="grow"><div class="label">${d("calendar-days","lbl-ic")}Cor do dia</div><div class="hint">Muda a cor do app todo dia.</div></div>
           ${this._switch(t,"Cor do dia",a=>this._saveSettings({app:{accent_daily:a.target.checked?null:!1}}))}

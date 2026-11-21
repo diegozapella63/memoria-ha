@@ -147,6 +147,9 @@ with sync_playwright() as p:
             check(on.count() == 1 and on.inner_text().strip() == t and on.get_attribute("aria-selected") == "true", f"{tag}: {t} marked")
             heads = [x.strip() for x in a.locator("[role=tabpanel] .mais-head h2").all_inner_texts()]
             check(heads == want, f"{tag}: {t}: {heads}")
+            if t == "Aparência":  # 1.40.1: os textos de cima como nos outros apps
+                leads = [x.strip() for x in a.locator("[role=tabpanel] .panel-lead").all_inner_texts()][:2]
+                check(leads == ["Cada aparelho guarda a sua escolha.", "Vale para todos os aparelhos. Num bloco, vale a cor dele."], f"{tag}: Aparência: the leads of the family ({leads})")
             check(not a.evaluate(OVER), f"{tag}: {t}: nothing past the edge {a.evaluate(OVER)}")
             pg.screenshot(path=str(SHOTS / f"mais-config-{v.split(':')[1]}-{scheme}-{w}.png"))
             if t == "Dados":
