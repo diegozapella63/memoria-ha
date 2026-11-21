@@ -1482,7 +1482,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
         ? html`<div class="steps-box">
             <b>Como configurar</b>
             <ol class="steps">
-              <li>Com o Home Assistant Cloud, a fala para texto já vem pronta.</li>
+              <li>Com o <a class="site" href="https://www.nabucasa.com/" target="_blank" rel="noopener noreferrer">Home Assistant Cloud</a>, a fala para texto já vem pronta.</li>
               <li>Sem ele, instale um motor de fala: o app Whisper (local, de graça) com a integração Wyoming, ou a fala para texto de uma IA como Google Gemini ou OpenAI.</li>
               <li>Volte aqui, toque em Verificar de novo e escolha o motor na lista.</li>
             </ol>
@@ -4044,14 +4044,14 @@ class MemoriaApp extends ChatMixin(LitElement) {
         <div class="btn-row sec-actions"><button class="btn outline sm" @click=${() => this._pickImport()}>${icon("upload")}Escolher arquivo</button></div>
       </div>
       <div class="panel">
-        ${this._secHead("archive-restore", "Versões anteriores", "Uma cópia a cada 10 minutos de uso e antes de importar, restaurar ou apagar.")}
+        ${this._secHead("archive-restore", "Versões anteriores", "Uma cópia a cada 10 minutos de uso e antes de importar, restaurar ou começar do zero. Ficam as 60 mais recentes.")}
         <div class="btn-row sec-actions"><button class="btn outline sm" @click=${() => this._openVersions()}>${icon("archive-restore")}Ver versões</button></div>
       </div>
       <div class="panel" id="onde">
         ${this._secHead("database", "Onde ficam os dados", html`Os blocos, as folhas e os ajustes em <code>/data/memoria.json</code>, no backup do Home Assistant; as versões anteriores em <code>/data/versoes</code>.`)}
       </div>
       <div class="panel">
-        ${this._secHead("trash", "Começar do zero", "Apaga todos os blocos e folhas. Os ajustes continuam.")}
+        ${this._secHead("trash", "Começar do zero", "Apaga todos os blocos e folhas. Os ajustes continuam. Uma cópia fica em Versões anteriores.")}
         <div class="btn-row sec-actions"><button class="btn danger sm" @click=${() => this._confirmErase()}>${icon("trash")}Apagar tudo</button></div>
       </div>
     </div>`;

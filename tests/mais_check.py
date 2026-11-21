@@ -147,6 +147,11 @@ with sync_playwright() as p:
             check(on.count() == 1 and on.inner_text().strip() == t and on.get_attribute("aria-selected") == "true", f"{tag}: {t} marked")
             heads = [x.strip() for x in a.locator("[role=tabpanel] .mais-head h2").all_inner_texts()]
             check(heads == want, f"{tag}: {t}: {heads}")
+            if t == "Dados":  # 1.40.2: as frases comuns como nos outros apps
+                leads = " | ".join(" ".join(x.split()) for x in a.locator("[role=tabpanel] .panel-lead").all_inner_texts())
+                check("Uma cópia a cada 10 minutos de uso e antes de importar, restaurar ou começar do zero. Ficam as 60 mais recentes." in leads
+                      and "Apaga todos os blocos e folhas. Os ajustes continuam. Uma cópia fica em Versões anteriores." in leads
+                      and "Os backups do Home Assistant também incluem o MemorIA." in leads, f"{tag}: Dados: the common sentences of the family ({leads[:200]})")
             if t == "Aparência":  # 1.40.1: os textos de cima como nos outros apps
                 leads = [x.strip() for x in a.locator("[role=tabpanel] .panel-lead").all_inner_texts()][:2]
                 check(leads == ["Cada aparelho guarda a sua escolha.", "Vale para todos os aparelhos. Num bloco, vale a cor dele."], f"{tag}: Aparência: the leads of the family ({leads})")

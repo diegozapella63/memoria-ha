@@ -2018,6 +2018,11 @@ dialog.ss-wrap::backdrop{background:transparent}
   .panel > .panel-lead:last-child {
     margin-bottom: 18px;
   }
+  /* a site named in a text opens it (1.40.2) */
+  a.site {
+    color: var(--accent);
+    font-weight: 600;
+  }
   .sec-actions {
     padding-bottom: 16px;
   }
@@ -5140,7 +5145,7 @@ ${t}`:String(t)}var Ni=(s,t,e="")=>Ke(s,Ii(t,e)),Vi=/^([ \t]*)(☐|☑|\[ \]|\[[
       ${t&&!t.ready?c`<div class="steps-box">
             <b>Como configurar</b>
             <ol class="steps">
-              <li>Com o Home Assistant Cloud, a fala para texto já vem pronta.</li>
+              <li>Com o <a class="site" href="https://www.nabucasa.com/" target="_blank" rel="noopener noreferrer">Home Assistant Cloud</a>, a fala para texto já vem pronta.</li>
               <li>Sem ele, instale um motor de fala: o app Whisper (local, de graça) com a integração Wyoming, ou a fala para texto de uma IA como Google Gemini ou OpenAI.</li>
               <li>Volte aqui, toque em Verificar de novo e escolha o motor na lista.</li>
             </ol>
@@ -5596,14 +5601,14 @@ ${o.indent}${Ut} `;this._inkSet(e,a.slice(0,i)+l+a.slice(i),i+l.length)}_inkDone
         <div class="btn-row sec-actions"><button class="btn outline sm" @click=${()=>this._pickImport()}>${d("upload")}Escolher arquivo</button></div>
       </div>
       <div class="panel">
-        ${this._secHead("archive-restore","Vers\xF5es anteriores","Uma c\xF3pia a cada 10 minutos de uso e antes de importar, restaurar ou apagar.")}
+        ${this._secHead("archive-restore","Vers\xF5es anteriores","Uma c\xF3pia a cada 10 minutos de uso e antes de importar, restaurar ou come\xE7ar do zero. Ficam as 60 mais recentes.")}
         <div class="btn-row sec-actions"><button class="btn outline sm" @click=${()=>this._openVersions()}>${d("archive-restore")}Ver versões</button></div>
       </div>
       <div class="panel" id="onde">
         ${this._secHead("database","Onde ficam os dados",c`Os blocos, as folhas e os ajustes em <code>/data/memoria.json</code>, no backup do Home Assistant; as versões anteriores em <code>/data/versoes</code>.`)}
       </div>
       <div class="panel">
-        ${this._secHead("trash","Come\xE7ar do zero","Apaga todos os blocos e folhas. Os ajustes continuam.")}
+        ${this._secHead("trash","Come\xE7ar do zero","Apaga todos os blocos e folhas. Os ajustes continuam. Uma c\xF3pia fica em Vers\xF5es anteriores.")}
         <div class="btn-row sec-actions"><button class="btn danger sm" @click=${()=>this._confirmErase()}>${d("trash")}Apagar tudo</button></div>
       </div>
     </div>`}_renderAiPanel(){let t=this._ai||{},e=t.entities||[],a=this._app("ai_entity",""),i=this._app("ai_photos",""),r=this._aiChecking?"off":t.ready&&t.images?"ok":t.ready?"warn":"bad",o=this._aiChecking?"Verificando\u2026":t.ready&&t.images?"Pronta para ler fotos":t.ready?"S\xF3 l\xEA mensagens":"N\xE3o configurada",n="";t.ready&&(n=`Usando ${t.using.name}${a?"":" (a IA padr\xE3o do Home Assistant)"}.`,t.photos&&(n+=` Para fotos, ${t.photos.name}.`)),t.reason&&(n=`${n} ${t.reason}`.trim());let l=this._aiOn(),h=c`${this._secHead("sparkles","IA","L\xEA mensagens, prints, fotos e PDFs de anota\xE7\xF5es para criar folhas, e conversa.")}

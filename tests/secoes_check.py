@@ -83,6 +83,13 @@ with sync_playwright() as p:
         go("/config")
         lines = a.evaluate("(el) => [...el.renderRoot.querySelectorAll('.panel > .row')].filter((r) => !r.querySelector(':scope > .tile') && parseFloat(getComputedStyle(r).borderTopWidth) > 0).length")
         check(lines == 0, f"{tag}: no line between the options ({lines})")
+        # 1.40.2: Falar › Como configurar (without a speech-to-text): the Home Assistant Cloud opens its site
+        a.evaluate("(el) => { el._voice = { ready: false, reason: 'O Home Assistant não tem fala para texto.' }; el.requestUpdate(); }")
+        pg.wait_for_timeout(250)
+        ln = a.evaluate("(el) => [...el.renderRoot.querySelectorAll('#falar .steps a.site')].map((x) => [x.textContent, x.getAttribute('href'), x.target, x.rel, getComputedStyle(x).fontWeight])")
+        check(ln == [["Home Assistant Cloud", "https://www.nabucasa.com/", "_blank", "noopener noreferrer", "600"]], f"{tag}: Como configurar: the Home Assistant Cloud is a link to its site ({ln})")
+        a.evaluate("(el) => el._loadVoice(true)")
+        pg.wait_for_timeout(400)
         check(a.locator("#leitura-ia > .sub-op > .sub-box .ai-state").count() == 1 and a.locator("#leitura-ia .sub-box select").count() == 2 and a.locator("#leitura-ia .sub-box .ai-actions .btn").count() == 1, f"{tag}: the state, the choice and Verificar de novo of the AI in the box under Usar IA")
         check(a.locator("#leitura-ia .field-hint").count() == 0, f"{tag}: without the note about Padrão do Home Assistant")
         sw = a.locator("#correria input[role=switch]")

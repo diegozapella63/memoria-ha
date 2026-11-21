@@ -228,7 +228,7 @@ Em **Mais › Configurações › Dados**:
 - **Onde ficam os dados**: os blocos, as folhas e os ajustes em `/data/memoria.json`, que entra no backup do Home Assistant; as versões em `/data/versoes`.
 - **Começar do zero**: apaga todos os blocos e folhas; os ajustes e as categorias continuam.
 
-Antes de importar, restaurar ou apagar, o app sempre guarda uma cópia do que existe naquele momento em **Versões anteriores**. Importar e restaurar trocam os blocos (com de quem é cada um e os arquivados), as categorias, as folhas e os períodos do dia; a IA escolhida e o CorrerIA continuam os deste Home Assistant. Um backup de antes da 1.9.0 volta com todos os blocos de **Todos** e nenhum arquivado.
+Antes de importar, restaurar ou começar do zero, o app sempre guarda uma cópia do que existe naquele momento em **Versões anteriores**. Importar e restaurar trocam os blocos (com de quem é cada um e os arquivados), as categorias, as folhas e os períodos do dia; a IA escolhida e o CorrerIA continuam os deste Home Assistant. Um backup de antes da 1.9.0 volta com todos os blocos de **Todos** e nenhum arquivado.
 
 ## Atalho no celular
 

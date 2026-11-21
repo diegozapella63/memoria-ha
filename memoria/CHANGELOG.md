@@ -1,5 +1,10 @@
 # Mudanças
 
+## 1.40.2
+
+- **Falar › Como configurar**: o **Home Assistant Cloud** abre o site num toque.
+- **Dados**: os textos de **Versões anteriores** (ficam as 60 mais recentes) e de **Começar do zero** (uma cópia fica em Versões anteriores) no mesmo jeito dos outros apps.
+
 ## 1.40.1
 
 - **Aparência › Cor do app**: o texto de cima igual ao dos outros apps.

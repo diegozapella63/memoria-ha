@@ -1987,6 +1987,11 @@ export const styles = css`
   .panel > .panel-lead:last-child {
     margin-bottom: 18px;
   }
+  /* a site named in a text opens it (1.40.2) */
+  a.site {
+    color: var(--accent);
+    font-weight: 600;
+  }
   .sec-actions {
     padding-bottom: 16px;
   }
