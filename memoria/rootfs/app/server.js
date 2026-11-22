@@ -17,7 +17,8 @@ import { fileURLToPath } from "node:url";
 import { acceptUpgrade } from "./lib/ws.js";
 import { HAClient } from "./lib/ha.js";
 import { Store } from "./lib/store.js";
-import { AI } from "./lib/ai.js";
+import { AI, comLembrancas } from "./lib/ai.js";
+import { lembrancasTexto } from "./lib/lembrancas.js";
 import { Voice, readRaw, MAX_VOICE_BYTES } from "./lib/voice.js";
 import { Sensor } from "./lib/sensor.js";
 import { AiUsage, resultOf } from "./lib/usage.js";
@@ -77,6 +78,8 @@ const correria = new Correria({
   url: process.env.MEMORIA_URL_INTERNA || "",
 });
 const correriaOn = () => store.data.app.correria === true;
+// as lembranças da casa (do CorrerIA) vão para a IA daqui, só com a opção CorrerIA ligada
+comLembrancas(() => (correriaOn() ? lembrancasTexto() : ""));
 // the other apps of the family (the CronologIA): what holds now, always on, with the key of share/memoria/integracao.json
 const integracao = new Integracao({ dataDir: DATA_DIR, shareDir: SHARE_DIR, port: PORT, version: VERSION, log });
 const watchers = new Set(); // {session, id}

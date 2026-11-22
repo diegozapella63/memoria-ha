@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.45.0
+
+- A **Memória da IA** do CorrerIA (Configurações › Integrações, lá) vale aqui também: o que a casa pediu para a IA lembrar entra na Conversa e na leitura por IA deste app, com a opção CorrerIA ligada.
+
 ## 1.44.0
 
 - **Ler foto ou PDF pelo CorrerIA**: mande no CorrerIA a foto de uma página, de um quadro ou um PDF e peça para guardar num bloco. A IA do MemorIA lê o texto, como na leitura por IA daqui, e o CorrerIA mostra o que achou antes de escrever. Precisa do CorrerIA 1.24.0 e do Usar IA ligado aqui.

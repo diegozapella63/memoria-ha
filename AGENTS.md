@@ -111,6 +111,8 @@ Aqui não há aviso no celular (o componente Quem recebe/Testar no meu celular n
 
 1.44.0: a ferramenta `ler_arquivo` (leitura; `anexo`: os tipos do `anexos.js`, foto ou PDF; o CorrerIA 1.24.0 manda o arquivo da conversa em `anexo`, fora dos argumentos): `lerArquivo` no `lib/ferramentas.js`, chamada pelo `handleTools` (o `callTool` é síncrono) com o `ai.extract` da tela, que respeita o Usar IA; devolve o texto, sem escrever nada. O pedido da rota aceita 22 MB.
 
+1.45.0: as lembranças da casa (a Memória da IA do CorrerIA 1.28.0, em `share/correria/lembrancas.json`: `{lembrancas: [frases]}`) vão na frente de toda instrução da IA daqui, logo depois da guarda, só com a opção CorrerIA ligada: `lib/lembrancas.js` (`lerLembrancas`, `lembrancasTexto`, relido uma vez por minuto; igual nos três apps em Node, em `tools/iguais.py`), o `comLembrancas` do `lib/ai.js` (dentro do `soMaterial`) e, no `server.js`, `comLembrancas(() => (correriaOn() ? lembrancasTexto() : ""))`; `LEMBRANCAS_ARQ` troca o arquivo nos testes (`tests/lembrancas.test.mjs`).
+
 ## Conversa com o dono
 
 Respostas curtas, em português. Ao terminar uma mudança: o que mudou, a versão e se está publicado. Ele usa o app do Home Assistant no Android: pense no Voltar do celular, no teclado e na câmera.
