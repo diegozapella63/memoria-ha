@@ -25,10 +25,31 @@ const run = (store, nome, argumentos = {}) => callTool(nome, argumentos, { store
 const read = (store, nome, argumentos) => JSON.parse(run(store, nome, argumentos).texto);
 const bad = (store, nome, argumentos, re) => assert.throws(() => run(store, nome, argumentos), (err) => err instanceof ToolError && re.test(err.message));
 
-test("the list follows the contract: 12 tools, reads first, JSON Schema, grava and apaga", () => {
+test("1.44.0: ler_arquivo: the AI of the app reads the photo or the PDF of the conversation; nothing is written", async () => {
+  const { lerArquivo } = await import("../memoria/rootfs/app/lib/ferramentas.js");
+  const def = listTools().ferramentas.find((f) => f.nome === "ler_arquivo");
+  assert.deepEqual([def.grava, def.apaga, def.anexo], [false, false, ["image/jpeg", "image/png", "image/webp", "application/pdf"]]);
+  const arq = (tipo = "image/jpeg", b64 = "data:image/jpeg;base64,/9j/AAAA") => ({ tipo, nome: "pagina.jpg", b64 });
+  let got = null;
+  const ler = async (x) => {
+    got = x;
+    return { text: "Comprar tinta\nLigar para o pintor", provider: "IA de teste" };
+  };
+  assert.equal(await lerArquivo({ dica: "a página do caderno" }, arq(), ler), "O texto do arquivo (lido pela IA do MemorIA, IA de teste):\nComprar tinta\nLigar para o pintor\nNada foi escrito. Mostre à pessoa e guarde com memoria_nova_folha ou memoria_acrescentar no bloco que ela disser.");
+  assert.deepEqual(got, { text: "a página do caderno", images: [{ data: "/9j/AAAA", mime: "image/jpeg" }] });
+  assert.match(await lerArquivo(null, arq("application/pdf", "JVBERi0="), async () => ({ text: "  " })), /não achou texto/);
+  const bad = (p, re) => assert.rejects(p, (err) => err instanceof ToolError && re.test(err.message));
+  await bad(lerArquivo({}, null, ler), /Falta o arquivo/);
+  await bad(lerArquivo({}, arq("image/heic"), ler), /lê foto \(JPG, PNG ou WebP\) ou PDF/);
+  await bad(lerArquivo({}, arq(), null), /não está disponível/);
+  await bad(lerArquivo({}, arq(), async () => { throw new Error("a IA está desligada no MemorIA."); }), /não conseguiu ler o arquivo: a IA está desligada.*sem inventar/);
+  assert.throws(() => run(house(), "ler_arquivo"), (err) => err instanceof ToolError && /Falta o arquivo/.test(err.message));
+});
+
+test("the list follows the contract: 13 tools, reads first, JSON Schema, grava and apaga", () => {
   const { instrucoes, ferramentas } = listTools();
   assert.match(instrucoes, /memoria_resumo/);
-  assert.equal(ferramentas.length, 12);
+  assert.equal(ferramentas.length, 13);
   assert.deepEqual(ferramentas.slice(0, 4).map((f) => f.nome), ["resumo", "buscar", "ler_bloco", "ler_folha"]);
   for (const f of ferramentas) {
     assert.match(f.nome, /^[a-z0-9_]{1,40}$/);
@@ -42,8 +63,8 @@ test("the list follows the contract: 12 tools, reads first, JSON Schema, grava a
     if (f.apaga) assert.equal(f.grava, true);
   }
   assert.deepEqual(ferramentas.filter((f) => f.apaga).map((f) => f.nome), ["apagar_folha"]);
-  assert.deepEqual(ferramentas.filter((f) => !f.grava).map((f) => f.nome), ["resumo", "buscar", "ler_bloco", "ler_folha"]);
-  assert.equal(FERRAMENTAS.length, 12);
+  assert.deepEqual(ferramentas.filter((f) => !f.grava).map((f) => f.nome), ["resumo", "buscar", "ler_bloco", "ler_folha", "ler_arquivo"]);
+  assert.equal(FERRAMENTAS.length, 13);
   assert.throws(() => run(house(), "voar"), (err) => err instanceof UnknownTool && err.message === "Ferramenta desconhecida: voar.");
 });
 

@@ -15,6 +15,7 @@ import { fold, firstLine, appendText, appendLink, freeColor } from "./writing.js
 import { sheetText } from "./chat.js";
 import { opensText } from "./report.js";
 import { COLORS, MAX_TEXT } from "./store.js";
+import { MIMES } from "./anexos.js";
 
 const MAX_LIST = 200; // sheets in one answer
 const SUMMARY_PER_BLOCK = 15; // the last sheets of each block in the summary
@@ -185,6 +186,18 @@ export const FERRAMENTAS = [
     grava: true,
     descricao: "Cria uma categoria para agrupar os blocos (como Trabalho, Casa ou Estudos). Sem cor, a primeira que nenhuma categoria usa. Ponha um bloco nela com memoria_editar_bloco.",
     entrada: obj({ nome: { type: "string" }, cor: { type: "string", enum: COLORS } }, ["nome"]),
+  },
+  {
+    // 1.44.0 (o dono: "todos os apps que tenham as funções de PDF ou imagem ou foto funcionem no correria/rondas"): a
+    // leitura por IA da tela (foto de uma página, um print, um PDF), pelo CorrerIA. `anexo` diz ao CorrerIA que esta
+    // ferramenta recebe o arquivo (ele manda em `anexo`, fora dos argumentos). Nada é escrito: a IA de lá propõe a folha.
+    nome: "ler_arquivo",
+    titulo: "Ler foto ou PDF",
+    grava: false,
+    anexo: Object.keys(MIMES),
+    descricao:
+      "Lê com a IA do MemorIA a foto, a imagem ou o PDF que a pessoa acabou de mandar na conversa (uma página escrita à mão, um quadro, um print, um documento) e devolve o texto que há nele, pronto para uma folha. Não escreve nada: depois, guarde com memoria_nova_folha ou memoria_acrescentar no bloco que a pessoa disser. Só serve logo depois de a pessoa mandar o arquivo.",
+    entrada: obj({ dica: { type: "string", description: "O que a pessoa disse sobre o arquivo, se disse (ajuda a IA a ler)." } }),
   },
 ];
 const BY_NAME = new Map(FERRAMENTAS.map((f) => [f.nome, f]));
@@ -695,10 +708,33 @@ const WRITE = { nova_folha: novaFolha, acrescentar, editar_folha: editarFolha, a
  * app sends them). ToolError: a bad argument (400); UnknownTool (404). pessoa: the name of the person of the house who
  * asks ("": anyone); people: the people of the house [{id, name}] (null: unknown), for De quem é.
  */
+/**
+ * 1.44.0: memoria_ler_arquivo: what the AI of this app reads in the file the person sent (`ler` is the reading of the
+ * screen, which respects Usar IA). The text comes back; nothing is written.
+ */
+export async function lerArquivo(args, anexo, ler) {
+  const a = args && typeof args === "object" && !Array.isArray(args) ? args : {};
+  const mime = anexo && typeof anexo === "object" ? String(anexo.tipo || "").toLowerCase() : "";
+  const data = anexo && typeof anexo.b64 === "string" ? anexo.b64.replace(/^data:[^,]*,/, "").replace(/\s+/g, "") : "";
+  if (!data) throw new ToolError("Falta o arquivo: peça para a pessoa mandar a foto ou o PDF na conversa e tente de novo.");
+  if (!MIMES[mime]) throw new ToolError("O MemorIA lê foto (JPG, PNG ou WebP) ou PDF. Diga isso à pessoa.");
+  if (!ler) throw new ToolError("A leitura por IA não está disponível no MemorIA.");
+  let out;
+  try {
+    out = await ler({ text: typeof a.dica === "string" ? a.dica.slice(0, 500) : "", images: [{ data, mime }] });
+  } catch (err) {
+    throw new ToolError(`O MemorIA não conseguiu ler o arquivo: ${err.message} Diga isso à pessoa, sem inventar o que há nele.`);
+  }
+  const text = String((out && out.text) || "").trim().slice(0, MAX_TEXT);
+  if (!text) return "A IA do MemorIA leu o arquivo e não achou texto nele. Diga isso à pessoa e pergunte o que ela quer fazer.";
+  return `O texto do arquivo (lido pela IA do MemorIA${out.provider ? `, ${out.provider}` : ""}):\n${text}\nNada foi escrito. Mostre à pessoa e guarde com memoria_nova_folha ou memoria_acrescentar no bloco que ela disser.`;
+}
+
 export function callTool(name, args, { store, now = new Date(), pessoa = "", people = null }) {
   const n = String(name || "");
   if (!BY_NAME.has(n)) throw new UnknownTool(`Ferramenta desconhecida: ${oneLine(name, 60) || "(sem nome)"}.`);
   const a = args && typeof args === "object" && !Array.isArray(args) ? args : {};
+  if (n === "ler_arquivo") throw new ToolError("Falta o arquivo: peça para a pessoa mandar a foto ou o PDF na conversa e tente de novo."); // it runs by lerArquivo, with the file
   try {
     if (READ[n]) return { texto: READ[n](store, a, now, pessoa), events: [] };
     return WRITE[n](store, a, now, people);

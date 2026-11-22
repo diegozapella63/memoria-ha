@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.44.0
+
+- **Ler foto ou PDF pelo CorrerIA**: mande no CorrerIA a foto de uma página, de um quadro ou um PDF e peça para guardar num bloco. A IA do MemorIA lê o texto, como na leitura por IA daqui, e o CorrerIA mostra o que achou antes de escrever. Precisa do CorrerIA 1.24.0 e do Usar IA ligado aqui.
+
 ## 1.43.0
 
 - **Modo de ver** (Mais › Configurações › Opções): **Caderno**, como sempre, ou **Rolar**. No Rolar, as folhas do bloco ficam uma embaixo da outra, como as páginas de um PDF, e a tela rola; a folha não rola por dentro. Toque numa folha para marcar as caixas, abrir os links ou escrever nela; no fim, **Folha nova**. No Agora, a folha de agora aparece inteira.

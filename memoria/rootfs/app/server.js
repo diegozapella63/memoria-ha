@@ -27,7 +27,7 @@ import { anotacoes, reportHtml, reportPdf, pdfName, emojisOf } from "./lib/repor
 import { Emojis } from "./lib/emojis.js";
 import { Correria, ROTA as TOOLS_ROUTE } from "./lib/correria.js";
 import { Integracao, ROUTE as NOW_ROUTE, trechos, clockOf, panelOf } from "./lib/integracao.js";
-import { listTools, callTool, ToolError, UnknownTool } from "./lib/ferramentas.js";
+import { listTools, callTool, lerArquivo, ToolError, UnknownTool } from "./lib/ferramentas.js";
 import { sameName } from "./lib/schedule.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -468,7 +468,7 @@ async function handleTools(req, res) {
   if (req.method !== "POST") return sendJson(res, 405, { erro: "Use GET ou POST." });
   let body;
   try {
-    body = JSON.parse((await readRaw(req, 1024 * 1024)).toString("utf8") || "{}");
+    body = JSON.parse((await readRaw(req, 22 * 1024 * 1024)).toString("utf8") || "{}"); // 1.44.0: with the file of ler_arquivo (up to 15 MB, in base64)
   } catch (err) {
     return sendJson(res, err.code === "too_big" ? 413 : 400, { erro: err.code === "too_big" ? "Pedido grande demais." : "JSON inválido." });
   }
@@ -483,7 +483,15 @@ async function handleTools(req, res) {
     who = p ? p.name : house && house.length ? "" : String(body.pessoa.nome || "").replace(/\s+/g, " ").trim().slice(0, 80);
   }
   try {
-    const out = callTool(body.nome, body.argumentos, { store, pessoa: who, people: house && house.map((p) => ({ id: p.id, name: p.name })) });
+    // 1.44.0: the reading of a photo or a PDF by the AI of this app (the one of the screen; Usar IA off: it says so)
+    const ler = async (x) => {
+      if (aiOff()) throw new Error("a IA está desligada no MemorIA (Mais › Configurações › Integrações › Usar IA).");
+      return ai.extract(x);
+    };
+    const out =
+      body.nome === "ler_arquivo"
+        ? { texto: await lerArquivo(body.argumentos, body.anexo, ler), events: [] }
+        : callTool(body.nome, body.argumentos, { store, pessoa: who, people: house && house.map((p) => ({ id: p.id, name: p.name })) });
     for (const ev of out.events) broadcast(ev);
     sendJson(res, 200, { texto: out.texto });
     log.info(`CorrerIA: ${cliente}${pessoa ? ` (${pessoa})` : ""} usou ${body.nome}`);

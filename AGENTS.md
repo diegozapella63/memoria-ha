@@ -109,6 +109,8 @@ Aqui não há aviso no celular (o componente Quem recebe/Testar no meu celular n
 
 1.43.0: **Modo de ver** (Opções, `#modo-ver`; `app.view`: `"rolar"` ou nada = Caderno; da casa toda): `_roll()` (nunca na Tela cheia); no `_renderPad`, `.pad.roll`: sem a capa, as argolas, as bordas de virar e o caderno aberto (`_spread()` é falso); no bloco (`opts.tall`), todas as folhas, a aberta (`pad.page`, `.leaf.on`) com o editor de sempre e as outras paradas (`.ink.still`, o `_inkParts`), que um toque abre ali mesmo (`_rollOpen`, guardando o `scrollTop`); no Agora, só a folha de agora; no fim, `.roll-new`. A folha tem a altura do texto (`height: auto`; o editor com `field-sizing: content`) e o `_fitPad` não mexe. O `tests/rolar_check.py` confere.
 
+1.44.0: a ferramenta `ler_arquivo` (leitura; `anexo`: os tipos do `anexos.js`, foto ou PDF; o CorrerIA 1.24.0 manda o arquivo da conversa em `anexo`, fora dos argumentos): `lerArquivo` no `lib/ferramentas.js`, chamada pelo `handleTools` (o `callTool` é síncrono) com o `ai.extract` da tela, que respeita o Usar IA; devolve o texto, sem escrever nada. O pedido da rota aceita 22 MB.
+
 ## Conversa com o dono
 
 Respostas curtas, em português. Ao terminar uma mudança: o que mudou, a versão e se está publicado. Ele usa o app do Home Assistant no Android: pense no Voltar do celular, no teclado e na câmera.

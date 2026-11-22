@@ -201,6 +201,8 @@ Os blocos arquivados ficam fora do resumo e da busca, a não ser que eles peçam
 
 Ligado, o cartão mostra quem usou por último e quando ("Claude usou hoje às 09:41"). Desligado, o acesso deixa de valer na hora. O CorrerIA acha o MemorIA pelo arquivo `share/memoria/correria.json`, com uma chave de acesso própria, que só existe enquanto a chave está ligada.
 
+**Ler foto ou PDF** (1.44.0, com o CorrerIA 1.24.0): mande no CorrerIA a foto de uma página ou um PDF e peça para guardar num bloco. A IA do MemorIA lê o texto (precisa do Usar IA ligado) e o CorrerIA mostra antes de escrever.
+
 ## CronologIA
 
 O **CronologIA** (o calendário da família) pode mostrar no **Agora** dele a folha do MemorIA que vale agora, de quem está usando, como no **Agora** daqui: pelo relógio do celular de quem olha (mesmo viajando, em outro fuso), no mesmo papel, com a mesma letra e com o negrito, o maior e as cores. Na tela cheia do Agora de lá, dá para passar para as folhas dos próximos horários (amanhã também) e voltar, sem sair da tela cheia. Ligue lá, em **Mais › Configurações › Integrações › MemorIA**. Aqui não há nada para ligar: o CronologIA acha o MemorIA pelo arquivo `share/memoria/integracao.json`, com uma chave de acesso própria, e só lê.
