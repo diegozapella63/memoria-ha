@@ -3180,17 +3180,23 @@ class MemoriaApp extends ChatMixin(LitElement) {
   _writing(on) {
     clearInterval(this._kbTimer);
     this.toggleAttribute("writing", on);
+    // 1.42.3: the bar goes up and down with the keyboard, and the sheet takes the room that is left each time (before,
+    // it was measured only when the screen was drawn: a new sheet, opened with the keyboard, stayed short after it closed)
+    const refit = () => this._fitPad();
     if (!on) {
+      const had = this._kb;
       this._kb = 0;
       this.style.removeProperty("--kb");
+      if (had) refit();
       return;
     }
     const lift = () => {
       const kb = keyboardOver();
-      if (kb !== this._kb) {
+      if (kb !== (this._kb || 0)) {
         this._kb = kb;
         if (kb) this.style.setProperty("--kb", `${kb}px`);
         else this.style.removeProperty("--kb");
+        refit();
       }
     };
     lift();

@@ -211,5 +211,32 @@ with sync_playwright() as p:
     ctx.close()
     b.close()
 
+# 1.42.3: a folha nova abre com o teclado; quando ele fecha, a folha volta a ocupar a tela (antes ficava curta)
+with sync_playwright() as p:
+    b = p.chromium.launch()
+    ctx = b.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, color_scheme="dark", has_touch=True, is_mobile=True)
+    pg = ctx.new_page()
+    pg.goto(PREVIEW)
+    a = pg.locator("memoria-app")
+    a.locator(".page-title").first.wait_for()
+    pg.wait_for_timeout(500)
+    a.evaluate("(el) => el._openPage('ideias00001', 'new')")
+    pg.wait_for_timeout(900)
+    a.locator("textarea.ink").click()
+    pg.wait_for_timeout(400)
+    H = "(el) => Math.round(el.renderRoot.querySelector('.leaf').getBoundingClientRect().height)"
+    cheia = a.evaluate(H)
+    TECLADO = "(n) => Object.defineProperty(window, 'visualViewport', { configurable: true, value: { offsetTop: 0, height: innerHeight - n, addEventListener() {}, removeEventListener() {} } })"
+    pg.evaluate(TECLADO, 320)
+    pg.wait_for_timeout(700)
+    curta = a.evaluate(H)
+    check(cheia - curta > 250, f"teclado aberto: a folha fica com o que sobra acima dele ({cheia} -> {curta})")
+    pg.evaluate(TECLADO, 0)
+    pg.wait_for_timeout(700)
+    volta = a.evaluate(H)
+    check(abs(volta - cheia) <= 2, f"teclado fechado: a folha volta a ocupar a tela ({curta} -> {volta}, era {cheia})")
+    ctx.close()
+    b.close()
+
 print(f"{n_ok} checks passed" if not failed else f"FAILED: {failed}")
 sys.exit(1 if failed else 0)

@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.42.3
+
+- **Folha nova no celular**: depois de fechar o teclado, a folha volta a ocupar a tela (ficava curta, com um vazio embaixo).
+
 ## 1.42.2
 
 - **Conversa no celular**: o Enter do teclado vai para a próxima linha; quem envia é o botão. Com teclado de verdade, o Enter continua enviando.
