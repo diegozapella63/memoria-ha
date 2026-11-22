@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.43.0
+
+- **Modo de ver** (Mais › Configurações › Opções): **Caderno**, como sempre, ou **Rolar**. No Rolar, as folhas do bloco ficam uma embaixo da outra, como as páginas de um PDF, e a tela rola; a folha não rola por dentro. Toque numa folha para marcar as caixas, abrir os links ou escrever nela; no fim, **Folha nova**. No Agora, a folha de agora aparece inteira.
+
 ## 1.42.3
 
 - **Folha nova no celular**: depois de fechar o teclado, a folha volta a ocupar a tela (ficava curta, com um vazio embaixo).

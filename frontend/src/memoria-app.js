@@ -2615,6 +2615,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     // 1.29.1: on a wide screen, the notebook open: the left page doesn't scroll, what doesn't fit on it goes on on the right
     // page (which scrolls); each page has its own part of the sheet to write in (whole lines: a line is never split)
     const wide = this._spread();
+    const roll = this._roll();
     const sp = wide ? this._splitOf(page, viewing) : null;
     // 1.31.0: in Tela cheia the sheets go round (after the last, the first; before the first, the last), no new sheet
     const ring = readOnly && !!page && list.length > 1;
@@ -2665,10 +2666,28 @@ class MemoriaApp extends ChatMixin(LitElement) {
           </div>`,
         ]
       : [
-          html`<div class="leaf ${b.paper}">
-            ${top}${ink(page ? page.text : "", 0, 0, "")}${prevEdge}${nextEdge}
+          html`<div class="leaf ${b.paper} ${roll ? "on" : ""}" data-pid=${page ? page.id : "new"}>
+            ${top}${ink(page ? page.text : "", 0, 0, "")}${roll ? nothing : html`${prevEdge}${nextEdge}`}
           </div>`,
         ];
+    if (roll) {
+      // the block: every sheet, one under the other (the open one is the one being read or written; a tap on another opens
+      // it there); the Agora: only the sheet of now, whole
+      const all = opts.tall ? list : page ? [page] : [];
+      const still = (p, i) => html`<div class="leaf ${b.paper}" data-pid=${p.id}>
+        ${this._renderLeafTop({ created: p.created, times: p.times, num: i + 1, total: list.length + (page ? 0 : 1) }, false)}
+        <div class="ink ink-view still ${hand ? "" : "normal"}" role="button" tabindex="0" aria-label=${`Folha ${i + 1} de ${list.length} do bloco ${b.name}`}
+          @click=${(e) => !e.target.closest("a") && this._rollOpen(b.id, p.id)}
+          @keydown=${(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), this._rollOpen(b.id, p.id))}>${this._inkParts(p.text)}</div>
+      </div>`;
+      return html`<div class="pad roll ${opts.tall ? "tall" : ""}" style=${this._cv(b)}>
+        ${all.map((p, i) => (page && p.id === page.id ? leaves[0] : still(p, opts.tall ? i : idx)))}
+        ${!page ? leaves[0] : nothing}
+        ${opts.tall && page && !readOnly
+          ? html`<button class="btn ghost roll-new" @click=${() => this._openPage(b.id, "new")}>${icon("plus")}Folha nova</button>`
+          : nothing}
+      </div>`;
+    }
     return html`
       <div class="pad ${opts.tall ? "tall" : ""} ${wide ? "spread" : ""}" style=${this._cv(b)} @touchstart=${(e) => this._touchStart(e)} @touchend=${(e) => this._touchEnd(e)}>
         <div class="pad-cover"></div>
@@ -2719,12 +2738,20 @@ class MemoriaApp extends ChatMixin(LitElement) {
    * have one line or three), and a long text scrolls inside the sheet. Before, the height was a guess (the screen
    * minus 330 px) and a taller heading pushed the sheet past the end, with a scroll of the page besides the one of the sheet.
    */
+  /** Rolar: a tap on a sheet makes it the open one, right where it is (the page doesn't jump). */
+  _rollOpen(blockId, pageId) {
+    const main = this.renderRoot.querySelector("main");
+    const top = main ? main.scrollTop : 0;
+    this._setPad({ block: blockId, page: pageId });
+    this.updateComplete.then(() => main && (main.scrollTop = top));
+  }
+
   _fitPad() {
     const root = this.renderRoot;
     const main = root && root.querySelector && root.querySelector("main");
     const pad = main && main.querySelector(".pad");
     if (!pad) return;
-    if (this._view().name !== "block" || this._fullOn() || !pad.closest(".page")) {
+    if (this._view().name !== "block" || this._fullOn() || this._roll() || !pad.closest(".page")) {
       if (pad.style.getPropertyValue("--page-h")) pad.style.removeProperty("--page-h");
       return;
     }
@@ -3483,7 +3510,15 @@ class MemoriaApp extends ChatMixin(LitElement) {
    * so each page keeps its width (in Tela cheia the sidebar goes away: from 1100, as before).
    */
   _spread() {
-    return this._wide && (this._spreadWide || this._fullOn());
+    return !this._roll() && this._wide && (this._spreadWide || this._fullOn());
+  }
+
+  /**
+   * 1.43.0 (Opções › Modo de ver): Rolar instead of Caderno. The sheets are plain pages one under the other and the screen
+   * scrolls, like a PDF: no rings, no turning, no scroll inside the sheet. Tela cheia stays a notebook (the TV of the house).
+   */
+  _roll() {
+    return this._app("view", "caderno") === "rolar" && !this._fullOn();
   }
 
   /** Tela cheia is on and there is a notebook on screen (a wide screen: the block, or the Agora with one). */
@@ -3949,7 +3984,18 @@ class MemoriaApp extends ChatMixin(LitElement) {
     const periods = periodTimes(this._data);
     const cats = this._catsOn();
     const owners = this._ownersOn();
-    return html`<div class="panel" id="organizar">
+    const view = this._app("view", "caderno");
+    const modo = (k, nome, ic) => html`<button role="radio" aria-checked=${view === k ? "true" : "false"} class=${view === k ? "on" : ""}
+      @click=${() => this._saveSettings({ app: { view: k === "rolar" ? "rolar" : null } })}>${icon(ic)}${nome}</button>`;
+    return html`<div class="panel" id="modo-ver">
+      ${this._secHead("book-open", "Modo de ver")}
+      <div class="row" style="display:block">
+        <div class="label">${icon("book-open", "lbl-ic")}As folhas</div>
+        <div class="seg view-seg" role="radiogroup" aria-label="Modo de ver" style="margin-top:8px">${modo("caderno", "Caderno", "notebook")}${modo("rolar", "Rolar", "file-text")}</div>
+        <div class="hint" style="white-space:normal;margin-top:8px">${view === "rolar" ? "As folhas uma embaixo da outra: a tela rola." : "Uma folha de cada vez, como num caderno."}</div>
+      </div>
+    </div>
+    <div class="panel" id="organizar">
       ${this._secHead("library", "Blocos")}
       <div class="row switch-row">
         <div class="grow"><div class="label">${icon("tag", "lbl-ic")}Usar categorias</div><div class="hint" style="white-space:normal">${cats ? "A categoria de cada bloco e o filtro em Blocos." : "Desligado."}</div></div>

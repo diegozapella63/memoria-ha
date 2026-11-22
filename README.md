@@ -27,6 +27,7 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 ## O que tem
 
 - **Caderno de verdade**: espiral, folhas pautadas, quadriculadas, pontilhadas ou lisas, letra de mão e cor de capa por bloco.
+- **Modo de ver**: Caderno (uma folha de cada vez) ou Rolar (as folhas uma embaixo da outra, como um PDF).
 - **Virar a página com um toque**: borda direita vai para a próxima folha (ou uma nova, pronta para escrever); borda esquerda volta. Arrastar também vira.
 - **Abre sozinho**: cada bloco pode ter períodos (manhã, tarde, noite, com horários de início ajustáveis) e horários exatos.
 - **Trechos com horário**: uma folha específica pode aparecer às 10h, por exemplo a pauta de uma reunião.

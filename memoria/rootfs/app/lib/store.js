@@ -163,6 +163,7 @@ export function normalize(raw, current = {}) {
   if (paletteColor(a.accent, "")) app.accent = paletteColor(a.accent, "");
   if (a.accent_daily === false) app.accent_daily = false;
   if (typeof a.hand === "boolean") app.hand = a.hand;
+  if (a.view === "rolar") app.view = "rolar"; // 1.43.0: Modo de ver (Caderno unless Rolar)
   if (typeof a.sensor === "boolean") app.sensor = a.sensor;
   if (a.sensor_ia === true) app.sensor_ia = true;
   if (a.ai_off === true) app.ai_off = true;
@@ -471,6 +472,7 @@ export class Store {
       // Cor do dia: on unless turned off
       if ("accent_daily" in app) next.accent_daily = app.accent_daily === false ? false : undefined;
       if ("hand" in app) next.hand = Boolean(app.hand);
+      if ("view" in app) next.view = app.view === "rolar" ? "rolar" : undefined;
       if ("sensor" in app) next.sensor = Boolean(app.sensor);
       // Sensores › Chamadas de IA hoje (1.17.0; off unless turned on): sensor.memoria_ia_hoje
       if ("sensor_ia" in app) next.sensor_ia = app.sensor_ia === true ? true : undefined;

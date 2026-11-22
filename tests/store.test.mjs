@@ -38,6 +38,12 @@ test("Cor do dia: on unless turned off; choosing a color turns it off; null turn
   store.flush();
 });
 
+test("1.43.0: Modo de ver: Rolar is kept, Caderno is the default (nothing saved)", () => {
+  assert.deepEqual(normalize({ blocks: [], pages: [], app: { view: "rolar" } }).app, { view: "rolar" });
+  assert.deepEqual(normalize({ blocks: [], pages: [], app: { view: "caderno" } }).app, {});
+  assert.deepEqual(normalize({ blocks: [], pages: [], app: { view: 3 } }).app, {});
+});
+
 test("Cor do dia off survives an import; junk is dropped", () => {
   const out = normalize({ blocks: [], pages: [], app: { accent: "menta", accent_daily: false, hand: "sim" } });
   assert.deepEqual(out.app, { accent: "menta", accent_daily: false });

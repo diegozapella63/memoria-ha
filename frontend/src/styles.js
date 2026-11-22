@@ -3024,6 +3024,46 @@ export const notebookStyles = css`
   .pad.tall {
     --page-h: clamp(440px, calc(100vh - 250px), 1000px);
   }
+  /* 1.43.0: Modo de ver › Rolar: the sheets as plain pages one under the other; the screen scrolls, the sheet doesn't */
+  .pad.roll {
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .pad.roll .leaf {
+    height: auto;
+    min-height: 0;
+    border-radius: 11px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+  }
+  .pad.roll .leaf.on {
+    box-shadow: 0 0 0 2px var(--rv-accent-ink), 0 1px 3px rgba(0, 0, 0, 0.14);
+  }
+  .pad.roll .ink {
+    flex: none;
+    overflow: visible;
+    padding: 4px 18px 22px 20px;
+    border-radius: 0 0 11px 11px;
+    min-height: 96px;
+  }
+  .pad.roll .ink.still {
+    cursor: pointer;
+  }
+  .pad.roll textarea.ink:not(.behind) {
+    field-sizing: content;
+    min-height: 160px;
+    overflow: hidden;
+  }
+  .pad.roll .leaf-top {
+    padding-left: 20px;
+  }
+  .roll-new {
+    align-self: stretch;
+    min-height: 50px;
+  }
+
   .pad-cover {
     position: absolute;
     inset: 8px -8px -10px 6px;
