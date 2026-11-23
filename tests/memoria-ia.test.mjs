@@ -117,6 +117,8 @@ describe("Memória da IA: na IA e na tela", () => {
     assert.match(tela, /MEMORIA_IA_LEAD = "Uma memória só, da casa, compartilhada por todos os apps: /);
     // a lista é lida de novo quando a última leitura tem mais de meio minuto (outro app pode ter escrito)
     assert.match(tela, /MEMORIA_IA_RELER_MS = 30000;/);
+    // o campo guarda o tamanho que a pessoa deixou (textareas.js), como os outros campos de texto: nada de data-size="off"
+    assert.doesNotMatch(tela, /<textarea[^>]*data-size="off"/);
     assert.match(tela, /if \(this\._memIaAt && now - this\._memIaAt < MEMORIA_IA_RELER_MS\) return;/);
     const app = fs.readdirSync(new URL("../frontend/src/", import.meta.url)).map((f) => fs.readFileSync(new URL(`../frontend/src/${f}`, import.meta.url), "utf8")).join("\n");
     assert.match(app, /this\._renderAiPanel\(\)\} \$\{[^}]*this\._aiOn\(\)[^}]*\? this\._renderMemoriaIa\(\) : nothing\}/);

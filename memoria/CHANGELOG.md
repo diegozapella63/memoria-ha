@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.46.3
+
+- **Memória da IA**: o campo **O que lembrar** guarda o tamanho que você deixou, como os outros campos de texto.
+
 ## 1.46.2
 
 - **Memória da IA**: dois apps gravando uma frase no mesmo instante não apagam mais a frase um do outro (cada um espera a sua vez).

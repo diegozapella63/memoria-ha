@@ -78,7 +78,7 @@ export const MemoriaIaMixin = (Base) =>
         ${this._secHead("sparkles", "Memória da IA", MEMORIA_IA_LEAD)}
         <div class="mem-campo">
           <label class="label" for="mem-ia-texto">${icon("star", "lbl-ic")}O que lembrar</label>
-          <textarea id="mem-ia-texto" rows="1" maxlength="240" data-size="off" placeholder="O café é sempre o da marca azul" aria-label="O que lembrar"></textarea>
+          <textarea id="mem-ia-texto" rows="1" maxlength="240" placeholder="O café é sempre o da marca azul" aria-label="O que lembrar"></textarea>
         </div>
         <div class="ai-actions"><button class="btn primary" id="mem-ia-salvar" @click=${() => this._memoriaIaAdd()}>${icon("check")}Salvar</button></div>
         ${lista.length

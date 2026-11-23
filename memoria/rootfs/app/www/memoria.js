@@ -50,7 +50,7 @@ dialog.ss-wrap::backdrop{background:transparent}
         ${this._secHead("sparkles","Mem\xF3ria da IA",Us)}
         <div class="mem-campo">
           <label class="label" for="mem-ia-texto">${We("star","lbl-ic")}O que lembrar</label>
-          <textarea id="mem-ia-texto" rows="1" maxlength="240" data-size="off" placeholder="O café é sempre o da marca azul" aria-label="O que lembrar"></textarea>
+          <textarea id="mem-ia-texto" rows="1" maxlength="240" placeholder="O café é sempre o da marca azul" aria-label="O que lembrar"></textarea>
         </div>
         <div class="ai-actions"><button class="btn primary" id="mem-ia-salvar" @click=${()=>this._memoriaIaAdd()}>${We("check")}Salvar</button></div>
         ${t.length?c`<ul class="mem-lista">${t.map(e=>c`<li><span><b>${e.texto}</b><small>${Ws(e)}</small></span><button class="mem-del" aria-label="Apagar" @click=${()=>this._memoriaIaDel(e.id)}>${We("trash")}</button></li>`)}</ul>`:g}
