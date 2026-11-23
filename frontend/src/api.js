@@ -197,6 +197,11 @@ export class Api {
     return this.conn.sendMessagePromise({ type, ...payload });
   }
 
+  /** Memória da IA (uma só, de todos os apps): get, add {texto}, del {frase} -> {lista, max}. */
+  memoriaIa(acao, payload = {}) {
+    return this.call(`memoria/memoria_ia/${acao}`, payload);
+  }
+
   bootstrap() {
     return this.call("memoria/bootstrap");
   }

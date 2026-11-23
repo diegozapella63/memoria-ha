@@ -18,7 +18,7 @@ import { acceptUpgrade } from "./lib/ws.js";
 import { HAClient } from "./lib/ha.js";
 import { Store } from "./lib/store.js";
 import { AI, comLembrancas } from "./lib/ai.js";
-import { lembrancasTexto } from "./lib/lembrancas.js";
+import * as memoriaIa from "./lib/memoria-ia.js";
 import { Voice, readRaw, MAX_VOICE_BYTES } from "./lib/voice.js";
 import { Sensor } from "./lib/sensor.js";
 import { AiUsage, resultOf } from "./lib/usage.js";
@@ -79,7 +79,9 @@ const correria = new Correria({
 });
 const correriaOn = () => store.data.app.correria === true;
 // as lembranças da casa (do CorrerIA) vão para a IA daqui, só com a opção CorrerIA ligada
-comLembrancas(() => (correriaOn() ? lembrancasTexto() : ""));
+// 1 memória só, da casa, de todos os apps da família: na pasta share do Home Assistant, fora da pasta de cada app
+const MEMORIA_ARQ = process.env.MEMORIA_IA_ARQ || path.join(path.dirname(SHARE_DIR), "familia", "memoria_ia.json");
+comLembrancas(() => memoriaIa.memoriaTexto(MEMORIA_ARQ));
 // the other apps of the family (the CronologIA): what holds now, always on, with the key of share/memoria/integracao.json
 const integracao = new Integracao({ dataDir: DATA_DIR, shareDir: SHARE_DIR, port: PORT, version: VERSION, log });
 const watchers = new Set(); // {session, id}
@@ -192,6 +194,12 @@ class Session {
 
       case "memoria/voice/status":
         return this.result(id, await voice.status({ fresh: !!msg.fresh }));
+
+      // Mais › Configurações › Integrações › Memória da IA: uma memória só, da casa, de todos os apps (lib/memoria-ia.js)
+      case "memoria/memoria_ia/get":
+      case "memoria/memoria_ia/add":
+      case "memoria/memoria_ia/del":
+        return this.result(id, memoriaIa.comando(type.split("/")[2], msg, "MemorIA", (this.user && this.user.name) || "", MEMORIA_ARQ));
 
       // Mais › Configurações › Integrações › Uso da IA
       case "memoria/usage":

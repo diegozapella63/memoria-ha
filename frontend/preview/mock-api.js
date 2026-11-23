@@ -235,6 +235,17 @@ export class MockApi {
   }
 
   // Uso da IA, invented: a few calls in the last days
+  /** Memória da IA: na prévia, uma lista inventada que vive só nesta página. */
+  async memoriaIa(acao, p = {}) {
+    const m = (this._memIa = this._memIa || [{ id: "m1", texto: "O café é sempre o da marca azul", em: "2026-11-02T09:30:00-0300", app: "MemorIA", quem: "Ana" }]);
+    if (acao === "add") {
+      const texto = String(p.texto || "").replace(/\s+/g, " ").trim().slice(0, 240);
+      if (texto.length < 3) throw new Error("Escreva o que é para lembrar.");
+      m.push({ id: `m${m.length + 1}${Date.now()}`, texto, em: "2026-11-04T10:00:00-0300", app: "MemorIA", quem: "Ana" });
+    } else if (acao === "del") this._memIa = m.filter((x) => x.id !== p.frase);
+    return { lista: this._memIa.map((x) => ({ ...x })), max: 60 };
+  }
+
   async usage() {
     await wait(60);
     const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

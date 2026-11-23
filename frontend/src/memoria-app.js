@@ -1,5 +1,6 @@
 import { LitElement, html, nothing, repeat, live, unsafeSVG, unsafeCSS } from "../vendor/lit-all.min.js";
 import { ICONS } from "./icons.js";
+import { MemoriaIaMixin, memoriaIaStyles } from "./memoria-ia.js";
 import { ensureFonts } from "./fonts.js";
 import { styles, notebookStyles } from "./styles.js";
 import { aboutPage, aboutStyles } from "./about.js";
@@ -116,7 +117,7 @@ const WIDE_MIN = 1100;
 const SPREAD_SIDE_MIN = 1200;
 const reduceMotion = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
-class MemoriaApp extends ChatMixin(LitElement) {
+class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
   static properties = {
     api: { attribute: false },
     env: { attribute: false },
@@ -145,7 +146,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     _correria: { state: true },
   };
 
-  static styles = [styles, notebookStyles, aboutStyles, unsafeCSS(lookStyles), unsafeCSS(chatStyles), unsafeCSS(usageStyles)];
+  static styles = [styles, notebookStyles, aboutStyles, unsafeCSS(lookStyles), unsafeCSS(chatStyles), unsafeCSS(usageStyles), unsafeCSS(memoriaIaStyles)];
 
   constructor() {
     super();
@@ -3884,6 +3885,11 @@ class MemoriaApp extends ChatMixin(LitElement) {
   }
 
   /** Section heading of a screen of Mais: the icon in a soft square, a big title and, optionally, a line about it. */
+  /** Memória da IA: the command of the server (get, add, del) -> {lista, max}. */
+  _memoriaIaCall(acao, payload = {}) {
+    return this.api.memoriaIa(acao, payload);
+  }
+
   _secHead(ic, title, lead = null) {
     return html`<div class="mais-head"><span class="mais-ic" aria-hidden="true">${icon(ic)}</span><h2>${title}</h2></div>${lead ? html`<p class="panel-lead">${lead}</p>` : nothing}`;
   }
@@ -3931,7 +3937,7 @@ class MemoriaApp extends ChatMixin(LitElement) {
     let body;
     // the order of the family: the other apps (none here) › CorrerIA › IA › Falar › Uso da IA › Sensores
     if (tab === "integracoes")
-      body = html`${this._renderCorreriaPanel()} ${this._renderAiPanel()} ${this._aiOn() && this.api.voiceStatus ? this._renderVoicePanel() : nothing}
+      body = html`${this._renderCorreriaPanel()} ${this._renderAiPanel()} ${this._aiOn() && this.api.memoriaIa ? this._renderMemoriaIa() : nothing} ${this._aiOn() && this.api.voiceStatus ? this._renderVoicePanel() : nothing}
         ${this._aiOn() ? this._renderUsage() : nothing} ${this._renderSensorPanel()}`;
     else if (tab === "dados") body = this._renderDataPanel();
     else if (tab === "aparencia") body = this._renderAppearanceTab();
