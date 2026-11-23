@@ -9,6 +9,7 @@ import { ICONS } from "./icons.js";
 const icon = (name, cls = "") =>
   html`<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${unsafeSVG(ICONS[name] || ICONS.star || "")}</svg>`;
 
+export const MEMORIA_IA_RELER_MS = 30000;
 export const MEMORIA_IA_LEAD = "Uma memória só, da casa, compartilhada por todos os apps: o que você escreve aqui a IA lembra em toda conversa, em qualquer um deles.";
 
 /** "02/11/2026 09:30 · ResolvIA · Ana" de uma frase {em, app, quem}. */
@@ -36,9 +37,11 @@ export const memoriaIaStyles = `
 
 export const MemoriaIaMixin = (Base) =>
   class extends Base {
-    /** Reads the list once (and again with again = true: another app may have written). */
-    _memoriaIaLoad(again = false) {
-      if (this._memIa !== undefined && !again) return;
+    /** Reads the list when the card shows, and again when the last reading is older than half a minute (another app of
+     *  the house may have written: the memory is one, of all of them). */
+    _memoriaIaLoad(now = Date.now()) {
+      if (this._memIaAt && now - this._memIaAt < MEMORIA_IA_RELER_MS) return;
+      this._memIaAt = now;
       if (this._memIa === undefined) this._memIa = null;
       this._memoriaIaDo("get");
     }

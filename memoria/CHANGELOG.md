@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.46.1
+
+- **Memória da IA**: o cartão mostra o que foi escrito em outro app sem precisar fechar e abrir este (a lista é lida de novo ao voltar ao cartão).
+
 ## 1.46.0
 
 - **Memória da IA** (Mais › Configurações › Integrações, depois do IA): agora o cartão existe aqui. É uma memória só, da casa, compartilhada por todos os apps: o que você escreve aqui a IA lembra em toda conversa, em qualquer um deles, e o que foi escrito nos outros aparece aqui, com o nome do app.
