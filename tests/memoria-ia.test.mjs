@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { spawn } from "node:child_process";
 import { SO_MATERIAL, soMaterial, comLembrancas } from "../memoria/rootfs/app/lib/ai.js";
 import * as M from "../memoria/rootfs/app/lib/memoria-ia.js";
 
@@ -66,6 +67,30 @@ describe("Memória da IA: o arquivo da casa", () => {
     assert.deepEqual(M.comando("del", { frase: r.lista[0].id }, "MemorIA", "", arq).lista, []);
     assert.throws(() => M.comando("add", null, "MemorIA", "", arq), M.ErroMemoria);
     assert.equal(M.agoraIso(new Date(2026, 10, 2, 9, 30, 5)).slice(0, 19), "2026-11-02T09:30:05");
+  });
+});
+
+describe("Memória da IA: a vez de gravar entre os apps", () => {
+  it("quatro apps gravando no mesmo instante: nenhuma frase se perde, e nada fica para trás", async () => {
+    const arq = novo();
+    const lib = new URL("../memoria/rootfs/app/lib/memoria-ia.js", import.meta.url).href;
+    const codigo = `const M = await import(${JSON.stringify(lib)}); for (let i = 0; i < 15; i++) M.lembrar("frase " + process.argv[2] + " número " + i, "App" + process.argv[2], "", process.argv[1]);`;
+    const saidas = await Promise.all([0, 1, 2, 3].map((k) => new Promise((ok) => spawn(process.execPath, ["--input-type=module", "-e", codigo, arq, String(k)], { stdio: "ignore", env: { ...process.env, NODE_TEST_CONTEXT: undefined } }).on("exit", ok))));
+    assert.deepEqual(saidas, [0, 0, 0, 0]);
+    assert.equal(M.ler(arq, Date.now(), true).length, 60);
+    assert.deepEqual(fs.readdirSync(path.dirname(arq)), ["memoria_ia.json"], "sem trava nem arquivo temporário");
+  });
+
+  it("a trava de um app que caiu sai sozinha; a de outro app não é tirada por quem não a pôs", () => {
+    const arq = novo();
+    M.lembrar("a primeira frase", "MemorIA", "", arq);
+    const trava = `${arq}.trava`;
+    fs.mkdirSync(trava);
+    const velha = new Date(Date.now() - 60000);
+    fs.utimesSync(trava, velha, velha);
+    assert.equal(M.lembrar("depois da trava velha", "MemorIA", "", arq).length, 2);
+    assert.equal(fs.existsSync(trava), false);
+    assert.equal(M.esquecer(M.ler(arq, Date.now(), true)[0].id, arq).length, 1);
   });
 });
 

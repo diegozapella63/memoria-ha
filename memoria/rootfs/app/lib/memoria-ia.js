@@ -66,8 +66,52 @@ export function ler(arquivo = ARQUIVO, agora = Date.now(), fresco = false) {
   return lista.map((x) => ({ ...x }));
 }
 
+const ESPERA_MS = 3000; // quanto esperar a vez de gravar
+const VELHA_MS = 10000; // uma trava mais velha que isto ficou de um app que caiu
+const dorme = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+/** A vez de gravar entre os apps: uma pasta ao lado do arquivo (criar a pasta é um passo só, também entre os apps que
+ *  dividem a pasta share). Sem ela, dois apps gravando no mesmo instante liam a mesma lista e um apagava a frase do outro.
+ *  Se a vez não vem (a pasta share não deixa criar, ou outro app demora), grava assim mesmo: melhor que não guardar. */
+function naVez(arquivo, fn) {
+  const trava = `${arquivo}.trava`;
+  const fim = Date.now() + ESPERA_MS;
+  let tenho = false;
+  for (;;) {
+    try {
+      fs.mkdirSync(path.dirname(arquivo), { recursive: true });
+      fs.mkdirSync(trava);
+      tenho = true;
+      break;
+    } catch (e) {
+      if (!e || e.code !== "EEXIST") break;
+      try {
+        if (Date.now() - fs.statSync(trava).mtimeMs > VELHA_MS) {
+          fs.rmdirSync(trava);
+          continue;
+        }
+      } catch {
+        /* sumiu agora, ou o caminho não é uma pasta: tenta de novo, até o prazo */
+      }
+    }
+    if (Date.now() >= fim) break;
+    dorme(10 + Math.floor(Math.random() * 20));
+  }
+  try {
+    return fn();
+  } finally {
+    if (tenho) {
+      try {
+        fs.rmdirSync(trava);
+      } catch {
+        /* já saiu */
+      }
+    }
+  }
+}
+
 function gravar(arquivo, lista) {
-  const tmp = `${arquivo}.${process.pid}.tmp`;
+  const tmp = `${arquivo}.${process.pid}.${novoId()}.tmp`;
   try {
     fs.mkdirSync(path.dirname(arquivo), { recursive: true });
     fs.writeFileSync(tmp, JSON.stringify({ versao: 1, gravado_em: agoraIso(), lista }), { mode: 0o600 });
@@ -83,22 +127,26 @@ function gravar(arquivo, lista) {
 export function lembrar(texto, app, quem = "", arquivo = ARQUIVO) {
   const t = um(texto).slice(0, MAX_LETRAS);
   if (t.length < 3) throw new ErroMemoria("Escreva o que é para lembrar.");
-  const lista = ler(arquivo, Date.now(), true); // lê de novo: outro app pode ter escrito
-  if (lista.some((x) => x.texto.toLowerCase() === t.toLowerCase())) return lista;
-  if (lista.length >= MAX_FRASES) throw new ErroMemoria(`A memória já tem ${MAX_FRASES} frases. Apague alguma.`);
-  const f = { id: novoId(), texto: t, em: agoraIso(), app: String(app || "") };
-  if (quem) f.quem = String(quem).slice(0, 60);
-  lista.push(f);
-  gravar(arquivo, lista);
-  return lista;
+  return naVez(arquivo, () => {
+    const lista = ler(arquivo, Date.now(), true); // lê de novo: outro app pode ter escrito
+    if (lista.some((x) => x.texto.toLowerCase() === t.toLowerCase())) return lista;
+    if (lista.length >= MAX_FRASES) throw new ErroMemoria(`A memória já tem ${MAX_FRASES} frases. Apague alguma.`);
+    const f = { id: novoId(), texto: t, em: agoraIso(), app: String(app || "") };
+    if (quem) f.quem = String(quem).slice(0, 60);
+    lista.push(f);
+    gravar(arquivo, lista);
+    return lista;
+  });
 }
 
 /** Tira uma frase pelo id. Devolve a lista. */
 export function esquecer(id, arquivo = ARQUIVO) {
-  const lista = ler(arquivo, Date.now(), true);
-  const fica = lista.filter((x) => x.id !== String(id || ""));
-  if (fica.length !== lista.length) gravar(arquivo, fica);
-  return fica;
+  return naVez(arquivo, () => {
+    const lista = ler(arquivo, Date.now(), true);
+    const fica = lista.filter((x) => x.id !== String(id || ""));
+    if (fica.length !== lista.length) gravar(arquivo, fica);
+    return fica;
+  });
 }
 
 /** O bloco que vai na frente das instruções da IA ("" sem nada na memória). */

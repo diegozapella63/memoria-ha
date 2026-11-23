@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.46.2
+
+- **Memória da IA**: dois apps gravando uma frase no mesmo instante não apagam mais a frase um do outro (cada um espera a sua vez).
+
 ## 1.46.1
 
 - **Memória da IA**: o cartão mostra o que foi escrito em outro app sem precisar fechar e abrir este (a lista é lida de novo ao voltar ao cartão).
