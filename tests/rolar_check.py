@@ -80,11 +80,15 @@ with sync_playwright() as p:
         # um toque numa folha abre essa folha ali mesmo (a tela não pula)
         outra = next(i for i in m["ids"] if i not in m["on"])
         a.evaluate("(el) => { el.renderRoot.querySelector('main').scrollTop = 60; }")
+        # o Playwright rola até a folha antes do toque quando ela não está à vista (a fonte do servidor de testes é outra):
+        # o que vale é a tela ficar onde estava na hora do toque
+        a.locator(f'.pad .leaf[data-pid="{outra}"] .ink.still').scroll_into_view_if_needed()
+        antes = a.evaluate("(el) => el.renderRoot.querySelector('main').scrollTop")
         a.locator(f'.pad .leaf[data-pid="{outra}"] .ink.still').click(position={"x": 60, "y": 20})
         pg.wait_for_timeout(400)
         m2 = a.evaluate(MEDE)
         check(m2["on"] == [outra], f"{w}: o toque abre a outra folha ({m2['on']})")
-        check(abs(m2["tela"][2] - 60) <= 2, f"{w}: a tela fica onde estava ({m2['tela'][2]})")
+        check(abs(m2["tela"][2] - antes) <= 2, f"{w}: a tela fica onde estava ({m2['tela'][2]}, antes {antes})")
         # escrever: a folha cresce com o texto, sem rolar por dentro
         ta = a.locator(f'.pad .leaf[data-pid="{outra}"] textarea.ink')
         h0 = a.evaluate("(el, id) => el.renderRoot.querySelector(`.leaf[data-pid=\"${id}\"]`).getBoundingClientRect().height", outra)

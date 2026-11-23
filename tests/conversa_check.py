@@ -233,7 +233,7 @@ with sync_playwright() as p:
         a.evaluate("(el) => el._go('/config')")
         pg.wait_for_timeout(500)
         heads = [h.strip() for h in a.locator("[role=tabpanel] .mais-head h2").all_inner_texts()]
-        check(heads == ["CorrerIA", "IA", "Falar", "Uso da IA", "Sensores no Home Assistant"], f"{tag}: Integrações in the order of the family ({heads})")
+        check(heads == ["CorrerIA", "IA", "Memória da IA", "Falar", "Uso da IA", "Sensores no Home Assistant"], f"{tag}: Integrações in the order of the family ({heads})")
         sw = a.locator(".ai-switch input[role=switch]")
         check(sw.is_checked(), f"{tag}: Usar IA on")
         pg.screenshot(path=str(SHOTS / f"integracoes-ia-{scheme}-{w}.png"))
