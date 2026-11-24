@@ -77,8 +77,19 @@ with sync_playwright() as p:
         check(tops[1] > tops[0], f"{w}: a segunda embaixo da primeira ({tops})")
         pg.screenshot(path=str(SHOTS / f"rolar-bloco-{w}.png"))
 
-        # um toque numa folha abre essa folha ali mesmo (a tela não pula)
+        # 1.46.5 (o dono: "os 3 pontinhos da folha devem aparecer sempre, e não só quando clica"): toda folha com os três
+        # pontinhos; os de uma folha que não é a aberta abrem a folha e as opções dela
         outra = next(i for i in m["ids"] if i not in m["on"])
+        check(a.locator('.pad .leaf[data-pid] .leaf-top button.icon-btn[aria-label="Opções da folha"]').count() == 2, f"{w}: os três pontinhos nas 2 folhas")
+        a.locator(f'.pad .leaf[data-pid="{outra}"] .leaf-top button.icon-btn').click()
+        pg.wait_for_timeout(500)
+        check(a.evaluate("(el) => [el._sheet, el._form && el._form.page]") == ["pagemenu", outra] and a.evaluate(MEDE)["on"] == [outra], f"{w}: os pontinhos da outra folha abrem as opções dela")
+        pg.go_back()
+        pg.wait_for_timeout(400)
+        a.locator(f'.pad .leaf[data-pid="{m["on"][0]}"] .ink.still').click(position={"x": 60, "y": 20})
+        pg.wait_for_timeout(400)
+        check(a.evaluate(MEDE)["on"] == m["on"], f"{w}: de volta à primeira folha")
+        # um toque numa folha abre essa folha ali mesmo (a tela não pula)
         a.evaluate("(el) => { el.renderRoot.querySelector('main').scrollTop = 60; }")
         # o Playwright rola até a folha antes do toque quando ela não está à vista (a fonte do servidor de testes é outra):
         # o que vale é a tela ficar onde estava na hora do toque

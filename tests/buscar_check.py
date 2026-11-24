@@ -61,6 +61,8 @@ with sync_playwright() as p:
         hint = a.locator(".search-blocks .block-row .hint").first.inner_text()
         check(hint.startswith("Trabalho · "), f"{tag}: the category in the line ({hint})")
         check(a.evaluate(OVER) == [], f"{tag}: inside the screen {a.evaluate(OVER)}")
+        # 1.46.5: opening the tab does not focus the field (the keyboard of the phone stays down), as in ResolvIA
+        check(a.evaluate("(el) => !el.renderRoot.activeElement || el.renderRoot.activeElement.tagName !== 'INPUT'"), f"{tag}: Buscar opens without the focus in the field")
         pg.screenshot(path=str(SHOTS / f"buscar-{scheme}-{w}-blocos.png"))
         a.locator(".search-box input").fill("diar")
         pg.wait_for_timeout(300)

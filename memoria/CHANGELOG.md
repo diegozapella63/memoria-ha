@@ -1,5 +1,11 @@
 # Mudanças
 
+## 1.46.5
+
+- **Agora**: espiando outro horário, o Voltar do celular volta para a folha de agora (antes saía do app).
+- **Modo Rolar**: os três pontinhos aparecem em toda folha, não só na que está aberta.
+- **Buscar**: a aba abre sem o foco no campo, e o teclado não sobe sozinho.
+
 ## 1.46.4
 
 - **Conversa**: abre sempre no chat. As perguntas prontas ou o **Editar perguntas** que ficaram abertos fecham ao sair.

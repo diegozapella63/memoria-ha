@@ -125,6 +125,8 @@ Aqui não há aviso no celular (o componente Quem recebe/Testar no meu celular n
 
 1.46.4 (o dono: "sempre que eu clicar na conversa da IA deve iniciar com o chat"; vale em todos os apps): `chatFresh()` no `chat.js` (igual nos três) fecha as perguntas prontas, o Editar perguntas e o menu do clipe; o `_openChat` do `chat-panel.js` chama.
 
+1.46.5, três pedidos do dono: (1) "se eu clico em voltar ele sai do app" (espiando outro horário no Agora): o `_peekAt` põe uma entrada no histórico (`rvPeek`, uma só, também trocando de horário); o `_backToNow` volta por ela (`history.back()`) e o `_onPopState` chama o `_peekOff`; o `_go` para outra tela troca a entrada do espiar pela da tela nova (`overPeek`). (2) "os 3 pontinhos da folha devem aparecer sempre": no modo Rolar, toda folha tem o botão (`_renderLeafTop(..., pageId)`); o de uma folha que não é a aberta abre a folha e as opções dela (`_openPageMenu(id)`). (3) "faz igual o ResolvIA e não foca no buscar": a aba Buscar abre sem o foco no campo. Testes: `tempo_check`, `rolar_check` e `buscar_check`.
+
 ## Conversa com o dono
 
 Respostas curtas, em português. Ao terminar uma mudança: o que mudou, a versão e se está publicado. Ele usa o app do Home Assistant no Android: pense no Voltar do celular, no teclado e na câmera.

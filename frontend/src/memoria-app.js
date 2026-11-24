@@ -424,10 +424,8 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
       const el = this.renderRoot.querySelector(".turn .face.front .ink");
       if (el) el.scrollTop = this._turn.snap.scroll || 0;
     }
-    if (changed.has("_path") && this._view().name === "search") {
-      const input = this.renderRoot.querySelector(".search-box input");
-      if (input) input.focus({ preventScroll: true });
-    }
+    // 1.46.5 (o dono: "faz igual o ResolvIA e não foca no buscar na hora de abrir a aba"): a aba Buscar abre sem o foco
+    // no campo, para o teclado não subir sozinho
     this._fitTitles();
     if (this._scrollChip) {
       this._scrollChip = false;
@@ -994,12 +992,26 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
   _peekAt(group) {
     const { cur } = this._slot();
     this._choice = null;
-    this._peek = cur && group.min === cur.min ? null : group;
+    const peek = cur && group.min === cur.min ? null : group;
+    if (!peek) return this._backToNow();
+    this._peek = peek;
+    // 1.46.5 (o dono: "se eu clico em voltar ele sai do app"): espiar outro horário ocupa uma entrada do histórico, e o
+    // Voltar do celular volta para a folha de agora
+    try {
+      if (!(history.state && history.state.rvPeek)) history.pushState({ ...(history.state || {}), rvPeek: true }, "");
+    } catch (e) {
+      /* ignore */
+    }
     this._setPad(this._nowPad());
     this._haptic("light");
   }
 
   _backToNow() {
+    if (this._peek && history.state && history.state.rvPeek && !history.state.rvSheet) return history.back(); // the popstate leaves it
+    this._peekOff();
+  }
+
+  _peekOff() {
     this._peek = null;
     this._choice = null;
     this._scrollChip = true;
@@ -1145,9 +1157,11 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
     if (this._sheet) this._closeSheet();
     // Let the sheet's history entry go first, so Back never lands on a stale screen.
     if (this._popping) await this._popping;
-    const depth = ((history.state && history.state.rvDepth) || 0) + (replace ? 0 : 1);
+    // 1.46.5: saindo do Agora espiando outro horário, a entrada do espiar vira a da tela nova (não sobra no caminho da volta)
+    const overPeek = !replace && !!(history.state && history.state.rvPeek && !history.state.rvSheet);
+    const depth = ((history.state && history.state.rvDepth) || 0) + (replace || overPeek ? 0 : 1);
     const state = { ...(extra || {}), rvDepth: depth, rvPath: path };
-    if (replace) history.replaceState(state, "");
+    if (replace || overPeek) history.replaceState(state, "");
     else history.pushState(state, "");
     this._path = path;
     this._enterView();
@@ -1299,6 +1313,8 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
       this._sheet = null;
       this._form = null;
     }
+    // Agora: espiando outro horário, o Voltar volta para a folha de agora (1.46.5)
+    if (this._peek && !(history.state && history.state.rvPeek) && !this._sheet) this._peekOff();
     // Buscar › Selecionar: Back leaves it
     if (this._sel && !(history.state && history.state.rvSel) && !this._sheet) this._sel = null;
     const path = (history.state && history.state.rvPath) || "";
@@ -1960,9 +1976,16 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
 
   // ------------------------------------------------------------ page menu
 
-  _openPageMenu() {
+  /** 1.46.5 (o dono: "os 3 pontinhos da folha devem aparecer sempre, e não só quando clica"): no modo Rolar, toda folha tem
+   *  os três pontinhos; os de uma folha que não é a aberta abrem primeiro a folha (as opções valem para a folha aberta). */
+  async _openPageMenu(id = null) {
     const pad = this._pad;
-    const page = pad && pad.page !== "new" ? this._page(pad.page) : null;
+    if (id && pad && pad.page !== id) {
+      this._rollOpen(pad.block, id);
+      await this.updateComplete;
+    }
+    const now = this._pad;
+    const page = now && now.page !== "new" ? this._page(now.page) : null;
     if (!page) return;
     this._openSheet("pagemenu", { page: page.id });
   }
@@ -2676,7 +2699,7 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
       // it there); the Agora: only the sheet of now, whole
       const all = opts.tall ? list : page ? [page] : [];
       const still = (p, i) => html`<div class="leaf ${b.paper}" data-pid=${p.id}>
-        ${this._renderLeafTop({ created: p.created, times: p.times, num: i + 1, total: list.length + (page ? 0 : 1) }, false)}
+        ${this._renderLeafTop({ created: p.created, times: p.times, num: i + 1, total: list.length + (page ? 0 : 1) }, true, false, false, p.id)}
         <div class="ink ink-view still ${hand ? "" : "normal"}" role="button" tabindex="0" aria-label=${`Folha ${i + 1} de ${list.length} do bloco ${b.name}`}
           @click=${(e) => !e.target.closest("a") && this._rollOpen(b.id, p.id)}
           @keydown=${(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), this._rollOpen(b.id, p.id))}>${this._inkParts(p.text)}</div>
@@ -3127,14 +3150,14 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
     if (y < ta.scrollTop || y > ta.scrollTop + ta.clientHeight - 40) ta.scrollTop = Math.max(0, y - ta.clientHeight / 3);
   }
 
-  _renderLeafTop(s, menu, tools = false, editing = false) {
+  _renderLeafTop(s, menu, tools = false, editing = false, pageId = null) {
     // the box is a shortcut to start a list; while writing, it and the rest are in the bar at the bottom (1.28.0)
     const keep = (e) => e.preventDefault();
     return html`<div class="leaf-top">
       <span class="when">${s.created ? writtenAt(s.created, new Date(this._now)) : "folha nova"}</span>
       ${(s.times || []).length ? html`<span class="pin">${icon("clock")}${s.times.join(" · ")}</span>` : nothing}
       <span class="num">${s.num}/${s.total}</span>
-      ${menu ? html`<button class="icon-btn" @click=${() => this._openPageMenu()} aria-label="Opções da folha">${icon("ellipsis")}</button>` : html`<span class="icon-btn ghost"></span>`}
+      ${menu ? html`<button class="icon-btn" @click=${() => this._openPageMenu(pageId)} aria-label="Opções da folha">${icon("ellipsis")}</button>` : html`<span class="icon-btn ghost"></span>`}
     </div>`;
   }
 

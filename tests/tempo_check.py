@@ -128,6 +128,18 @@ with sync_playwright() as p:
         a.locator(".now-btn").click()
         pg.wait_for_timeout(400)
         check(a.locator(".now-idle").count() == 1, f"{tag}: Voltar para agora: nothing now")
+        # 1.46.5: peeking takes a history entry: the Back of the phone goes back to now (it used to leave the app)
+        antes = pg.evaluate("history.length")
+        a.locator(".tline .tchip").first.click()
+        pg.wait_for_timeout(400)
+        check(status(a).startswith("Espiando 05:00") and pg.evaluate("!!(history.state && history.state.rvPeek)"), f"{tag}: peeking again, with its history entry")
+        a.locator(".tline .tchip").nth(1).click()
+        pg.wait_for_timeout(300)
+        check(pg.evaluate("history.length") == antes + (0 if pg.evaluate("history.length") == antes else 1) and status(a).startswith("Espiando 10:00"), f"{tag}: another time: the same entry")
+        pg.go_back()
+        pg.wait_for_timeout(500)
+        check(a.locator(".now-idle").count() == 1 and a.evaluate("(el) => el._peek === null") and pg.evaluate("!(history.state && history.state.rvPeek)"),
+              f"{tag}: the Back of the phone: back to now, still in the app")
 
         # ---- the next day at 22:00: the sheet again, clean
         at(10, 22, 20)
