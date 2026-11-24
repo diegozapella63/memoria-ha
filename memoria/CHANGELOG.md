@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.47.1
+
+- **Mais › Sobre**: o **OdisseIA** (os filmes e as séries da casa) entra na lista dos apps.
+
 ## 1.47.0
 
 - **CorrerIA**: a IA do CorrerIA consegue ver os blocos em que ninguém escreve há um tempo (para a etapa **Anotações: Blocos parados** das rondas).
