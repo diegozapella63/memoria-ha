@@ -119,6 +119,8 @@ describe("Memória da IA: na IA e na tela", () => {
     assert.match(tela, /MEMORIA_IA_RELER_MS = 30000;/);
     // o campo guarda o tamanho que a pessoa deixou (textareas.js), como os outros campos de texto: nada de data-size="off"
     assert.doesNotMatch(tela, /<textarea[^>]*data-size="off"/);
+    // e cresce com o texto, sem rolagem dentro dele (uma linha continua com 50 px)
+    assert.match(tela, /height: auto; min-height: 50px; max-height: 40vh; field-sizing: content; resize: vertical;/);
     assert.match(tela, /if \(this\._memIaAt && now - this\._memIaAt < MEMORIA_IA_RELER_MS\) return;/);
     const app = fs.readdirSync(new URL("../frontend/src/", import.meta.url)).map((f) => fs.readFileSync(new URL(`../frontend/src/${f}`, import.meta.url), "utf8")).join("\n");
     assert.match(app, /this\._renderAiPanel\(\)\} \$\{[^}]*this\._aiOn\(\)[^}]*\? this\._renderMemoriaIa\(\) : nothing\}/);

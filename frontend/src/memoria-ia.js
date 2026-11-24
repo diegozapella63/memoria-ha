@@ -21,8 +21,9 @@ export function memoriaIaDe(x) {
 export const memoriaIaStyles = `
   .mem-ia .mem-campo { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
   .mem-ia .mem-campo .label { display: flex; align-items: center; gap: 8px; }
-  .mem-ia textarea { width: 100%; box-sizing: border-box; height: 50px; min-height: 50px; resize: vertical; padding: 13px 14px; border-radius: 12px;
+  .mem-ia textarea { width: 100%; box-sizing: border-box; height: auto; min-height: 50px; max-height: 40vh; field-sizing: content; resize: vertical; padding: 12px 14px; border-radius: 12px;
     border: 1px solid var(--rv-line-strong); background: var(--rv-surface-2); color: var(--rv-text); font: inherit; }
+  .mem-ia textarea::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mem-ia textarea:focus { outline: none; border-color: var(--rv-accent); }
   .mem-ia .ai-actions { margin-top: 10px; }
   .mem-ia .mem-lista { list-style: none; margin: 14px 0 0; padding: 0; }

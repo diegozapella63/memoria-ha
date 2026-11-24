@@ -15,6 +15,8 @@
 // check (send what was said) and the clip gives way to Cancelar (onMicCancel: the microphone stops, nothing is sent).
 
 const UI = { quick: false, editing: null, menu: false };
+// a Conversa abre sempre no chat: as perguntas prontas, o Editar perguntas e o menu do clipe que ficaram abertos fecham
+export const chatFresh = () => Object.assign(UI, { quick: false, editing: null, menu: false });
 /** O celular, com o teclado da tela (sem mouse nem teclado de verdade): ali o Enter da Conversa é uma linha nova. */
 export const noCelular = () => typeof matchMedia === "function" && matchMedia("(hover: none) and (pointer: coarse)").matches;
 

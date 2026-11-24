@@ -121,6 +121,10 @@ Aqui não há aviso no celular (o componente Quem recebe/Testar no meu celular n
 
 1.46.3 (o dono: "eu aumento o campo e quando volta, volta ao original; ele deve salvar o tamanho, isso era nosso padrão"): o campo do cartão Memória da IA tinha `data-size="off"` e ficava fora do `textareas.js`; saiu. O `data-size="off"` é só para o campo que cresce sozinho (a caixa da Conversa, as perguntas prontas, o item lido pela IA).
 
+1.46.4 (o dono: "esses campos com scroll quebram as pernas"): o campo da Memória da IA cresce com o texto (`field-sizing: content`, até 40vh), sem rolagem dentro dele; uma linha continua com 50 px e o tamanho puxado pelo canto continua guardado.
+
+1.46.4 (o dono: "sempre que eu clicar na conversa da IA deve iniciar com o chat"; vale em todos os apps): `chatFresh()` no `chat.js` (igual nos três) fecha as perguntas prontas, o Editar perguntas e o menu do clipe; o `_openChat` do `chat-panel.js` chama.
+
 ## Conversa com o dono
 
 Respostas curtas, em português. Ao terminar uma mudança: o que mudou, a versão e se está publicado. Ele usa o app do Home Assistant no Android: pense no Voltar do celular, no teclado e na câmera.

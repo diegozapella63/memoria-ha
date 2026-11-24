@@ -1,5 +1,10 @@
 # Mudanças
 
+## 1.46.4
+
+- **Conversa**: abre sempre no chat. As perguntas prontas ou o **Editar perguntas** que ficaram abertos fecham ao sair.
+- **Memória da IA**: o campo **O que lembrar** cresce com o texto, sem a barra de rolagem dentro dele.
+
 ## 1.46.3
 
 - **Memória da IA**: o campo **O que lembrar** guarda o tamanho que você deixou, como os outros campos de texto.
