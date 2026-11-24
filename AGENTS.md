@@ -127,6 +127,8 @@ Aqui não há aviso no celular (o componente Quem recebe/Testar no meu celular n
 
 1.46.5, três pedidos do dono: (1) "se eu clico em voltar ele sai do app" (espiando outro horário no Agora): o `_peekAt` põe uma entrada no histórico (`rvPeek`, uma só, também trocando de horário); o `_backToNow` volta por ela (`history.back()`) e o `_onPopState` chama o `_peekOff`; o `_go` para outra tela troca a entrada do espiar pela da tela nova (`overPeek`). (2) "os 3 pontinhos da folha devem aparecer sempre": no modo Rolar, toda folha tem o botão (`_renderLeafTop(..., pageId)`); o de uma folha que não é a aberta abre a folha e as opções dela (`_openPageMenu(id)`). (3) "faz igual o ResolvIA e não foca no buscar": a aba Buscar abre sem o foco no campo. Testes: `tempo_check`, `rolar_check` e `buscar_check`.
 
+1.47.0 (o dono: "pode criar" as ferramentas que faltavam para as rondas): o `resumo` do CorrerIA aceita `parados_ha_dias` (1 a 3650): só os blocos cujo último movimento (a folha mudada por último; sem folhas, o bloco) tem pelo menos esse tempo, com `parado_ha_dias` em cada um; para a etapa Anotações: Blocos parados do CorrerIA 1.35.0. Teste no `tests/ferramentas.test.mjs`.
+
 ## Conversa com o dono
 
 Respostas curtas, em português. Ao terminar uma mudança: o que mudou, a versão e se está publicado. Ele usa o app do Home Assistant no Android: pense no Voltar do celular, no teclado e na câmera.

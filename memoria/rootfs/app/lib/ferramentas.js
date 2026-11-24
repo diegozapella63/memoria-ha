@@ -63,8 +63,9 @@ export const FERRAMENTAS = [
     descricao:
       "Visão geral: as categorias, os blocos (categoria, de quem é, quando abrem sozinhos e quantas folhas têm) com as " +
       "últimas folhas de cada um (número, título, quando foi editada e o id) e o bloco do momento para quem pergunta (os " +
-      "dela e os de todos, como o Agora do app). Os arquivados só com arquivados: true. Comece por aqui: os ids servem nas outras ferramentas.",
-    entrada: obj({ arquivados: ARCHIVED }),
+      "dela e os de todos, como o Agora do app). Os arquivados só com arquivados: true. Comece por aqui: os ids servem nas outras ferramentas. " +
+      "Com parados_ha_dias, só os blocos em que ninguém escreve há pelo menos esse tempo, com parado_ha_dias em cada um (1.47.0).",
+    entrada: obj({ arquivados: ARCHIVED, parados_ha_dias: { type: "integer", minimum: 1, maximum: 3650, description: "Só os blocos sem nada escrito ou mudado há pelo menos N dias." } }),
   },
   {
     nome: "buscar",
@@ -438,7 +439,18 @@ function resumo(store, a, now, pessoa) {
   if (nextBlock) agora.proximo = `${fmtMin(nxt.min)} ${nextBlock.name}`;
   let budget = MAX_LIST;
   let shown = 0;
-  const listed = blocksOf(store).filter((b) => withArchived || !b.archived);
+  // 1.47.0 (o dono: "pode criar" as ferramentas que faltavam para as rondas do CorrerIA): só os blocos parados há N dias ou
+  // mais; o último movimento de um bloco é a folha mudada por último (sem folhas, quando o bloco foi criado ou mudado)
+  let idle = null;
+  if (has(a, "parados_ha_dias") && a.parados_ha_dias !== null && a.parados_ha_dias !== "") {
+    idle = a.parados_ha_dias;
+    if (!Number.isInteger(idle) || idle < 1 || idle > 3650) throw new ToolError("parados_ha_dias vai de 1 a 3650 (dias).");
+  }
+  const idleDays = (b) => {
+    const last = Math.max(0, ...pagesOf(store, b.id).map((p) => Number(p.updated) || Number(p.created) || 0)) || Number(b.updated) || Number(b.created) || 0;
+    return last ? Math.max(0, Math.floor((now.getTime() - last) / 86400000)) : null;
+  };
+  const listed = blocksOf(store).filter((b) => (withArchived || !b.archived) && (idle == null || (idleDays(b) != null && idleDays(b) >= idle)));
   // the archived ones after the others
   listed.sort((x, y) => Number(!!x.archived) - Number(!!y.archived));
   const blocos = listed.map((b) => {
@@ -453,6 +465,7 @@ function resumo(store, a, now, pessoa) {
     if (b.archived) out.arquivado = archivedDay(b);
     else if (opens(store, b)) out.abre = opens(store, b);
     out.folhas = list.length;
+    if (idle != null) out.parado_ha_dias = idleDays(b);
     out.ultimas = last.map((p) => ({ n: list.indexOf(p) + 1, id: p.id, titulo: clip(titleOf(p), 120), editada: ymd(p.updated), ...(p.times && p.times.length ? { horarios: p.times.join(", ") } : {}) }));
     return out;
   });

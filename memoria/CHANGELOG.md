@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.47.0
+
+- **CorrerIA**: a IA do CorrerIA consegue ver os blocos em que ninguém escreve há um tempo (para a etapa **Anotações: Blocos parados** das rondas).
+
 ## 1.46.5
 
 - **Agora**: espiando outro horário, o Voltar do celular volta para a folha de agora (antes saía do app).

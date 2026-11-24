@@ -68,6 +68,25 @@ test("the list follows the contract: 13 tools, reads first, JSON Schema, grava a
   assert.throws(() => run(house(), "voar"), (err) => err instanceof UnknownTool && err.message === "Ferramenta desconhecida: voar.");
 });
 
+test("1.47.0: resumo with parados_ha_dias: only the blocks nobody writes in for that long", () => {
+  const s = house();
+  const day = 86400000;
+  const [a, b] = s.data.blocks;
+  // the first block: last sheet changed 40 days ago; the second: today
+  for (const p of s.data.pages) {
+    if (p.block === a.id) p.updated = p.created = NOW.getTime() - 40 * day;
+    if (p.block === b.id) p.updated = NOW.getTime();
+  }
+  const r = read(s, "resumo", { parados_ha_dias: 30 });
+  const ids = r.blocos.map((x) => x.id);
+  assert.ok(ids.includes(a.id) && !ids.includes(b.id), JSON.stringify(ids));
+  assert.equal(r.blocos.find((x) => x.id === a.id).parado_ha_dias, 40);
+  assert.ok(read(s, "resumo", { parados_ha_dias: 41 }).blocos.every((x) => x.id !== a.id));
+  assert.equal(read(s, "resumo").blocos[0].parado_ha_dias, undefined, "without the filter, the summary of always");
+  bad(s, "resumo", { parados_ha_dias: 0 }, /vai de 1 a 3650/);
+  bad(s, "resumo", { parados_ha_dias: "muito" }, /vai de 1 a 3650/);
+});
+
 test("resumo: categories, blocks with their last sheets and ids, and the block of the moment", () => {
   const r = read(house(), "resumo");
   assert.equal(r.hoje, "2026-11-08 10:30");
