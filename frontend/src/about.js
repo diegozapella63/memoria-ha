@@ -13,7 +13,7 @@ export const PRODUCTS = [
   ["InventarIA", "inventario-ha", "package", "Inventário da casa: cômodos, itens e valores."],
   ["EconomIA", "economia-ha", "receipt", "Lista de compras com o melhor preço perto de casa."],
   ["MemorIA", "memoria-ha", "book-open", "Cadernos de anotação que abrem na hora certa."],
-  ["OdisseIA", "odisseia", "clapperboard", "Os filmes, as séries e os jogos da casa: o que ver, jogar e onde."],
+  ["OdisseIA", "odisseia", "clapperboard", "Filmes, séries e jogos: o que ver, jogar e onde."],
   ["CorrerIA", "correria-ha", "message-circle", "Pergunte e peça a qualquer app, no chat ou no WhatsApp."],
 ];
 

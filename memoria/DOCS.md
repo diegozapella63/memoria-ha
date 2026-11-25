@@ -68,7 +68,7 @@ No alto do **Agora** aparece primeiro o que vale agora e, em seguida, os dois pr
 
 **Fica no Agora** diz por quanto tempo um horário vale: **Até o próximo** (o padrão: até começar o próximo horário) ou 1, 2, 3, 4, 6 ou 8 horas. Fica nos ajustes do bloco (embaixo de **Quando abrir sozinho**) e no ⋯ de uma folha com horário. Passado esse tempo, o Agora mostra **Nada agora** até o próximo horário, com os próximos no alto para espiar: a janta das 18:00 com 4 horas some às 22:00, em vez de ficar até a manhã.
 
-Nos mesmos ajustes ficam o nome, a **categoria**, **de quem é**, a **cor da capa**, o tipo de **folha** (pautada, quadriculada, pontilhada ou lisa), **Arquivar bloco** e o botão de excluir o bloco (as folhas dele vão junto). Para criar outro, toque em **Novo bloco**, no fim da estante.
+Nos mesmos ajustes ficam o nome, a **categoria**, **de quem é**, a **cor da capa**, o tipo de **folha** (pautada, quadriculada, pontilhada ou lisa), **Arquivar bloco** e o botão de excluir o bloco (as folhas dele vão junto). Para criar outro, toque em **Novo bloco**, no fim da estante. Cada campo de escolher fecha num toque no título; fechado, o escolhido aparece ao lado (**Folha · Pautado**, **Quando abrir sozinho · Manhã**), e o aparelho lembra o que ficou fechado.
 
 ## De quem é
 

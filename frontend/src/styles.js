@@ -1513,6 +1513,21 @@ export const styles = css`
   .sheet .field.dobravel.shut > .flabel::after {
     transform: rotate(-90deg);
   }
+  /* 1.49.0: closed, what is chosen comes after the title, in one line (campovalor.js: data-val) */
+  .sheet .field.dobravel > .flabel::after {
+    order: 2;
+  }
+  .sheet .field.dobravel.shut > .flabel[data-val]::before {
+    content: "· " attr(data-val);
+    order: 1;
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--rv-muted);
+    font-weight: 500;
+  }
   .sheet .field.dobravel.shut > :not(.flabel) {
     display: none !important;
   }

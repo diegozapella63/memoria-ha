@@ -1,6 +1,7 @@
 import { LitElement, html, nothing, repeat, live, unsafeSVG, unsafeCSS } from "../vendor/lit-all.min.js";
 import { ICONS } from "./icons.js";
 import { MemoriaIaMixin, memoriaIaStyles } from "./memoria-ia.js";
+import { paintFieldVals } from "./campovalor.js";
 import { ensureFonts } from "./fonts.js";
 import { styles, notebookStyles } from "./styles.js";
 import { aboutPage, aboutStyles } from "./about.js";
@@ -348,6 +349,8 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
       lab.setAttribute("tabindex", "0");
       lab.setAttribute("aria-expanded", off ? "false" : "true");
     }
+    // 1.49.0: closed, what is chosen comes after the title ("Papel · Pautado"), as in the CronologIA
+    paintFieldVals(root);
   }
 
   _toggleField(lab) {
@@ -414,6 +417,7 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
     this._markTabs();
     this._applyFolds();
     this._applyFieldFolds();
+    requestAnimationFrame(() => paintFieldVals(this.renderRoot));
     this._chatAfterRender();
     if (changed.has("_dark")) {
       // the page around the app too (behind the keyboard and the edges of the phone)
@@ -4406,7 +4410,7 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
           ${PAPERS.map((p) => html`<button class="paper-opt ${f.paper === p ? "on" : ""}" @click=${() => this._setForm({ paper: p })}><span class="sw-paper ${p}"></span>${PAPER_LABEL[p]}</button>`)}
         </div>
       </div>
-      <div class="field">
+      <div class="field" data-vazio="Nunca">
         <span class="flabel">${icon("clock", "lbl-ic")}Quando abrir sozinho</span>
         <div class="chip-row grid periods-pick">
           ${PERIODS.map(

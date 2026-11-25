@@ -1,5 +1,11 @@
 # Mudanças
 
+## 1.49.0
+
+- Nas janelas (como o **Novo bloco**), um campo fechado mostra ao lado do título o que está escolhido: **Folha ·
+  Pautado**, **Cor da capa · Azul**, **Quando abrir sozinho · Manhã**, como na CronologIA.
+- Em **Mais › Sobre**, a linha do OdisseIA ficou mais curta.
+
 ## 1.48.1
 
 - Em **Mais › Sobre**, o OdisseIA aparece com os jogos.
