@@ -321,7 +321,7 @@ test("CorrerIA: the key turns the file and the tools on and off; every screen he
   assert.equal(res.status, 200);
   const list = await res.json();
   assert.match(list.instrucoes, /memoria_resumo/);
-  assert.equal(list.ferramentas.length, 13);
+  assert.equal(list.ferramentas.length, 15);
   // a read
   res = await call(info.chave, "resumo");
   assert.equal(res.status, 200);

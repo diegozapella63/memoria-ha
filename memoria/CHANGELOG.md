@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.48.0
+
+- **Pelo CorrerIA**, a IA agora também **apaga um bloco** (com as folhas dele) e **muda o nome ou a cor de uma categoria**, ou apaga a categoria (os blocos ficam sem categoria). Só depois do seu sim.
+
 ## 1.47.1
 
 - **Mais › Sobre**: o **OdisseIA** (os filmes e as séries da casa) entra na lista dos apps.

@@ -46,10 +46,10 @@ test("1.44.0: ler_arquivo: the AI of the app reads the photo or the PDF of the c
   assert.throws(() => run(house(), "ler_arquivo"), (err) => err instanceof ToolError && /Falta o arquivo/.test(err.message));
 });
 
-test("the list follows the contract: 13 tools, reads first, JSON Schema, grava and apaga", () => {
+test("the list follows the contract: 15 tools, reads first, JSON Schema, grava and apaga", () => {
   const { instrucoes, ferramentas } = listTools();
   assert.match(instrucoes, /memoria_resumo/);
-  assert.equal(ferramentas.length, 13);
+  assert.equal(ferramentas.length, 15);
   assert.deepEqual(ferramentas.slice(0, 4).map((f) => f.nome), ["resumo", "buscar", "ler_bloco", "ler_folha"]);
   for (const f of ferramentas) {
     assert.match(f.nome, /^[a-z0-9_]{1,40}$/);
@@ -62,9 +62,9 @@ test("the list follows the contract: 13 tools, reads first, JSON Schema, grava a
     assert.equal(typeof f.apaga, "boolean");
     if (f.apaga) assert.equal(f.grava, true);
   }
-  assert.deepEqual(ferramentas.filter((f) => f.apaga).map((f) => f.nome), ["apagar_folha"]);
+  assert.deepEqual(ferramentas.filter((f) => f.apaga).map((f) => f.nome), ["apagar_folha", "apagar_bloco", "editar_categoria"]);
   assert.deepEqual(ferramentas.filter((f) => !f.grava).map((f) => f.nome), ["resumo", "buscar", "ler_bloco", "ler_folha", "ler_arquivo"]);
-  assert.equal(FERRAMENTAS.length, 13);
+  assert.equal(FERRAMENTAS.length, 15);
   assert.throws(() => run(house(), "voar"), (err) => err instanceof UnknownTool && err.message === "Ferramenta desconhecida: voar.");
 });
 
@@ -348,5 +348,29 @@ test("resumo (1.10.1): a sheet with its own time counts for its owner; nothing w
   const resumo = (pessoa) => JSON.parse(callTool("resumo", {}, { store: s, now: NOW, pessoa }).texto).agora;
   assert.deepEqual(resumo("Beto"), { periodo: "manhã", pessoa: "Beto", bloco: "Reforma da cozinha", bloco_id: "reforma0001", desde: "18:00", folha_id: "pg000000003" });
   assert.deepEqual(resumo("Ana"), { periodo: "manhã", pessoa: "Ana" });
+  s.flush();
+});
+
+test("1.48.0: apagar_bloco (with its sheets) and editar_categoria (name, color, delete)", () => {
+  const s = house();
+  const folhas = s.data.pages.filter((p) => p.block === "ideias00001").length;
+  let out = run(s, "apagar_bloco", { bloco: "Ideias soltas" });
+  assert.match(out.texto, new RegExp(`^Bloco apagado, com ${folhas} folhas?: Ideias soltas`));
+  assert.equal(out.events[0].kind, "block_deleted");
+  assert.equal(s.block("ideias00001"), undefined);
+  assert.equal(s.data.pages.filter((p) => p.block === "ideias00001").length, 0);
+  bad(s, "apagar_bloco", { bloco: "Ideias soltas" }, /Bloco não encontrado/);
+  out = run(s, "editar_categoria", { categoria: "casa", nome: "Lar", cor: "verde" });
+  assert.equal(out.texto, "Categoria mudada: Lar · verde. Antes: Casa · " + out.texto.split("Antes: Casa · ")[1]);
+  assert.deepEqual([s.category("catcasa0001").name, s.category("catcasa0001").color], ["Lar", "verde"]);
+  bad(s, "editar_categoria", { categoria: "Lar" }, /Diga o que muda/);
+  bad(s, "editar_categoria", { categoria: "Lar", nome: "estudos" }, /Já existe a categoria Estudos/);
+  bad(s, "editar_categoria", { categoria: "Lar", cor: "roxo" }, /Cor inválida/);
+  const deles = s.data.blocks.filter((b) => b.category === "catcasa0001").length;
+  out = run(s, "editar_categoria", { categoria: "Lar", apagar: true });
+  assert.ok(out.texto.startsWith("Categoria apagada: Lar."), out.texto);
+  if (deles) assert.match(out.texto, /sem categoria\.$/);
+  assert.equal(s.category("catcasa0001"), undefined);
+  assert.equal(out.events[0].kind, "category_deleted");
   s.flush();
 });

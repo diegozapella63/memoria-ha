@@ -188,6 +188,23 @@ export const FERRAMENTAS = [
     descricao: "Cria uma categoria para agrupar os blocos (como Trabalho, Casa ou Estudos). Sem cor, a primeira que nenhuma categoria usa. Ponha um bloco nela com memoria_editar_bloco.",
     entrada: obj({ nome: { type: "string" }, cor: { type: "string", enum: COLORS } }, ["nome"]),
   },
+  // 1.48.0 (o dono, à lista do que a IA não fazia: "todas"): apagar um bloco e mudar ou apagar uma categoria, como na tela
+  {
+    nome: "apagar_bloco",
+    titulo: "Apagar bloco",
+    grava: true,
+    apaga: true,
+    descricao: "Apaga um bloco inteiro, com todas as folhas dele (de vez). Para só guardar, arquive com memoria_editar_bloco (arquivado: true).",
+    entrada: obj({ bloco: { type: "string", description: "O id ou o nome do bloco." } }, ["bloco"]),
+  },
+  {
+    nome: "editar_categoria",
+    titulo: "Mudar ou apagar categoria",
+    grava: true,
+    apaga: true,
+    descricao: "Muda o nome ou a cor de uma categoria, ou apaga (os blocos dela ficam sem categoria; nenhuma folha se perde).",
+    entrada: obj({ categoria: { type: "string", description: "O id ou o nome da categoria." }, nome: { type: "string", description: "O nome novo." }, cor: { type: "string", enum: COLORS }, apagar: { type: "boolean" } }, ["categoria"]),
+  },
   {
     // 1.44.0 (o dono: "todos os apps que tenham as funções de PDF ou imagem ou foto funcionem no correria/rondas"): a
     // leitura por IA da tela (foto de uma página, um print, um PDF), pelo CorrerIA. `anexo` diz ao CorrerIA que esta
@@ -711,10 +728,41 @@ function novaCategoria(store, a) {
   return { texto: `Categoria criada: ${category.name} · ${category.color}. id: ${category.id}`, events: [{ kind: "category", category }] };
 }
 
+function apagarBloco(store, a) {
+  const b = findBlock(store, a.bloco);
+  const before = describeBlock(store, b);
+  const pages = store.deleteBlock(b.id);
+  return { texto: `Bloco apagado, com ${pages.length === 1 ? "1 folha" : `${pages.length} folhas`}: ${before}.`, events: [{ kind: "block_deleted", id: b.id, pages }] };
+}
+
+function editarCategoria(store, a) {
+  const c = findCategory(store, a.categoria);
+  if (a.apagar === true) {
+    const blocks = store.deleteCategory(c.id);
+    return {
+      texto: `Categoria apagada: ${c.name}.${blocks.length ? ` ${blocks.length === 1 ? "1 bloco ficou" : `${blocks.length} blocos ficaram`} sem categoria.` : ""}`,
+      events: [{ kind: "category_deleted", id: c.id, blocks }],
+    };
+  }
+  const input = { id: c.id };
+  if (has(a, "nome")) {
+    const name = oneLine(a.nome, 40);
+    if (!name) throw new ToolError("O nome ficou vazio.");
+    const same = catsOf(store).find((x) => x.id !== c.id && key(x.name) === key(name));
+    if (same) throw new ToolError(`Já existe a categoria ${same.name}.`);
+    input.name = name;
+  }
+  if (has(a, "cor")) input.color = color(a.cor);
+  if (Object.keys(input).length === 1) throw new ToolError("Diga o que muda: nome ou cor (ou apagar: true).");
+  const before = `${c.name} · ${c.color}`;
+  const category = store.saveCategory(input);
+  return { texto: `Categoria mudada: ${category.name} · ${category.color}. Antes: ${before}.`, events: [{ kind: "category", category }] };
+}
+
 // ------------------------------------------------------------------ call
 
 const READ = { resumo, buscar, ler_bloco: lerBloco, ler_folha: lerFolha };
-const WRITE = { nova_folha: novaFolha, acrescentar, editar_folha: editarFolha, adicionar_link: adicionarLink, apagar_folha: apagarFolha, novo_bloco: novoBloco, editar_bloco: editarBloco, nova_categoria: novaCategoria };
+const WRITE = { nova_folha: novaFolha, acrescentar, editar_folha: editarFolha, adicionar_link: adicionarLink, apagar_folha: apagarFolha, novo_bloco: novoBloco, editar_bloco: editarBloco, nova_categoria: novaCategoria, apagar_bloco: apagarBloco, editar_categoria: editarCategoria };
 
 /**
  * Runs a tool on the store. Returns {texto, events}: texto for the AI, events for the screens (as the WebSocket of the

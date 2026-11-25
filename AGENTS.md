@@ -129,6 +129,8 @@ Aqui não há aviso no celular (o componente Quem recebe/Testar no meu celular n
 
 1.47.0 (o dono: "pode criar" as ferramentas que faltavam para as rondas): o `resumo` do CorrerIA aceita `parados_ha_dias` (1 a 3650): só os blocos cujo último movimento (a folha mudada por último; sem folhas, o bloco) tem pelo menos esse tempo, com `parado_ha_dias` em cada um; para a etapa Anotações: Blocos parados do CorrerIA 1.35.0. Teste no `tests/ferramentas.test.mjs`.
 
+1.48.0 (o dono, à lista do que a IA não fazia: "todas"): as ferramentas `apagar_bloco` (o `store.deleteBlock`, com as folhas; evento `block_deleted`) e `editar_categoria` (`nome` e/ou `cor` pelo `store.saveCategory`, ou `apagar` pelo `store.deleteCategory`; eventos `category` e `category_deleted`), as duas com `apaga`. Teste: o de 1.48.0 no `tests/ferramentas.test.mjs`.
+
 ## Conversa com o dono
 
 Respostas curtas, em português. Ao terminar uma mudança: o que mudou, a versão e se está publicado. Ele usa o app do Home Assistant no Android: pense no Voltar do celular, no teclado e na câmera.
