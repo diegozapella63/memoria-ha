@@ -134,15 +134,14 @@ export const ChatMixin = (Base) =>
 
     /** 1.37.0: the questions of the app: the 6 at hand come first, the others are the models of Editar perguntas. */
     _chatPool() {
-      const first = clip((this._blocks()[0] || { name: "Diário" }).name, 20);
+      // 1.49.1 (o dono: "tem algumas muito específicas"): só perguntas que valem em qualquer casa, sem assuntos inventados
       return [
         "O que abre agora?",
         "O que eu anotei esta semana?",
-        `Crie uma folha no ${first} com uma lista de compras`,
         "Quais blocos são meus?",
-        "Onde anotei o telefone do encanador?",
-        "O que abre amanhã de manhã?",
         "Qual foi a última coisa que eu anotei?",
+        "O que abre amanhã de manhã?",
+        "Procura um telefone nas minhas anotações",
         "O que eu anotei ontem?",
         "Quais folhas têm horário hoje?",
         "Quais blocos abrem à noite?",
@@ -152,16 +151,17 @@ export const ChatMixin = (Base) =>
         "Escreve um resumo da semana",
         "O que ficou sem marcar nas minhas listas?",
         "Transforma a última folha numa lista de tarefas",
-        "Junta as compras anotadas numa lista só",
-        "O que eu anotei sobre o médico?",
-        "Procura receitas nas minhas anotações",
-        "Quais anotações falam de viagem?",
+        "Junta as listas das minhas anotações numa só",
+        "Quais assuntos aparecem mais nas minhas anotações?",
+        "O que eu anotei este mês?",
+        "Quais anotações viram tarefas?",
         "Cria uma folha com as ideias desta conversa",
         "O que abre no fim de semana?",
         "Quais blocos são da casa toda?",
         "Resume cada bloco em uma frase",
         "Quais são as anotações mais antigas?",
-        "Cria uma folha com o texto desta foto",
+        "Quais blocos estão parados há mais tempo?",
+        "Organiza as anotações desta semana",
       ];
     }
 

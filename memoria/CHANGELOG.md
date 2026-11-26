@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.49.1
+
+- As **perguntas prontas** da Conversa (e as **Mais perguntas** do **Editar perguntas**) ficaram gerais, para valer em qualquer casa: saíram as que citavam itens, valores, compromissos ou cômodos inventados, como «Onde anotei o telefone do encanador?» e «Procura receitas nas minhas anotações». As perguntas que você já editou continuam como estão.
+
 ## 1.49.0
 
 - Nas janelas (como o **Novo bloco**), um campo fechado mostra ao lado do título o que está escolhido: **Folha ·

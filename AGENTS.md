@@ -133,6 +133,8 @@ Aqui não há aviso no celular (o componente Quem recebe/Testar no meu celular n
 
 1.49.0 (o dono: "esse adicionar com essas opçõezinhas de retrair tem que mostrar o que foi selecionado do ladinho, quando eu retraio"; vale em todos os apps): fechado, o campo mostra o escolhido depois do título: `frontend/src/campovalor.js` (igual no ResolvIA e na CronologIA, em `tools/iguais.py`: `fieldValOf`, os botões marcados sem o que vem embaixo do nome, os `.time-chip`, senão o texto, senão o `data-vazio` do campo; `paintFieldVals` põe no `data-val` do `.flabel`), chamado no fim do `_applyFieldFolds` e num `requestAnimationFrame` no `updated`; o CSS desenha com o `::before` (`order: 1`). O Quando abrir sozinho tem `data-vazio="Nunca"`. Teste: `tests/bloco_check.py`.
 
+1.49.1 (o dono: "revisar as 20 perguntas padrões da IA, tem algumas muito específicas"): as **perguntas prontas** da Conversa (as 6 à vista e as 20 do Mais perguntas) são gerais e valem em qualquer casa: nada de itens, valores, compromissos, cômodos ou nomes inventados («Adiciona leite na lista», «Marca dentista sexta às 15h», «Onde está o liquidificador?»); o pedido com o detalhe é o que a pessoa escreve. Vale em todos os apps da família.
+
 ## Conversa com o dono
 
 Respostas curtas, em português. Ao terminar uma mudança: o que mudou, a versão e se está publicado. Ele usa o app do Home Assistant no Android: pense no Voltar do celular, no teclado e na câmera.
