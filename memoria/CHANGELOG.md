@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.52.1
+
+- **Filtros** fechado: sempre diz ao lado o que está valendo (sem nada escolhido, «Todos os blocos»), numa linha só; o que não cabe termina em «…».
+
 ## 1.52.0
 
 - **Blocos › Filtros**: o De quem e as categorias ficam dentro do **Filtros**, que fecha e abre num toque, como o do Buscar; fechado, mostra ao lado o que está valendo.

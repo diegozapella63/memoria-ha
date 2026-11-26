@@ -3432,7 +3432,7 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
         ${this._whoOn() || (this._catsOn() && this._cats().length) || ags.length > 1
           ? html`<div class="alto-lista">
               ${this._whoOn() || (this._catsOn() && this._cats().length)
-                ? this._renderFiltros("blocos-filtros", SHELF_FOLD_KEY, this._filtrosVal(who, fcat), html`${this._renderWhoChips(who, WHO_KEY)}${this._renderCatChips(fcat, SHELF_KEY)}`)
+                ? this._renderFiltros("blocos-filtros", SHELF_FOLD_KEY, this._filtrosVal(who, fcat) || "Todos os blocos", html`${this._renderWhoChips(who, WHO_KEY)}${this._renderCatChips(fcat, SHELF_KEY)}`)
                 : nothing}
               ${ags.length > 1 ? this._renderAgrupar(ags, como) : nothing}
             </div>`
@@ -3844,7 +3844,7 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
    */
   _renderSearchFilters(who, withArch) {
     const fcat = this._searchCat();
-    const val = [this._filtrosVal(who, fcat), withArch ? "Com arquivados" : ""].filter(Boolean).join(", ");
+    const val = [this._filtrosVal(who, fcat), withArch ? "Com arquivados" : ""].filter(Boolean).join(", ") || "Todos os blocos";
     return html`<div class="alto-lista">${this._renderFiltros(
       "filtros",
       SEARCH_FOLD_KEY,

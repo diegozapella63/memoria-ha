@@ -5625,7 +5625,7 @@ ${o.indent}${Jt} `;this._inkSet(e,a.slice(0,i)+l+a.slice(i),i+l.length)}_inkDone
       <section class="page">
         ${this._renderHead("Blocos",{text:`${O(r.length,"bloco","blocos")} \xB7 ${O(n,"folha","folhas")}`,extra:this._renderViewToggle()})}
         ${this._whoOn()||this._catsOn()&&this._cats().length||m.length>1?c`<div class="alto-lista">
-              ${this._whoOn()||this._catsOn()&&this._cats().length?this._renderFiltros("blocos-filtros",Nr,this._filtrosVal(a,e),c`${this._renderWhoChips(a,xa)}${this._renderCatChips(e,Qt)}`):f}
+              ${this._whoOn()||this._catsOn()&&this._cats().length?this._renderFiltros("blocos-filtros",Nr,this._filtrosVal(a,e)||"Todos os blocos",c`${this._renderWhoChips(a,xa)}${this._renderCatChips(e,Qt)}`):f}
               ${m.length>1?this._renderAgrupar(m,p):f}
             </div>`:f}
         ${p?this._renderShelfGroups(r,p):this._shelfList()?this._renderShelfList(r):this._renderCovers(r)}
@@ -5725,7 +5725,7 @@ ${o.indent}${Jt} `;this._inkSet(e,a.slice(0,i)+l+a.slice(i),i+l.length)}_inkDone
                 </div>`:m.length?f:c`<div class="panel"><div class="empty"><div class="em-icon">${d("search")}</div><h3>Nada encontrado</h3><p>Nenhuma folha com “${R(t,30)}”.</p></div></div>`:m.length?f:c`<p class="page-sub" style="margin-top:0">Procure qualquer palavra em todas as folhas.</p>`}
         ${this._sel?this._renderSelBar(m):f}
       </section>
-    `}_renderSearchFilters(t,e){let a=this._searchCat(),i=[this._filtrosVal(t,a),e?"Com arquivados":""].filter(Boolean).join(", ");return c`<div class="alto-lista">${this._renderFiltros("filtros",Ir,i,c`${this._renderWhoChips(t,bs)}
+    `}_renderSearchFilters(t,e){let a=this._searchCat(),i=[this._filtrosVal(t,a),e?"Com arquivados":""].filter(Boolean).join(", ")||"Todos os blocos";return c`<div class="alto-lista">${this._renderFiltros("filtros",Ir,i,c`${this._renderWhoChips(t,bs)}
         ${this._renderCatChips(a,ws)}
         <div class="chip-row search-opts"><button class="pick ${e?"on":""}" aria-pressed=${e?"true":"false"} @click=${()=>{this._haptic("light"),q.set(_s,!e),this.requestUpdate()}}>${d("archive")}<span>Incluir arquivados</span></button></div>`)}</div>`}_renderFiltros(t,e,a,i){let r=q.get(e,!1)===!0;return c`<button type="button" class="filters-label" id=${t} aria-expanded=${r?"false":"true"} @click=${()=>{this._haptic("light"),q.set(e,!r),this.requestUpdate()}}>${d("sliders-horizontal","lbl-ic")}<span>Filtros</span>${r&&a?c`<span class="filters-val">· ${a}</span>`:f}</button>
       ${r?f:c`<div class="filtros" role="group" aria-labelledby=${t}>${i}</div>`}`}_filtrosVal(t,e){let a=[];return this._whoOn()&&a.push(t==="*"?"Todos":t),this._catsOn()&&e&&a.push(e==="sem"?"Sem categoria":(this._cat(e)||{}).name||""),a.filter(Boolean).join(", ")}_renderSearchBlocks(t,e){let a=this._sel,i=this._catsOn()&&this._cats().length>0||this._ownersOn(),r=a?t.filter(l=>a.has(l.id)).length:0,o=r>0&&r===t.length,n=a?c`<div class="sel-head on">

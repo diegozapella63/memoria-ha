@@ -121,6 +121,8 @@ Aqui não há aviso no celular (o componente Quem recebe/Testar no meu celular n
 
 1.52.0 (o dono: "os filtros lá de cima devem poder ser retraídos igual os outros filtros"; "cada tela tem tamanho de fonte diferente… documenta nos padrões.md e aplica ele em todos os apps"; "padronizar as setas em todos os apps"): `_renderFiltros(id, key, val, body)` (a linha do Filtros, `.filters-label`, que fecha o `.filtros`; fechado, o `.filters-val` com o `_filtrosVal(who, fcat)`) no Blocos (`SHELF_FOLD_KEY`, `#blocos-filtros`) e no Buscar (`_renderSearchFilters`), dentro do `.alto-lista`; o `.filters-label` e o `.agrupar-l` iguais (40 px, 15 px, peso 500, o `.lbl-ic` de 18 px na cor do app, o escolhido em cinza), como o **O alto das listas** do `PADROES.md`; o `_shelfAgrupar` com o `nenhum` por último e o `_shelfComo` começando na primeira; o `.sel-n` em 15 px. As setas que apontavam para cima abertas (o `.done-toggle`, o `.uso-chev`, o `.arch-head .chev`) apontam para o lado fechadas e para baixo abertas. Testes: `agrupar_check` e `buscar_check`.
 
+1.52.1 (o dono: "ali dos filtros não criar segunda linha, colocar ... no final se não couber"; "faz também nos outros de mostrar o que foi selecionado ao retrair"): o Filtros fechado sempre com o `.filters-val` (sem nada, «Todos os blocos»), numa linha só.
+
 ## Conversa com o dono
 
 Respostas curtas, em português. Ao terminar uma mudança: o que mudou, a versão e se está publicado. Ele usa o app do Home Assistant no Android: pense no Voltar do celular, no teclado e na câmera.
