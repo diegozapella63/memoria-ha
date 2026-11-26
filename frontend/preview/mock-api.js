@@ -1,6 +1,6 @@
 // In-memory stand-in for the MemorIA server, used by the preview page.
 // Mirrors the server's rules (ids, times, conflicts) closely enough for the UI.
-import { DEFAULT_PERIODS, PAPERS, PERIODS, DURATIONS, normTime, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
+import { DEFAULT_PERIODS, PAPERS, PERIODS, durOk, normTime, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
 
 const COLORS = ["vermelho", "coral", "laranja", "ouro", "verde", "menta", "turquesa", "azul", "indigo", "lilas", "rosa", "grafite"];
 const id = () => Math.random().toString(16).slice(2, 14).padEnd(12, "0");
@@ -108,7 +108,7 @@ export class MockApi {
     if ("text" in input) p.text = String(input.text).slice(0, 50000);
     if ("times" in input) p.times = times(input.times);
     if ("dur" in input) {
-      if (DURATIONS.includes(input.dur) && input.dur) p.dur = input.dur;
+      if (durOk(input.dur)) p.dur = input.dur;
       else delete p.dur;
     }
     p.updated = now;
@@ -152,7 +152,7 @@ export class MockApi {
     if ("periods" in input || isNew) b.periods = (input.periods || []).filter((p) => PERIODS.some((x) => x.id === p));
     if ("times" in input || isNew) b.times = times(input.times);
     if ("dur" in input) {
-      if (DURATIONS.includes(input.dur) && input.dur) b.dur = input.dur;
+      if (durOk(input.dur)) b.dur = input.dur;
       else delete b.dur;
     }
     if ("owner" in input) {

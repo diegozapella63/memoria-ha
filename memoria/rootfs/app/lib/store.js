@@ -6,7 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { DEFAULT_PERIODS, PAPERS, PERIODS, DURATIONS, normTime, ownerName } from "./schedule.js";
+import { DEFAULT_PERIODS, PAPERS, PERIODS, durOk, normTime, ownerName } from "./schedule.js";
 
 // The palette of the family (1.17.0): the same 12 colors, in this order, in every app (the CronologIA's)
 export const COLORS = ["vermelho", "coral", "laranja", "ouro", "verde", "menta", "turquesa", "azul", "indigo", "lilas", "rosa", "grafite"];
@@ -50,7 +50,7 @@ const times = (list) => {
 const looseTimes = (list) => (Array.isArray(list) ? [...new Set(list.map(normTime).filter(Boolean))].sort().slice(0, 24) : []);
 const when = (v, fallback) => (Number.isFinite(v) && v > 0 ? v : fallback);
 // Fica no Agora (1.14.0): how long a block or a sheet with a time holds, in minutes; 0 (until the next start) isn't kept
-const durIn = (v) => (DURATIONS.includes(v) && v > 0 ? { dur: v } : {});
+const durIn = (v) => (durOk(v) ? { dur: v } : {});
 // The marks of the Agora (1.14.0): ticked only for that time of the sheet ({at: "AAAA-MM-DDTHH:MM", lines}), apart
 // from the text; another time of the sheet starts clean. Old ones (over 3 days) and those of sheets gone are dropped.
 const OCC_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
@@ -306,7 +306,7 @@ export class Store {
     }
     if ("times" in input || !existing) b.times = times(input.times);
     if ("dur" in input) {
-      if (input.dur && !DURATIONS.includes(input.dur)) fail("tempo inválido");
+      if (input.dur && !durOk(input.dur)) fail("tempo inválido");
       if (input.dur) b.dur = input.dur;
       else delete b.dur;
     }
@@ -408,7 +408,7 @@ export class Store {
     if ("text" in input) p.text = str(input.text, MAX_TEXT, "texto");
     if ("times" in input) p.times = times(input.times);
     if ("dur" in input) {
-      if (input.dur && !DURATIONS.includes(input.dur)) fail("tempo inválido");
+      if (input.dur && !durOk(input.dur)) fail("tempo inválido");
       if (input.dur) p.dur = input.dur;
       else delete p.dur;
     }

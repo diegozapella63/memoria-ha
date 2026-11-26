@@ -174,7 +174,10 @@ test("the store: Fica no Agora on blocks and sheets, and the marks apart from th
   const s = new Store(dir, { warn() {}, info() {} });
   const b = s.saveBlock({ name: "Janta", times: ["18:00"], dur: 240 });
   assert.equal(b.dur, 240);
-  assert.throws(() => s.saveBlock({ id: b.id, dur: 45 }), /tempo inválido/);
+  // 1.50.0 (o dono: "Fica no Agora, ter opção de horário customizado"): qualquer tempo de 5 em 5 minutos, até 24 h
+  assert.equal(s.saveBlock({ id: b.id, dur: 45 }).dur, 45);
+  assert.equal(s.saveBlock({ id: b.id, dur: 1440 }).dur, 1440);
+  for (const ruim of [7, 1445, 2.5, "60", -60]) assert.throws(() => s.saveBlock({ id: b.id, dur: ruim }), /tempo inválido/, String(ruim));
   assert.equal(s.saveBlock({ id: b.id, dur: 0 }).dur, undefined, "Até o próximo: not kept");
   const p = s.savePage({ block: b.id, text: "Janta\n☐ Arroz\n☐ Feijão", times: ["18:00"], dur: 120 });
   assert.equal(p.dur, 120);
@@ -263,4 +266,12 @@ test("1.32.0: texto_formatado, the text with the marks of the bold, the bigger a
   d.pages[1].text = `**${"x".repeat(3000)}**`;
   assert.equal(trechos(d, { now: when(10) })[0].texto_formatado, undefined);
   assert.equal(cutMarked("**a**\nb"), "**a**\nb");
+});
+
+test("1.50.0: o tempo escrito (Outro tempo) e o horário digitado", async () => {
+  const { fmtDur, durOk, durOf } = await import("../memoria/rootfs/app/lib/schedule.js");
+  assert.deepEqual([fmtDur(45), fmtDur(60), fmtDur(90), fmtDur(605), fmtDur(1440)], ["45 min", "1 h", "1 h 30", "10 h 05", "24 h"]);
+  assert.deepEqual([durOk(5), durOk(0), durOk(1440), durOk(1445), durOk(62)], [true, false, true, false, false]);
+  assert.equal(durOf({ dur: 90 }), 90);
+  assert.equal(durOf({ dur: 7 }), 0);
 });

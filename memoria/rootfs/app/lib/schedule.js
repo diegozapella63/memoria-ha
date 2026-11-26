@@ -29,7 +29,11 @@ export const toMin = (t) => {
 export const fmtMin = (min) => `${pad(Math.floor(min / 60))}:${pad(min % 60)}`;
 /** Fica no Agora: how long a start holds, in minutes (0: until the next start). */
 export const DURATIONS = [0, 60, 120, 180, 240, 360, 480];
-export const durOf = (x) => (x && DURATIONS.includes(x.dur) ? x.dur : 0);
+/** 1.50.0 (o dono: "Fica no Agora, ter opção de horário customizado"): além dos prontos, qualquer tempo de 5 minutos a 24 horas, de 5 em 5. */
+export const durOk = (v) => Number.isInteger(v) && v >= 5 && v <= 1440 && v % 5 === 0;
+export const durOf = (x) => (x && durOk(x.dur) ? x.dur : 0);
+/** O tempo escrito: 2 h, 1 h 30, 45 min. */
+export const fmtDur = (d) => (d < 60 ? `${d} min` : d % 60 ? `${Math.floor(d / 60)} h ${pad(d % 60)}` : `${d / 60} h`);
 /** How long a group of the same start holds: the longest of its entries (one until the next: until the next). */
 export const groupDur = (group) => (group.some((e) => !e.dur) ? 0 : Math.max(...group.map((e) => e.dur)));
 export const minutesOf = (date) => date.getHours() * 60 + date.getMinutes();

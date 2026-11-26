@@ -143,6 +143,18 @@ with sync_playwright() as p:
         a.locator(".search-opts .pick").click()
         pg.wait_for_timeout(300)
         check("Viagem" in a.evaluate(NAMES), f"{tag}: Incluir arquivados: the archived one too")
+        # ---- 1.50.0 (o dono: "filtro por categoria"): a categoria nos Filtros, como em Blocos
+        cats = [t.strip() for t in a.locator(".filtros .cat-filter .pick").all_inner_texts()]
+        check(cats[0] == "Todos" and len(cats) >= 3, f"{tag}: the categories in Filtros ({cats})")
+        antes = a.evaluate(NAMES)
+        a.locator(".filtros .cat-filter .pick").nth(1).click()
+        pg.wait_for_timeout(300)
+        depois = a.evaluate(NAMES)
+        check(0 < len(depois) < len(antes), f"{tag}: a category: only its blocks ({depois})")
+        check(pg.evaluate("() => localStorage.getItem('memoria.buscar.categoria')") not in (None, '""'), f"{tag}: kept on the device")
+        a.locator(".filtros .cat-filter .pick", has_text="Todos").click()
+        pg.wait_for_timeout(300)
+        check(a.evaluate(NAMES) == antes, f"{tag}: Todos: all again")
         # ---- 1.25.0: Filtros fecha e abre De quem e Incluir arquivados; fechado fica guardado e diz o que está valendo
         filt = a.locator(".filters-label")
         check(filt.locator("svg.lbl-ic").count() == 1 and filt.get_attribute("aria-expanded") == "true", f"{tag}: Filtros, with its icon, open")

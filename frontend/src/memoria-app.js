@@ -17,7 +17,7 @@ import { parentHass, detectDark } from "./api.js";
 import { parseLinks, hasLinks, linksToText, normalizeUrl } from "../../memoria/rootfs/app/lib/links.js";
 import { hasFormat, parseFormat, formatText, formatAt, markRuns, FORMAT_COLORS } from "../../memoria/rootfs/app/lib/format.js";
 import { appendLink, freeColor, checkOf, hasChecks, toggleCheck, CHECK_TODO } from "../../memoria/rootfs/app/lib/writing.js";
-import { PERIODS, PAPERS, DURATIONS, buildSchedule, currentAt, nextAfter, timeline, ahead, occurrence, minutesOf, fmtMin, periodAt, periodTimes, normTime, opensFor, sameName, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
+import { PERIODS, PAPERS, DURATIONS, fmtDur, buildSchedule, currentAt, nextAfter, timeline, ahead, occurrence, minutesOf, fmtMin, periodAt, periodTimes, normTime, opensFor, sameName, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
 
 const THEME_KEY = "memoria.theme";
 const SAVE_DELAY = 600;
@@ -37,6 +37,8 @@ const REPORT_KEY = "memoria.relatorio";
 const SEARCH_ARCH_KEY = "memoria.buscar.arquivados";
 // 1.25.0: Buscar › Filtros fechado (guardado no aparelho)
 const SEARCH_FOLD_KEY = "memoria.buscar.filtros";
+// 1.50.0 (o dono: "filtro por categoria"): Buscar › Filtros › a categoria (guardada no aparelho): "", uma categoria ou "sem"
+const SEARCH_CAT_KEY = "memoria.buscar.categoria";
 // 1.28.0: the emojis of the bar of the writing: the last ones used (on this device), then these
 const EMOJI_KEY = "memoria.emojis";
 const EMOJIS = ["✅", "❌", "⭐", "❤️", "👍", "🙏", "😊", "😂", "🎉", "💡", "📌", "⚠️", "❗", "❓", "👉", "📅", "⏰", "🛒", "💊", "🍎", "☕", "🏠", "🚗", "💰"];
@@ -110,6 +112,11 @@ export const foldKeyOf = (card) => {
 };
 
 const byCreated = (a, b) => a.created - b.created || (a.id < b.id ? -1 : 1);
+/** 1.50.0: o horário digitado: só os números, com os dois pontos antes dos minutos (0710 → 07:10, 7h10 → 7:10). */
+export const typedTime = (v) => {
+  const d = String(v || "").replace(/\D/g, "").slice(0, 4);
+  return d.length > 2 ? `${d.slice(0, d.length - 2)}:${d.slice(-2)}` : d;
+};
 const pad2 = (n) => String(n).padStart(2, "0");
 const periodOf = (id) => PERIODS.find((p) => p.id === id);
 // 1.29.0: from this width (the app's, without the sidebar of the Home Assistant), two sheets side by side
@@ -2004,10 +2011,36 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
    * Past it, Agora has nothing until the next time.
    */
   _durPick(value, onPick) {
+    // 1.50.0 (o dono: "Fica no Agora, ter opção de horário customizado"): Outro tempo: as horas e depois os minutos, nas
+    // janelas do selectsheet.js, como o + Horário; escolhido, fica marcado com o tempo (1 h 30)
+    const outro = value && !DURATIONS.includes(value);
+    const boxes = (el) => el.closest(".dur-pick").querySelectorAll("select.tp-box");
+    const open = (ev) => {
+      const [h, m] = boxes(ev.currentTarget);
+      h.value = "";
+      m.value = "";
+      this._dpHour = "";
+      if (window.__selectSheet && window.__selectSheet.open) window.__selectSheet.open(h);
+    };
+    const hour = Number(this._dpHour || 0);
     return html`<div class="field">
       <span class="flabel" id="dur-l">${icon("hourglass", "lbl-ic")}Fica no Agora</span>
       <div class="chip-row grid dur-pick" role="radiogroup" aria-labelledby="dur-l">
-        ${DURATIONS.map((d) => html`<button class="pick ${value === d ? "on" : ""}" role="radio" aria-checked=${value === d ? "true" : "false"} @click=${() => onPick(d)}>${icon(d ? "hourglass" : "arrow-right-left")}<span>${d ? `${d / 60} h` : "Até o próximo"}</span></button>`)}
+        ${DURATIONS.map((d) => html`<button class="pick ${value === d ? "on" : ""}" role="radio" aria-checked=${value === d ? "true" : "false"} @click=${() => onPick(d)}>${icon(d ? "hourglass" : "arrow-right-left")}<span>${d ? fmtDur(d) : "Até o próximo"}</span></button>`)}
+        <button class="pick ${outro ? "on" : ""}" role="radio" aria-checked=${outro ? "true" : "false"} @click=${open}>${icon(outro ? "hourglass" : "plus")}<span>${outro ? fmtDur(value) : "Outro tempo"}</span></button>
+        <select class="tp-box" tabindex="-1" aria-label="Horas" @change=${(e) => {
+          this._dpHour = e.target.value;
+          this.requestUpdate();
+          const m = boxes(e.target)[1];
+          this.updateComplete.then(() => window.__selectSheet && window.__selectSheet.open(m));
+        }}><option value="" hidden selected></option>${Array.from({ length: 25 }, (_, k) => html`<option value=${k}>${k} h</option>`)}</select>
+        <select class="tp-box" tabindex="-1" aria-label="Minutos" @change=${(e) => {
+          const d = Number(this._dpHour || 0) * 60 + Number(e.target.value || 0);
+          const [h, m] = boxes(e.target);
+          h.value = "";
+          m.value = "";
+          if (d >= 5 && d <= 1440) onPick(d);
+        }}><option value="" hidden selected></option>${(hour === 24 ? [0] : Array.from({ length: 12 }, (_, k) => k * 5)).filter((k) => hour || k).map((k) => html`<option value=${k}>${fmtDur(hour * 60 + k)}</option>`)}</select>
       </div>
     </div>`;
   }
@@ -3290,10 +3323,29 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
     return this._cat(v) ? v : "";
   }
 
-  _setShelfCat(v) {
+  _setShelfCat(v, key = SHELF_KEY) {
     this._haptic("light");
-    local.set(SHELF_KEY, v);
+    local.set(key, v);
     this.requestUpdate();
+  }
+
+  /** The category chosen in Buscar (1.50.0): like the one of Blocos, kept apart. */
+  _searchCat() {
+    if (!this._catsOn()) return "";
+    const v = local.get(SEARCH_CAT_KEY, "") || "";
+    if (v === "sem") return this._cats().length && this._allBlocks().some((b) => !this._cat(b.category)) ? "sem" : "";
+    return this._cat(v) ? v : "";
+  }
+
+  /** The chips of the categories (Blocos and Buscar): Todas, each one with its color, Sem categoria. */
+  _renderCatChips(fcat, key) {
+    const cats = this._catsOn() ? this._cats() : [];
+    if (!cats.length) return nothing;
+    const none = this._allBlocks().some((b) => !this._cat(b.category));
+    const chip = (v, label, c = null, ic = "") => html`<button class="pick ${c ? "list" : ""} ${fcat === v ? "on" : ""}" style=${c ? colorVars(colorById(c.color) || colorById("grafite"), this._dark) : ""} aria-pressed=${fcat === v ? "true" : "false"} @click=${() => this._setShelfCat(v, key)}>${c ? html`<span class="dot"></span>` : icon(ic)}<span>${label}</span></button>`;
+    return html`<div class="chip-row cat-filter" role="group" aria-label="Categoria"><div class="chip-track">
+        ${chip("", "Todos", null, "layers")} ${cats.map((c) => chip(c.id, clip(c.name, 22), c))} ${none ? chip("sem", "Sem categoria", null, "x") : nothing}
+      </div></div>`;
   }
 
   /** The people to filter Blocos by: the person using it first, the others of the house, then names written on blocks. */
@@ -3357,7 +3409,6 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
 
   _renderShelf() {
     const all = this._allBlocks();
-    const cats = this._catsOn() ? this._cats() : [];
     const fcat = this._shelfCat();
     const who = this._shelfWho();
     const inCat = (b) => this._ofWho(b, who) && (!fcat || (fcat === "sem" ? !this._cat(b.category) : b.category === fcat));
@@ -3365,19 +3416,13 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
     // Arquivados: at the end of the shelf, folded (the last archived first)
     const archived = all.filter((b) => b.archived && inCat(b)).sort((a, b) => b.archived - a.archived);
     const pages = blocks.reduce((n, b) => n + this._pagesOf(b.id).length, 0);
-    const none = cats.length > 0 && all.some((b) => !this._cat(b.category));
     const groups = timeline(this._schedule());
     const { cur } = this._slot();
-    const chip = (v, label, c = null, ic = "") => html`<button class="pick ${c ? "list" : ""} ${fcat === v ? "on" : ""}" style=${c ? colorVars(colorById(c.color) || colorById("grafite"), this._dark) : ""} aria-pressed=${fcat === v ? "true" : "false"} @click=${() => this._setShelfCat(v)}>${c ? html`<span class="dot"></span>` : icon(ic)}<span>${label}</span></button>`;
     return html`
       <section class="page">
         ${this._renderHead("Blocos", { text: `${plural(blocks.length, "bloco", "blocos")} · ${plural(pages, "folha", "folhas")}`, extra: this._renderViewToggle() })}
         ${this._renderWhoChips(who, WHO_KEY)}
-        ${cats.length
-          ? html`<div class="chip-row cat-filter" role="group" aria-label="Categoria"><div class="chip-track">
-              ${chip("", "Todos", null, "layers")} ${cats.map((c) => chip(c.id, clip(c.name, 22), c))} ${none ? chip("sem", "Sem categoria", null, "x") : nothing}
-            </div></div>`
-          : nothing}
+        ${this._renderCatChips(fcat, SHELF_KEY)}
         ${this._shelfList()
           ? this._renderShelfList(blocks)
           : html`<div class="shelf">
@@ -3615,9 +3660,11 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
     // another person, or all (both kept on this device)
     const withArch = local.get(SEARCH_ARCH_KEY, false) === true;
     const who = this._shelfWho(SEARCH_WHO_KEY);
+    const fcat = this._searchCat();
+    const ofCat = (b) => !fcat || (fcat === "sem" ? !this._cat(b.category) : b.category === fcat);
     const pool = this._data.pages.filter((p) => {
       const b = this._block(p.block);
-      return b && (withArch || !b.archived) && this._ofWho(b, who);
+      return b && (withArch || !b.archived) && this._ofWho(b, who) && ofCat(b);
     });
     // with Incluir arquivados, the archived ones come after the others (1.16.0), the blocks and the sheets
     const arch = (p) => Number(!!this._block(p.block).archived);
@@ -3630,7 +3677,7 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
     }
     // the blocks come already (1.15.0), the ones of the name searched with a word, to open or to select and change
     const blocks = this._allBlocks()
-      .filter((b) => (withArch || !b.archived) && this._ofWho(b, who) && (!needle || fold(b.name).includes(needle)))
+      .filter((b) => (withArch || !b.archived) && this._ofWho(b, who) && ofCat(b) && (!needle || fold(b.name).includes(needle)))
       .sort((a, b) => Number(!!a.archived) - Number(!!b.archived));
     return html`
       <section class="page">
@@ -3689,6 +3736,7 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
         ? nothing
         : html`<div class="filtros" role="group" aria-labelledby="filtros">
             ${this._renderWhoChips(who, SEARCH_WHO_KEY)}
+            ${this._renderCatChips(this._searchCat(), SEARCH_CAT_KEY)}
             <div class="chip-row search-opts"><button class="pick ${withArch ? "on" : ""}" aria-pressed=${withArch ? "true" : "false"} @click=${() => {
               this._haptic("light");
               local.set(SEARCH_ARCH_KEY, !withArch);
@@ -4350,14 +4398,54 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
       if (window.__selectSheet && window.__selectSheet.open) window.__selectSheet.open(h);
     };
     const hour = this._tpHour || "00";
+    // 1.50.0 (o dono: "colocar aqui a possibilidade de colocar um horário customizado"): na janela da Hora, Digitar o
+    // horário: um campo de números no lugar do botão (07:10, 7h10, 0710), sem o relógio do celular; o ✓ ou o Enter põe
+    if (this._tpTyping === label) {
+      const put = (input) => {
+        const t = normTime(typedTime(input.value));
+        if (!t) {
+          this._showToast("Escreva o horário, como 07:10");
+          input.focus();
+          return;
+        }
+        this._tpTyping = "";
+        this.requestUpdate();
+        onPick(t);
+      };
+      return html`<span class="add-time-wrap"><span class="tp-digitar">
+        <input class="tp-input" type="text" inputmode="numeric" maxlength="5" placeholder="07:10" aria-label="Horário" enterkeyhint="done"
+          @input=${(e) => (e.target.value = typedTime(e.target.value))}
+          @keydown=${(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              put(e.target);
+            } else if (e.key === "Escape") {
+              this._tpTyping = "";
+              this.requestUpdate();
+            }
+          }} />
+        <button class="icon-btn tp-ok" aria-label="Pôr o horário" @click=${(e) => put(e.currentTarget.parentElement.querySelector("input"))}>${icon("check")}</button>
+        <button class="icon-btn tp-x" aria-label="Cancelar" @click=${() => ((this._tpTyping = ""), this.requestUpdate())}>${icon("x")}</button>
+      </span></span>`;
+    }
     return html`<span class="add-time-wrap"><button class="pick add-time" @click=${open}>${icon("plus")}<span>${label}</span></button>
       <select class="tp-box" tabindex="-1" aria-label="Hora" @change=${(e) => {
+        if (e.target.value === "digitar") {
+          e.target.value = "";
+          this._tpTyping = label;
+          this.requestUpdate();
+          this.updateComplete.then(() => {
+            const input = this.renderRoot.querySelector(".tp-input");
+            if (input) input.focus();
+          });
+          return;
+        }
         this._tpHour = e.target.value;
         this.requestUpdate();
         const m = boxes(e.target)[1];
         // the minutes of that hour, then the second sheet
         this.updateComplete.then(() => window.__selectSheet && window.__selectSheet.open(m));
-      }}><option value="" hidden selected></option>${Array.from({ length: 24 }, (_, k) => html`<option value=${pad2(k)}>${pad2(k)}h</option>`)}</select>
+      }}><option value="" hidden selected></option><option value="digitar">Digitar o horário</option>${Array.from({ length: 24 }, (_, k) => html`<option value=${pad2(k)}>${pad2(k)}h</option>`)}</select>
       <select class="tp-box" tabindex="-1" aria-label="Minutos" @change=${(e) => {
         const t = normTime(`${this._tpHour}:${e.target.value}`);
         const [h, m] = boxes(e.target);

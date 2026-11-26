@@ -4073,6 +4073,34 @@ export const notebookStyles = css`
   .tp-box {
     display: none;
   }
+  /* 1.50.0: Digitar o horário, no lugar do + Horário */
+  .tp-digitar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .tp-input {
+    flex: 1;
+    min-width: 0;
+    height: 50px;
+    padding: 0 14px;
+    border: 1.5px solid var(--rv-accent);
+    border-radius: 14px;
+    background: var(--rv-bg);
+    color: var(--rv-text);
+    font: inherit;
+    font-size: 18px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    outline: 0;
+  }
+  .tp-digitar .icon-btn {
+    flex: none;
+    width: 44px;
+    height: 44px;
+  }
   .review-text {
     width: 100%;
     min-height: 220px;

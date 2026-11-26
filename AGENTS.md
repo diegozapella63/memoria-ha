@@ -115,6 +115,8 @@ Aqui não há aviso no celular (o componente Quem recebe/Testar no meu celular n
 
 1.49.1 (o dono: "revisar as 20 perguntas padrões da IA, tem algumas muito específicas"): as **perguntas prontas** da Conversa (as 6 à vista e as 20 do Mais perguntas) são gerais e valem em qualquer casa: nada de itens, valores, compromissos, cômodos ou nomes inventados («Adiciona leite na lista», «Marca dentista sexta às 15h», «Onde está o liquidificador?»); o pedido com o detalhe é o que a pessoa escreve. Vale em todos os apps da família.
 
+1.50.0, três pedidos do dono: (1) "colocar aqui a possibilidade de colocar um horário customizado" (a janela da Hora): a opção `digitar` no começo da caixa das horas do `_timePicker`; escolhida, o `_tpTyping` (o rótulo do picker) troca o botão pelo `.tp-digitar` (`.tp-input` com `inputmode="numeric"` e o `typedTime`, que põe os dois pontos; o ✓ `.tp-ok`, o Enter e o ✕ `.tp-x`); um horário que não é um avisa. (2) "Fica no Agora, ter opção de horário customizado": `durOk` (de 5 em 5 minutos, de 5 a 1440) e `fmtDur` no `lib/schedule.js`, no `store.js` e no `frontend/preview/mock-api.js` no lugar da lista `DURATIONS` (que continua sendo os botões); o **Outro tempo** do `_durPick` abre as horas e os minutos no selectsheet.js (`_dpHour`). (3) "filtro por categoria" no Buscar: `SEARCH_CAT_KEY`, `_searchCat` e o `_renderCatChips` (o mesmo de Blocos) nos Filtros. O `campovalor.js` (igual no ResolvIA e na CronologIA) lê os equipamentos. Testes: `horarios_check`, `tempo_check`, `buscar_check` e o `tests/agora.test.mjs`.
+
 ## Conversa com o dono
 
 Respostas curtas, em português. Ao terminar uma mudança: o que mudou, a versão e se está publicado. Ele usa o app do Home Assistant no Android: pense no Voltar do celular, no teclado e na câmera.

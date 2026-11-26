@@ -1,5 +1,11 @@
 # Mudanças
 
+## 1.50.0
+
+- **Digitar o horário**: na janela da **Hora** (o + Horário de um bloco ou de uma folha), a primeira opção abre um campo para escrever qualquer horário, como 07:12 (só os números; o ✓ ou o Enter põe).
+- **Fica no Agora** com **Outro tempo**: as horas e os minutos que você quiser, de 5 minutos a 24 horas (como 1 h 30).
+- **Buscar › Filtros** com a **categoria**, como em Blocos: Todos, cada categoria ou Sem categoria.
+
 ## 1.49.1
 
 - As **perguntas prontas** da Conversa (e as **Mais perguntas** do **Editar perguntas**) ficaram gerais, para valer em qualquer casa: saíram as que citavam itens, valores, compromissos ou cômodos inventados, como «Onde anotei o telefone do encanador?» e «Procura receitas nas minhas anotações». As perguntas que você já editou continuam como estão.

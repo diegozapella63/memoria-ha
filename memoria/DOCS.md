@@ -60,13 +60,13 @@ Em **⋯ › Adicionar link**, cole o **Link** e, se quiser, um **Nome** (por ex
 Em **Blocos**, abra um bloco e toque na linha **Abre sozinho** (ou no ícone de ajustes). Em **Quando abrir sozinho**:
 
 - **Períodos**: Manhã, Tarde e Noite. O começo de cada um fica em **Mais › Configurações › Opções** (padrão 05:00, 12:00 e 18:00), numa caixa com os horários de meia em meia hora.
-- **Horários exatos**: por exemplo Treino às 07:00 e Diário às 22:00. Em **Horário exato** (ou **Outro horário**), escolha a hora e, em seguida, os minutos (de 5 em 5).
+- **Horários exatos**: por exemplo Treino às 07:00 e Diário às 22:00. Em **Horário exato** (ou **Outro horário**), escolha a hora e, em seguida, os minutos (de 5 em 5); para um horário qualquer (07:12), toque em **Digitar o horário**, no começo da lista das horas, escreva só os números e toque no ✓.
 
 Os horários abrem nas janelas do próprio app, sempre em 24 horas (sem AM/PM), e nunca no relógio do celular.
 
 No alto do **Agora** aparece primeiro o que vale agora e, em seguida, os dois próximos horários (depois da meia-noite, os de amanhã). Um toque espia outro horário; **Voltar para agora** volta. O dia inteiro fica em **Blocos › Seu dia**.
 
-**Fica no Agora** diz por quanto tempo um horário vale: **Até o próximo** (o padrão: até começar o próximo horário) ou 1, 2, 3, 4, 6 ou 8 horas. Fica nos ajustes do bloco (embaixo de **Quando abrir sozinho**) e no ⋯ de uma folha com horário. Passado esse tempo, o Agora mostra **Nada agora** até o próximo horário, com os próximos no alto para espiar: a janta das 18:00 com 4 horas some às 22:00, em vez de ficar até a manhã.
+**Fica no Agora** diz por quanto tempo um horário vale: **Até o próximo** (o padrão: até começar o próximo horário) ou 1, 2, 3, 4, 6 ou 8 horas; em **Outro tempo**, escolha as horas e os minutos (de 5 minutos a 24 horas). Fica nos ajustes do bloco (embaixo de **Quando abrir sozinho**) e no ⋯ de uma folha com horário. Passado esse tempo, o Agora mostra **Nada agora** até o próximo horário, com os próximos no alto para espiar: a janta das 18:00 com 4 horas some às 22:00, em vez de ficar até a manhã.
 
 Nos mesmos ajustes ficam o nome, a **categoria**, **de quem é**, a **cor da capa**, o tipo de **folha** (pautada, quadriculada, pontilhada ou lisa), **Arquivar bloco** e o botão de excluir o bloco (as folhas dele vão junto). Para criar outro, toque em **Novo bloco**, no fim da estante. Cada campo de escolher fecha num toque no título; fechado, o escolhido aparece ao lado (**Folha · Pautado**, **Quando abrir sozinho · Manhã**), e o aparelho lembra o que ficou fechado.
 
@@ -164,7 +164,7 @@ Em **Mais › Configurações › Integrações**:
 
 Em **Buscar**, procure qualquer palavra nas folhas dos blocos, sem se importar com acentos. Logo abaixo da caixa, **De quem** escolhe os blocos (os seus e os de **Todos**, para começar; os de outra pessoa; ou todos), como em **Blocos**, mas com a escolha própria. Cada resultado mostra o trecho com a palavra marcada, o bloco e quando foi escrito; toque para abrir a folha.
 
-Os blocos arquivados ficam de fora. Para procurar neles também, toque em **Incluir arquivados**; eles vêm depois dos outros (os blocos e as folhas), e as escolhas ficam guardadas no aparelho. O título **Filtros** fecha e abre o De quem e o Incluir arquivados num toque; fechado, os filtros continuam valendo, e ele continua fechado ao voltar.
+Os blocos arquivados ficam de fora. Para procurar neles também, toque em **Incluir arquivados**; eles vêm depois dos outros (os blocos e as folhas), e as escolhas ficam guardadas no aparelho. Nos **Filtros**, a **categoria** (como em Blocos: Todos, cada categoria ou Sem categoria) deixa só os blocos e as folhas dela. O título **Filtros** fecha e abre o De quem, a categoria e o Incluir arquivados num toque; fechado, os filtros continuam valendo, e ele continua fechado ao voltar.
 
 Antes de escrever, o **Buscar** já mostra os blocos (os de **De quem**, com a categoria de cada um); escrevendo, ficam os do nome procurado, e as folhas encontradas vêm embaixo. Toque num bloco para abrir.
 

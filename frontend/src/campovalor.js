@@ -2,8 +2,9 @@
  * O campo fechado mostra, ao lado do título, o que está escolhido ou escrito ("Tipo · Evento"): igual no ResolvIA, na
  * CronologIA e no MemorIA (tools/iguais.py).
  *
- *   fieldValOf(field)        o texto: os botões marcados, senão o que foi escrito, senão as horas dos botões de horário,
- *                            senão o data-vazio do campo ("Sem prazo")
+ *   fieldValOf(field)        o texto: o equipamento escolhido (um: o nome; mais: o data-varios do campo, «Vários
+ *                            equipamentos»), senão os botões marcados, senão o que foi escrito, senão as horas dos
+ *                            botões de horário, senão o data-vazio do campo ("Sem prazo")
  *   paintFieldVals(root)     põe esse texto no data-val do título de cada campo que fecha (.sheet .field.dobravel);
  *                            um campo com a sua própria .fl-val (o título já diz) fica sem
  *
@@ -22,6 +23,9 @@ const textOf = (el) =>
 export function fieldValOf(field) {
   // só o que é deste campo: nem o título, nem um campo dentro dele
   const own = (el) => el.closest(".field") === field && !el.closest(".flabel, .flabel-row");
+  // o dono: "quando eu retraio e tem só um equipamento, coloca do lado o equipamento; senão, «Vários equipamentos»"
+  const eqs = [...field.querySelectorAll(".eq-sel .eq-tx > b")].filter(own).map(textOf).filter(Boolean);
+  if (eqs.length) return eqs.length === 1 ? eqs[0] : field.getAttribute("data-varios") || "Vários equipamentos";
   const picks = [...field.querySelectorAll(".on, .sel, [aria-pressed='true'], [aria-checked='true'], [aria-selected='true']")]
     .filter((b) => own(b) && b.matches("button, [role='radio'], [role='checkbox'], [role='option'], .pick, .pk, .chip, .swatch, .sw"))
     .map((b) => textOf(b) || b.getAttribute("title") || b.getAttribute("aria-label") || "")
