@@ -95,6 +95,8 @@ Nos ajustes do bloco, escolha **Sem categoria**, uma das categorias ou **Nova** 
 
 À direita da contagem, a escolha rápida entre ver os blocos **em blocos** (as capas) ou **em lista** (uma linha por bloco: a cor, o nome, as folhas, de quem é e quando abre; **Novo bloco** no fim). A escolha fica guardada no aparelho.
 
+**Agrupar por** (embaixo dos filtros): **Nenhum** (como sempre), **Categoria**, **De quem é** ou **Horário** (Manhã, Tarde, Noite e Sem horário; o bloco que abre em mais de um período aparece em cada um). Cada grupo mostra quantos blocos e fecha num toque no título; o título **Agrupar por** fecha o bloco e mostra ao lado o escolhido. O aparelho lembra.
+
 Com categorias, a tela **Blocos** mostra etiquetas no alto: **Todos**, cada categoria e **Sem categoria** (quando algum bloco não tem), todas do mesmo tamanho, alinhadas com as de **De quem** (com muitas, a fileira rola para o lado). A escolha fica guardada no aparelho (vale também para os **Arquivados**), e um bloco novo criado com uma categoria escolhida já entra nela. O **Seu dia** continua mostrando todos os horários.
 
 No fim de **Blocos**, o quadro **Seu dia** lista os horários de hoje, com o de agora marcado. Toque num deles para abrir o bloco (ou o trecho).

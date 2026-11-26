@@ -17,7 +17,7 @@ import { parentHass, detectDark } from "./api.js";
 import { parseLinks, hasLinks, linksToText, normalizeUrl } from "../../memoria/rootfs/app/lib/links.js";
 import { hasFormat, parseFormat, formatText, formatAt, markRuns, FORMAT_COLORS } from "../../memoria/rootfs/app/lib/format.js";
 import { appendLink, freeColor, checkOf, hasChecks, toggleCheck, CHECK_TODO } from "../../memoria/rootfs/app/lib/writing.js";
-import { PERIODS, PAPERS, DURATIONS, fmtDur, buildSchedule, currentAt, nextAfter, timeline, ahead, occurrence, minutesOf, fmtMin, periodAt, periodTimes, normTime, opensFor, sameName, ownerName } from "../../memoria/rootfs/app/lib/schedule.js";
+import { PERIODS, PAPERS, DURATIONS, fmtDur, buildSchedule, currentAt, nextAfter, timeline, ahead, occurrence, minutesOf, fmtMin, periodAt, periodTimes, normTime, opensFor, sameName, ownerName, toMin } from "../../memoria/rootfs/app/lib/schedule.js";
 
 const THEME_KEY = "memoria.theme";
 const SAVE_DELAY = 600;
@@ -32,6 +32,10 @@ const VIEW_KEY = "memoria.blocos.vista";
 // Blocos and Buscar de quem (1.10.0): "" the person using it (theirs and everyone's), a name, or "*" every block
 // (on this device, one for each screen)
 const WHO_KEY = "memoria.blocos.pessoa";
+// 1.51.0: Blocos › Agrupar por (o que está escolhido, o bloco fechado e os grupos fechados ficam no aparelho)
+const AGRUPAR_KEY = "memoria.blocos.agrupar";
+const AGRUPAR_FECHADO_KEY = "memoria.blocos.agrupar-fechado";
+const GRUPOS_KEY = "memoria.blocos.grupos-fechados";
 const SEARCH_WHO_KEY = "memoria.buscar.pessoa";
 const REPORT_KEY = "memoria.relatorio";
 const SEARCH_ARCH_KEY = "memoria.buscar.arquivados";
@@ -3418,28 +3422,19 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
     const pages = blocks.reduce((n, b) => n + this._pagesOf(b.id).length, 0);
     const groups = timeline(this._schedule());
     const { cur } = this._slot();
+    const ags = this._shelfAgrupar();
+    const como = this._shelfComo(ags);
     return html`
       <section class="page">
         ${this._renderHead("Blocos", { text: `${plural(blocks.length, "bloco", "blocos")} · ${plural(pages, "folha", "folhas")}`, extra: this._renderViewToggle() })}
         ${this._renderWhoChips(who, WHO_KEY)}
         ${this._renderCatChips(fcat, SHELF_KEY)}
-        ${this._shelfList()
+        ${ags.length > 1 ? this._renderAgrupar(ags, como) : nothing}
+        ${como
+          ? this._renderShelfGroups(blocks, como)
+          : this._shelfList()
           ? this._renderShelfList(blocks)
-          : html`<div class="shelf">
-          ${repeat(
-            blocks,
-            (b) => b.id,
-            (b) => {
-              const n = this._pagesOf(b.id).length;
-              const parts = this._whenParts(b);
-              return html`<button class="cover" style=${this._cv(b)} @click=${() => this._openPage(b.id)} aria-label="Abrir ${b.name}">
-                <div class="sticker"><b>${b.name}</b><small>${plural(n, "folha", "folhas")}${this._owner(b) ? html` · <span class="owner">de ${clip(this._owner(b), 16)}</span>` : nothing}</small></div>
-                <div class="when">${parts.length ? parts.map((p) => html`<span>${icon(p.icon)}${p.label}</span>`) : html`<span>${icon("notebook")}Sem horário</span>`}</div>
-              </button>`;
-            },
-          )}
-          <button class="cover add" @click=${() => this._openBlockSheet(null)}>${icon("plus")}<span>Novo bloco</span></button>
-        </div>`}
+          : this._renderCovers(blocks)}
         ${archived.length ? this._renderArchived(archived) : nothing}
         ${groups.length
           ? html`<div class="panel">
@@ -3463,6 +3458,114 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
     `;
   }
 
+  /** 1.51.0 (o dono: "do mesmo jeito que criamos esse agrupar por… a gente precisa adicionar ele em outros locais"; o modelo
+   *  é o dos Consumíveis do InventarIA): Blocos › Agrupar por Nenhum, Categoria (com categorias), De quem é (com o Controle
+   *  por pessoa e mais de uma pessoa) e Horário (Manhã, Tarde, Noite, Sem horário; um bloco que abre em mais de um período
+   *  aparece em cada um). */
+  _shelfAgrupar() {
+    return [
+      ["", "Nenhum", "layout-grid"],
+      ...(this._catsOn() && this._cats().length ? [["cat", "Categoria", "tag"]] : []),
+      ...(this._whoOn() ? [["quem", "De quem é", "user-round"]] : []),
+      ["hora", "Horário", "clock"],
+    ];
+  }
+
+  _shelfComo(ags = this._shelfAgrupar()) {
+    const v = local.get(AGRUPAR_KEY, "") || "";
+    return ags.some(([k]) => k === v) ? v : "";
+  }
+
+  /** The Agrupar por block: the small title that folds it (folded, the choice at its side), the choices in one bar. */
+  _renderAgrupar(ags, como) {
+    const shut = local.get(AGRUPAR_FECHADO_KEY, false) === true;
+    const nome = (ags.find(([k]) => k === como) || ags[0])[1];
+    const pick = (k) => {
+      this._haptic("light");
+      local.set(AGRUPAR_KEY, k);
+      this.requestUpdate();
+    };
+    return html`<div class="agrupar ${shut ? "fechado" : ""}">
+      <button type="button" class="agrupar-l" id="blocos-agrupar" aria-expanded=${shut ? "false" : "true"} @click=${() => (local.set(AGRUPAR_FECHADO_KEY, !shut), this.requestUpdate())}>${icon("layers")}<span>Agrupar por</span>${shut ? html`<span class="agrupar-val">· ${nome}</span>` : nothing}${icon("chevron-down", "seta")}</button>
+      ${shut
+        ? nothing
+        : html`<div class="seg agrupar-seg" role="radiogroup" aria-labelledby="blocos-agrupar" style="--n:${ags.length}">
+            ${ags.map(([k, n, ic]) => html`<button type="button" class=${como === k ? "on" : ""} role="radio" aria-checked=${como === k ? "true" : "false"} @click=${() => pick(k)}>${icon(ic)}<span>${n}</span></button>`)}
+          </div>`}
+    </div>`;
+  }
+
+  /** The groups of Blocos for Agrupar por: [{k, nome, ic, cor?, blocks}], in order, only the ones with blocks. */
+  _shelfGroups(blocks, como) {
+    const m = new Map();
+    const put = (k, b) => (m.has(k) ? m.get(k) : m.set(k, []).get(k)).push(b);
+    let ordem;
+    if (como === "cat") {
+      for (const b of blocks) put(this._cat(b.category) ? b.category : "", b);
+      ordem = [...this._cats().map((c) => ({ k: c.id, nome: c.name, ic: "tag", cor: c.color })), { k: "", nome: "Sem categoria", ic: "tag" }];
+    } else if (como === "quem") {
+      const names = this._whoNames();
+      for (const b of blocks) put(b.owner ? names.find((n) => sameName(n, b.owner)) || ownerName(b.owner) : "", b);
+      ordem = [...names.map((n) => ({ k: n, nome: n, ic: "user-round" })), { k: "", nome: "De todos", ic: "users" }];
+    } else {
+      const periods = periodTimes(this._data);
+      for (const b of blocks) {
+        const ids = new Set(b.periods || []);
+        for (const t of [...(b.times || []), ...this._pagesOf(b.id).flatMap((p) => p.times || [])]) {
+          const min = toMin(t);
+          if (min != null) ids.add(periodAt(min, periods));
+        }
+        const ok = PERIODS.filter((p) => ids.has(p.id));
+        if (!ok.length) put("", b);
+        for (const p of ok) put(p.id, b);
+      }
+      ordem = [...PERIODS.map((p) => ({ k: p.id, nome: p.label, ic: p.icon })), { k: "", nome: "Sem horário", ic: "notebook" }];
+    }
+    return ordem.filter((g) => m.has(g.k)).map((g) => ({ ...g, blocks: m.get(g.k) }));
+  }
+
+  /** Blocos grouped: each group with the icon, the name and how many, folding by its title; then Novo bloco. */
+  _renderShelfGroups(blocks, como) {
+    const shut = new Set(local.get(GRUPOS_KEY, []) || []);
+    const list = this._shelfList();
+    const toggle = (id) => {
+      shut.has(id) ? shut.delete(id) : shut.add(id);
+      local.set(GRUPOS_KEY, [...shut]);
+      this.requestUpdate();
+    };
+    return html`${this._shelfGroups(blocks, como).map((g) => {
+        const id = `${como}:${g.k || "-"}`;
+        const off = shut.has(id);
+        const cv = g.cor ? colorVars(colorById(g.cor) || colorById("grafite"), this._dark) : "";
+        return html`<section class="shelf-grp ${off ? "shut" : ""}" data-grupo=${id}>
+          <button type="button" class="grp-h" style=${cv} aria-expanded=${off ? "false" : "true"} @click=${() => toggle(id)}>
+            <span class="tile">${icon(g.ic)}</span><b>${g.nome}</b><span class="grp-n">${plural(g.blocks.length, "bloco", "blocos")}</span>${icon("chevron-down", "seta")}
+          </button>
+          ${off ? nothing : list ? this._renderShelfList(g.blocks, false) : this._renderCovers(g.blocks, false)}
+        </section>`;
+      })}
+      ${list ? this._renderShelfList([], true) : this._renderCovers([], true)}`;
+  }
+
+  /** The covers of some blocks (and, with add, Novo bloco at the end). */
+  _renderCovers(blocks, add = true) {
+    return html`<div class="shelf">
+      ${repeat(
+        blocks,
+        (b) => b.id,
+        (b) => {
+          const n = this._pagesOf(b.id).length;
+          const parts = this._whenParts(b);
+          return html`<button class="cover" style=${this._cv(b)} @click=${() => this._openPage(b.id)} aria-label="Abrir ${b.name}">
+            <div class="sticker"><b>${b.name}</b><small>${plural(n, "folha", "folhas")}${this._owner(b) ? html` · <span class="owner">de ${clip(this._owner(b), 16)}</span>` : nothing}</small></div>
+            <div class="when">${parts.length ? parts.map((p) => html`<span>${icon(p.icon)}${p.label}</span>`) : html`<span>${icon("notebook")}Sem horário</span>`}</div>
+          </button>`;
+        },
+      )}
+      ${add ? html`<button class="cover add" @click=${() => this._openBlockSheet(null)}>${icon("plus")}<span>Novo bloco</span></button>` : nothing}
+    </div>`;
+  }
+
   /** Blocos: the quick choice between the covers and a list, at the right of the count. */
   _renderViewToggle() {
     const list = this._shelfList();
@@ -3473,7 +3576,8 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
   }
 
   /** Blocos em lista: one line each (the color, the name, the folhas, whose and when it opens), then Novo bloco. */
-  _renderShelfList(blocks) {
+  _renderShelfList(blocks, add = true) {
+    if (!blocks.length && !add) return nothing;
     return html`<div class="panel shelf-list">
       ${repeat(
         blocks,
@@ -3488,10 +3592,12 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
           </button>`;
         },
       )}
-      <button class="row block-row add" @click=${() => this._openBlockSheet(null)}>
-        <span class="tile">${icon("plus")}</span>
-        <span class="grow"><span class="label">Novo bloco</span></span>
-      </button>
+      ${add
+        ? html`<button class="row block-row add" @click=${() => this._openBlockSheet(null)}>
+            <span class="tile">${icon("plus")}</span>
+            <span class="grow"><span class="label">Novo bloco</span></span>
+          </button>`
+        : nothing}
     </div>`;
   }
 

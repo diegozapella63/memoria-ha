@@ -1,5 +1,12 @@
 # Mudanças
 
+## 1.51.0
+
+- **Blocos › Agrupar por**, no mesmo jeito dos outros apps da família.
+  - **Nenhum** (as capas, como sempre), **Categoria**, **De quem é** (com o Controle por pessoa) ou **Horário** (Manhã, Tarde, Noite e Sem horário; um bloco que abre em mais de um período aparece em cada um), numa barra só, do mesmo tamanho.
+  - Cada grupo mostra o ícone (na cor da categoria), o nome e quantos blocos, e fecha num toque no título. Vale em blocos e em lista.
+  - O título **Agrupar por** fecha e abre o bloco; fechado, mostra ao lado o que está escolhido. O aparelho lembra.
+
 ## 1.50.0
 
 - **Digitar o horário**: na janela da **Hora** (o + Horário de um bloco ou de uma folha), a primeira opção abre um campo para escrever qualquer horário, como 07:12 (só os números; o ✓ ou o Enter põe).

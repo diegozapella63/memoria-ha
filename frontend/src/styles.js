@@ -1049,6 +1049,128 @@ export const styles = css`
   :host([dark]) .seg button.on {
     background: var(--rv-line-strong);
   }
+  /* 1.51.0: Agrupar por, no padrão da família (o dos Consumíveis do InventarIA): o título pequeno que fecha o bloco (fechado,
+     o escolhido ao lado), as escolhas numa barra só, do mesmo tamanho; cada grupo com o ícone, o nome e quantos */
+  .agrupar {
+    display: grid;
+    gap: 8px;
+    margin: 0 0 16px;
+  }
+  .agrupar.fechado {
+    gap: 0;
+  }
+  .agrupar-l {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    min-height: 32px;
+    padding: 0 2px;
+    border: 0;
+    background: none;
+    color: var(--rv-muted);
+    font: inherit;
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .agrupar-l .i {
+    width: 17px;
+    height: 17px;
+  }
+  .agrupar-l > .seta {
+    margin-left: auto;
+    transition: transform 0.2s;
+  }
+  .agrupar.fechado > .agrupar-l > .seta {
+    transform: rotate(-90deg);
+  }
+  .agrupar-l > .agrupar-val {
+    color: var(--rv-text);
+    font-weight: 600;
+  }
+  .seg.agrupar-seg {
+    display: grid;
+    grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
+  }
+  .seg.agrupar-seg button {
+    min-width: 0;
+    min-height: 42px;
+  }
+  .seg.agrupar-seg button > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  @media (max-width: 440px) {
+    .seg.agrupar-seg[style*="--n:4"] button .i {
+      display: none;
+    }
+  }
+  @media (max-width: 380px) {
+    .seg.agrupar-seg button .i {
+      display: none;
+    }
+  }
+  .shelf-grp > .grp-h {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin: 4px 0 12px;
+    padding: 0 2px;
+    border: 0;
+    background: none;
+    color: var(--rv-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .shelf-grp > .grp-h .tile {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    flex: none;
+  }
+  .shelf-grp > .grp-h:not([style*="--c"]) .tile {
+    background: var(--rv-accent-soft);
+    color: var(--rv-accent-ink);
+  }
+  .shelf-grp > .grp-h .tile .i {
+    width: 19px;
+    height: 19px;
+  }
+  .shelf-grp > .grp-h b {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--rv-display);
+    font-size: 20px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .shelf-grp > .grp-h .grp-n {
+    flex: none;
+    color: var(--rv-muted);
+    font-size: 14px;
+  }
+  .shelf-grp > .grp-h > .seta {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    color: var(--rv-muted);
+    transition: transform 0.2s;
+  }
+  .shelf-grp.shut > .grp-h > .seta {
+    transform: rotate(-90deg);
+  }
+  .shelf-grp.shut > .grp-h {
+    margin-bottom: 14px;
+  }
   .switch {
     position: relative;
     width: 50px;
