@@ -40,13 +40,14 @@ A primeira instalação leva alguns minutos, porque o app é montado no próprio
 - **Relatório de anotações**, com os blocos e as folhas e **Baixar PDF** (funciona no app do Home Assistant no celular).
 - **No ⋯ da folha**: horário próprio, mover para outro bloco, adicionar link, copiar o texto ou arrancar a folha, com Desfazer.
 - **Caixas de marcar**: no alto da folha, transforme linhas em itens com caixa para marcar como feito com um toque; escrevendo, **Pronto** sai da escrita num toque.
+- **Negrito, letra maior, cores e emojis** na barra de escrever; o Relatório em PDF leva os emojis.
 - **Links que abrem com um toque**: endereços na folha viram etiquetas curtas (o nome, ou o site), sem aquele texto comprido.
 - **Nova folha de mensagem ou foto**: cole uma mensagem do WhatsApp, escolha fotos ou digitalize uma anotação em papel; a IA configurada no Home Assistant (Claude, OpenAI, Gemini ou Ollama) transcreve e você revisa. Escolha qual em **Mais → Configurações → Integrações**.
-- **Falar e Conversar com a IA**, no alto das telas: diga uma anotação (a fala para texto do Home Assistant transcreve e a IA organiza) ou converse sobre os blocos; o que a IA propõe escrever só acontece depois do seu toque.
+- **Falar e Conversar com a IA**, no alto das telas: diga uma anotação (a fala para texto do Home Assistant transcreve e a IA organiza) ou converse sobre os blocos; o que a IA propõe escrever só acontece depois do seu toque. A **Memória da IA** é uma só, da casa, compartilhada por todos os apps da família.
 - **Buscar** em todas as folhas, sem se importar com acentos, com os blocos já na tela: **Selecionar** vários para mudar a categoria e de quem é de uma vez.
 - **Sensor** `sensor.memoria_agora` com o bloco e a folha do momento, para painéis e automações.
 - **No CronologIA**: o trecho de agora e os dois próximos aparecem no Agora do CronologIA (ligue lá, em Integrações).
-- **CorrerIA**: com o app CorrerIA, o WhatsApp, o Claude e o Gemini leem e mudam os blocos (buscar, ler, criar e editar folhas, links, blocos e categorias). Ligue em **Mais → Configurações → Integrações**.
+- **CorrerIA**: com o app CorrerIA, o WhatsApp, o Claude e o Gemini leem e mudam os blocos (buscar, ler, criar e editar folhas, links, blocos e categorias), e a **Ronda das anotações** de lá passa pelos blocos parados. Ligue em **Mais → Configurações → Integrações**.
 - **Salvo no Home Assistant**: sincroniza na hora entre aparelhos e entra no backup.
 - **Dados**: exportar (ZIP com um arquivo de texto por bloco, CSV e JSON), backup na pasta `share/memoria`, importar, versões anteriores automáticas e começar do zero.
 - **Mais** em menu, como nos outros apps: **Categorias**, **Relatório de anotações**, **Configurações** em abas (Integrações, Dados, Aparência e Opções) e **Sobre**. Embaixo, **Agora**, **Buscar**, **Adicionar**, **Blocos** e **Mais**; arrastar o dedo para os lados troca de aba.

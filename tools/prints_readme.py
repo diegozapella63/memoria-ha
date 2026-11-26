@@ -63,7 +63,7 @@ def main():
         pg.wait_for_timeout(120)
         shot("virar.png")
         pg.wait_for_timeout(900)
-        a.locator("nav .tab", has_text="Blocos").click()
+        a.evaluate("(el) => el._goTab('/blocos')")  # a folha nova abre a escrita, que esconde a barra de baixo
         pg.wait_for_timeout(700)
         shot("blocos.png")
         b.close()
