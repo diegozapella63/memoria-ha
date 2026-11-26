@@ -41,6 +41,8 @@ const REPORT_KEY = "memoria.relatorio";
 const SEARCH_ARCH_KEY = "memoria.buscar.arquivados";
 // 1.25.0: Buscar › Filtros fechado (guardado no aparelho)
 const SEARCH_FOLD_KEY = "memoria.buscar.filtros";
+// 1.52.0 (o dono: "os filtros lá de cima devem poder ser retraídos igual os outros filtros"): Blocos › Filtros fechado
+const SHELF_FOLD_KEY = "memoria.blocos.filtros";
 // 1.50.0 (o dono: "filtro por categoria"): Buscar › Filtros › a categoria (guardada no aparelho): "", uma categoria ou "sem"
 const SEARCH_CAT_KEY = "memoria.buscar.categoria";
 // 1.28.0: the emojis of the bar of the writing: the last ones used (on this device), then these
@@ -3427,9 +3429,14 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
     return html`
       <section class="page">
         ${this._renderHead("Blocos", { text: `${plural(blocks.length, "bloco", "blocos")} · ${plural(pages, "folha", "folhas")}`, extra: this._renderViewToggle() })}
-        ${this._renderWhoChips(who, WHO_KEY)}
-        ${this._renderCatChips(fcat, SHELF_KEY)}
-        ${ags.length > 1 ? this._renderAgrupar(ags, como) : nothing}
+        ${this._whoOn() || (this._catsOn() && this._cats().length) || ags.length > 1
+          ? html`<div class="alto-lista">
+              ${this._whoOn() || (this._catsOn() && this._cats().length)
+                ? this._renderFiltros("blocos-filtros", SHELF_FOLD_KEY, this._filtrosVal(who, fcat), html`${this._renderWhoChips(who, WHO_KEY)}${this._renderCatChips(fcat, SHELF_KEY)}`)
+                : nothing}
+              ${ags.length > 1 ? this._renderAgrupar(ags, como) : nothing}
+            </div>`
+          : nothing}
         ${como
           ? this._renderShelfGroups(blocks, como)
           : this._shelfList()
@@ -3463,34 +3470,38 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
    *  por pessoa e mais de uma pessoa) e Horário (Manhã, Tarde, Noite, Sem horário; um bloco que abre em mais de um período
    *  aparece em cada um). */
   _shelfAgrupar() {
+    // 1.52.0 (PADROES.md): de início, a que mais ajuda (a primeira); o Nenhum por último
     return [
-      ["", "Nenhum", "layout-grid"],
       ...(this._catsOn() && this._cats().length ? [["cat", "Categoria", "tag"]] : []),
       ...(this._whoOn() ? [["quem", "De quem é", "user-round"]] : []),
       ["hora", "Horário", "clock"],
+      ["nenhum", "Nenhum", "layout-grid"],
     ];
   }
 
+  /** The grouping now: the one chosen on this device, or the first; Nenhum is "". */
   _shelfComo(ags = this._shelfAgrupar()) {
     const v = local.get(AGRUPAR_KEY, "") || "";
-    return ags.some(([k]) => k === v) ? v : "";
+    const k = ags.some(([x]) => x === v) ? v : ags[0][0];
+    return k === "nenhum" ? "" : k;
   }
 
   /** The Agrupar por block: the small title that folds it (folded, the choice at its side), the choices in one bar. */
   _renderAgrupar(ags, como) {
     const shut = local.get(AGRUPAR_FECHADO_KEY, false) === true;
-    const nome = (ags.find(([k]) => k === como) || ags[0])[1];
+    const cur = como || "nenhum";
+    const nome = (ags.find(([k]) => k === cur) || ags[0])[1];
     const pick = (k) => {
       this._haptic("light");
       local.set(AGRUPAR_KEY, k);
       this.requestUpdate();
     };
     return html`<div class="agrupar ${shut ? "fechado" : ""}">
-      <button type="button" class="agrupar-l" id="blocos-agrupar" aria-expanded=${shut ? "false" : "true"} @click=${() => (local.set(AGRUPAR_FECHADO_KEY, !shut), this.requestUpdate())}>${icon("layers")}<span>Agrupar por</span>${shut ? html`<span class="agrupar-val">· ${nome}</span>` : nothing}${icon("chevron-down", "seta")}</button>
+      <button type="button" class="agrupar-l" id="blocos-agrupar" aria-expanded=${shut ? "false" : "true"} @click=${() => (local.set(AGRUPAR_FECHADO_KEY, !shut), this.requestUpdate())}>${icon("layers", "lbl-ic")}<span>Agrupar por</span>${shut ? html`<span class="agrupar-val">· ${nome}</span>` : nothing}${icon("chevron-down", "seta")}</button>
       ${shut
         ? nothing
         : html`<div class="seg agrupar-seg" role="radiogroup" aria-labelledby="blocos-agrupar" style="--n:${ags.length}">
-            ${ags.map(([k, n, ic]) => html`<button type="button" class=${como === k ? "on" : ""} role="radio" aria-checked=${como === k ? "true" : "false"} @click=${() => pick(k)}>${icon(ic)}<span>${n}</span></button>`)}
+            ${ags.map(([k, n, ic]) => html`<button type="button" class=${cur === k ? "on" : ""} role="radio" aria-checked=${cur === k ? "true" : "false"} @click=${() => pick(k)}>${icon(ic)}<span>${n}</span></button>`)}
           </div>`}
     </div>`;
   }
@@ -3832,23 +3843,40 @@ class MemoriaApp extends MemoriaIaMixin(ChatMixin(LitElement)) {
    * no aparelho); fechado, o título diz o que está valendo.
    */
   _renderSearchFilters(who, withArch) {
-    const shut = local.get(SEARCH_FOLD_KEY, false) === true;
-    return html`<button type="button" class="filters-label" id="filtros" aria-expanded=${shut ? "false" : "true"} @click=${() => {
+    const fcat = this._searchCat();
+    const val = [this._filtrosVal(who, fcat), withArch ? "Com arquivados" : ""].filter(Boolean).join(", ");
+    return html`<div class="alto-lista">${this._renderFiltros(
+      "filtros",
+      SEARCH_FOLD_KEY,
+      val,
+      html`${this._renderWhoChips(who, SEARCH_WHO_KEY)}
+        ${this._renderCatChips(fcat, SEARCH_CAT_KEY)}
+        <div class="chip-row search-opts"><button class="pick ${withArch ? "on" : ""}" aria-pressed=${withArch ? "true" : "false"} @click=${() => {
+          this._haptic("light");
+          local.set(SEARCH_ARCH_KEY, !withArch);
+          this.requestUpdate();
+        }}>${icon("archive")}<span>Incluir arquivados</span></button></div>`,
+    )}</div>`;
+  }
+
+  /** 1.52.0 (PADROES.md, "O alto das listas"): the Filtros row, that folds what is under it (the device remembers); folded,
+   *  what is on goes beside the name. Blocos and Buscar. */
+  _renderFiltros(id, key, val, body) {
+    const shut = local.get(key, false) === true;
+    return html`<button type="button" class="filters-label" id=${id} aria-expanded=${shut ? "false" : "true"} @click=${() => {
         this._haptic("light");
-        local.set(SEARCH_FOLD_KEY, !shut);
+        local.set(key, !shut);
         this.requestUpdate();
-      }}>${icon("sliders-horizontal", "lbl-ic")}<span>Filtros</span></button>
-      ${shut
-        ? nothing
-        : html`<div class="filtros" role="group" aria-labelledby="filtros">
-            ${this._renderWhoChips(who, SEARCH_WHO_KEY)}
-            ${this._renderCatChips(this._searchCat(), SEARCH_CAT_KEY)}
-            <div class="chip-row search-opts"><button class="pick ${withArch ? "on" : ""}" aria-pressed=${withArch ? "true" : "false"} @click=${() => {
-              this._haptic("light");
-              local.set(SEARCH_ARCH_KEY, !withArch);
-              this.requestUpdate();
-            }}>${icon("archive")}<span>Incluir arquivados</span></button></div>
-          </div>`}`;
+      }}>${icon("sliders-horizontal", "lbl-ic")}<span>Filtros</span>${shut && val ? html`<span class="filters-val">· ${val}</span>` : nothing}</button>
+      ${shut ? nothing : html`<div class="filtros" role="group" aria-labelledby=${id}>${body}</div>`}`;
+  }
+
+  /** What the filters De quem and the category have now, for the folded Filtros ("Ana, Trabalho"). */
+  _filtrosVal(who, fcat) {
+    const out = [];
+    if (this._whoOn()) out.push(who === "*" ? "Todos" : who);
+    if (this._catsOn() && fcat) out.push(fcat === "sem" ? "Sem categoria" : (this._cat(fcat) || {}).name || "");
+    return out.filter(Boolean).join(", ");
   }
 
   /**

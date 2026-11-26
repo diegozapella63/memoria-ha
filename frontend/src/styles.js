@@ -816,12 +816,14 @@ export const styles = css`
   .done-toggle .count {
     color: var(--rv-muted);
   }
+  /* PADROES.md (setas): fechado, para o lado; aberto, para baixo */
   .done-toggle .i {
     transition: transform 0.2s;
     color: var(--rv-muted);
+    transform: rotate(-90deg);
   }
   .done-toggle.open .i {
-    transform: rotate(180deg);
+    transform: none;
   }
 
   .empty {
@@ -1051,44 +1053,77 @@ export const styles = css`
   }
   /* 1.51.0: Agrupar por, no padrão da família (o dos Consumíveis do InventarIA): o título pequeno que fecha o bloco (fechado,
      o escolhido ao lado), as escolhas numa barra só, do mesmo tamanho; cada grupo com o ícone, o nome e quantos */
+  /* 1.52.0 (PADROES.md, "O alto das listas"): o Filtros e o Agrupar por, uma linha cada, iguais nos apps: 40 px, o ícone de
+     18 px na cor do app, o nome em 15 px, peso 500, na cor do texto; fechado, o escolhido em cinza; a seta no fim. Um embaixo
+     do outro, sem vão; o conteúdo aberto logo abaixo e 8 px até a linha seguinte */
+  .alto-lista {
+    margin: -4px 0 12px;
+  }
   .agrupar {
     display: grid;
-    gap: 8px;
-    margin: 0 0 16px;
+    gap: 4px;
+    margin: 0;
+  }
+  .agrupar:not(.fechado) {
+    margin-bottom: 8px;
   }
   .agrupar.fechado {
     gap: 0;
   }
-  .agrupar-l {
+  .agrupar-l,
+  .filters-label {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     width: 100%;
-    min-height: 32px;
+    min-height: 40px;
+    margin: 0;
     padding: 0 2px;
     border: 0;
     background: none;
-    color: var(--rv-muted);
+    color: var(--rv-text);
     font: inherit;
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 500;
     text-align: left;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
-  .agrupar-l .i {
-    width: 17px;
-    height: 17px;
+  .agrupar-l > .lbl-ic,
+  .filters-label > .lbl-ic {
+    width: 18px;
+    height: 18px;
+    color: var(--rv-accent-ink);
   }
   .agrupar-l > .seta {
+    width: 18px;
+    height: 18px;
     margin-left: auto;
+    color: var(--rv-muted);
     transition: transform 0.2s;
   }
   .agrupar.fechado > .agrupar-l > .seta {
     transform: rotate(-90deg);
   }
-  .agrupar-l > .agrupar-val {
-    color: var(--rv-text);
-    font-weight: 600;
+  .agrupar-l > .agrupar-val,
+  .filters-label > .filters-val {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--rv-muted);
+    font-weight: 500;
+  }
+  .alto-lista > .filtros {
+    margin: 4px 0 8px;
+  }
+  .alto-lista > .filtros > .chip-row.who-filter,
+  .alto-lista > .filtros > .chip-row.cat-filter {
+    margin-top: 0;
+    margin-bottom: 8px;
+  }
+  .alto-lista > .filtros > :last-child {
+    margin-bottom: 0;
   }
   .seg.agrupar-seg {
     display: grid;
@@ -2427,7 +2462,7 @@ export const styles = css`
     flex: 1;
     min-width: 0;
     color: var(--rv-muted);
-    font-size: 14px;
+    font-size: 15px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2531,8 +2566,8 @@ export const styles = css`
     color: var(--rv-muted);
     transition: transform 0.2s;
   }
-  .arch-head.open .chev {
-    transform: rotate(180deg);
+  .arch-head:not(.open) .chev {
+    transform: rotate(-90deg);
   }
   .arch-row .label,
   .arch-row .hint {
@@ -2621,23 +2656,10 @@ export const styles = css`
   .search-opts {
     margin: -6px 0 16px;
   }
-  /* Buscar › Filtros (1.25.0): o título fecha e abre De quem e Incluir arquivados, com a seta no canto */
-  .filters-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    min-height: 40px;
-    margin: -4px 0 8px;
-    padding: 2px 0;
-    background: none;
-    border: 0;
-    text-align: left;
-    font: inherit;
-    font-weight: 600;
-    color: var(--rv-text);
-    cursor: pointer;
+  .alto-lista .search-opts {
+    margin-top: 0;
   }
+  /* Buscar › Filtros (1.25.0): o título fecha e abre De quem e Incluir arquivados, com a seta no canto */
   .filters-label::after {
     content: "";
     flex: none;
@@ -2648,9 +2670,6 @@ export const styles = css`
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / 18px no-repeat;
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / 18px no-repeat;
     transition: transform 0.15s;
-  }
-  .filters-label[aria-expanded="false"] {
-    margin-bottom: 14px;
   }
   .filters-label[aria-expanded="false"]::after {
     transform: rotate(-90deg);

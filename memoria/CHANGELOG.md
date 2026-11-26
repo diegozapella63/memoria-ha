@@ -1,5 +1,12 @@
 # Mudanças
 
+## 1.52.0
+
+- **Blocos › Filtros**: o De quem e as categorias ficam dentro do **Filtros**, que fecha e abre num toque, como o do Buscar; fechado, mostra ao lado o que está valendo.
+- **O alto das listas igual em todos os apps**: o **Filtros** e o **Agrupar por** são linhas do mesmo tamanho, uma embaixo da outra, com o ícone na cor do app; a contagem e o **Selecionar** na mesma linha, antes da lista.
+- **Agrupar por** começa em **Categoria** (ou na primeira que houver); o **Nenhum** fica por último.
+- **Setas**: o que fecha e abre (Arquivados, Concluídos, as Últimas chamadas do Uso da IA) mostra a seta para o lado fechado e para baixo aberto.
+
 ## 1.51.0
 
 - **Blocos › Agrupar por**, no mesmo jeito dos outros apps da família.

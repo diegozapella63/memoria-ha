@@ -161,7 +161,8 @@ with sync_playwright() as p:
         filt.click()
         pg.wait_for_timeout(300)
         check(a.locator(".who-filter").count() == 0 and a.locator(".search-opts").count() == 0, f"{tag}: closed, the filters hide")
-        check(a.locator(".filters-label").inner_text().strip() == "Filtros", f"{tag}: closed, only Filtros (nothing beside it) ({a.locator('.filters-label').inner_text()!r})")
+        # 1.52.0 (PADROES.md): fechado, o que está valendo ao lado do nome
+        check(" ".join(a.locator(".filters-label").inner_text().split()).startswith("Filtros · Todos"), f"{tag}: closed, what is on beside it ({a.locator('.filters-label').inner_text()!r})")
         check("Viagem" in a.evaluate(NAMES), f"{tag}: closed, the filters still count")
         check(a.evaluate(OVER) == [], f"{tag}: Filtros inside the screen {a.evaluate(OVER)}")
         pg.screenshot(path=str(SHOTS / f"buscar-{scheme}-{w}-filtros.png"))

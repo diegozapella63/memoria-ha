@@ -48,8 +48,20 @@ with sync_playwright() as p:
         pg.wait_for_timeout(500)
         n_blocos = a.locator(".shelf .cover:not(.add)").count()
         ops = texts(a.locator(".agrupar-seg button"))
-        check(ops[0] == "Nenhum" and ops[-1] == "Horário" and "Categoria" in ops, f"{tag}: Nenhum (de início), Categoria… e Horário ({ops})")
-        check(a.locator(".agrupar-seg button.on").inner_text().strip() == "Nenhum" and a.locator(".shelf-grp").count() == 0, f"{tag}: Nenhum: as capas, como sempre")
+        # 1.52.0 (PADROES.md): de início, a que mais ajuda (Categoria); o Nenhum por último
+        check(ops[0] == "Categoria" and ops[-2] == "Horário" and ops[-1] == "Nenhum", f"{tag}: Categoria (de início)… Horário e Nenhum ({ops})")
+        check(a.locator(".agrupar-seg button.on").inner_text().strip() == "Categoria" and a.locator(".shelf-grp").count() >= 1, f"{tag}: por Categoria de início")
+        # o Filtros (De quem e a categoria) fecha como os outros, com o que está valendo ao lado
+        filt = a.locator("#blocos-filtros")
+        check(filt.get_attribute("aria-expanded") == "true" and a.locator(".alto-lista .who-filter").count() == 1, f"{tag}: Blocos › Filtros aberto, com o De quem")
+        fb, gb = filt.bounding_box(), a.locator(".agrupar-l").bounding_box()
+        check(abs(fb["height"] - gb["height"]) < 1 and pg.evaluate("(e) => getComputedStyle(e).fontSize", filt.element_handle()) == "15px", f"{tag}: Filtros e Agrupar por do mesmo tamanho, 15 px")
+        filt.click()
+        pg.wait_for_timeout(200)
+        fb, gb = filt.bounding_box(), a.locator(".agrupar-l").bounding_box()
+        check(a.locator(".who-filter").count() == 0 and "·" in filt.inner_text() and abs(gb["y"] - (fb["y"] + fb["height"])) < 1, f"{tag}: fechado, o que vale ao lado, e o Agrupar por logo embaixo, sem vão ({filt.inner_text()!r})")
+        filt.click()
+        pg.wait_for_timeout(200)
         boxes = [x.bounding_box() for x in a.locator(".agrupar-seg button").all()]
         check(len({round(x["y"]) for x in boxes}) == 1 and max(x["width"] for x in boxes) - min(x["width"] for x in boxes) < 2, f"{tag}: numa linha, do mesmo tamanho")
         # Horário
