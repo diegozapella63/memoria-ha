@@ -1,5 +1,7 @@
 # Instruções para quem for mexer neste repositório (pessoas ou IAs)
 
+> Leia também o `PADROES.md`: os padrões da família, iguais em todos os apps. Este arquivo diz o que é só deste app e como cada padrão é feito aqui.
+
 MemorIA é um app (add-on) do Home Assistant com blocos de anotações em forma de caderno: blocos que abrem sozinhos num período do dia ou num horário exato, folhas com horário próprio (trechos), categorias, de quem é cada bloco, arquivar, Relatório em PDF, leitura por IA, Falar e Conversar. Faz parte de uma família de apps do mesmo dono, que conversam entre si pelo Home Assistant:
 
 | App | Repositório | O que é |
@@ -45,14 +47,7 @@ Como rodar no computador: README.md, em **Desenvolvimento**.
 
 ## Arquivos iguais em todos os apps
 
-A lista dos arquivos que são iguais nos apps da família fica em `tools/iguais.py` (ele também é igual em todos):
-`python3 tools/iguais.py` confere os daqui com os dos apps ao lado (`../resolvia-ha`, ...), e o GitHub confere a cada
-push (job **Arquivos iguais aos dos outros apps**, que baixa os outros apps). Mudou um arquivo da lista? Copie para os
-outros apps do grupo e publique todos. Um arquivo que passa a ser igual entra em `GRUPOS`, aqui e nas cópias.
-
-`share/<app>/integracao.json` começa igual em todos os apps: `app` (o id, como no `correria.json`), `nome`, `versao` e
-`gravado_em` (ISO 8601 com o fuso), depois os campos de cada app. O ResolvIA e o CronologIA ainda gravam o nome em
-`app` (as versões de antes conferem por ele) e quem lê aceita os dois; o id entra numa próxima versão.
+A lista fica em `tools/iguais.py` e as regras, em **Arquivos iguais** e **Os apps conversam** do `PADROES.md`.
 
 ## Arquivos iguais aos dos outros apps
 
@@ -77,23 +72,8 @@ Ao mudar um, mude nos outros: `frontend/src/selectsheet.js` (as caixas de seleç
 - **Caixas de seleção no visual do app**: nenhuma janela nativa do celular. Toda caixa de seleção abre pelo selectsheet.js; sugestões de texto (no lugar do `<datalist>`) e horários (sem AM/PM) também no visual do app; a caixa fechada igual aos outros campos (altura, cantos, seta), no claro e no escuro. Aqui: o `selectsheet.js` vem primeiro no `main.js` e no `preview.js` (e em `www/selectsheet.js` na página do Relatório), com `select:not([multiple]) { pointer-events: none }` no `styles.js` (Shadow DOM); a caixa fechada é a classe `.select`; horários por `_timeSelect` (de meia em meia hora) e `_timePicker` (a hora e depois os minutos), nunca `<input type="time">`.
 - Dados de exemplo e de testes sempre inventados (Ana, Beto): nunca blocos, folhas ou nomes reais do dono.
 
-**Padrão da família (igual em todos os apps)**
-- Barra de baixo: a primeira aba é **Agora** (onde o app abre, com o ícone do relógio; nada de Início); o botão do meio é **Adicionar** (no EconomIA, a ação principal dele), só com o ícone, sem o texto embaixo (o nome fica no `aria-label`); **Buscar**, quando houver, é a 2ª aba; **Mais** é a última, com o ícone de três pontos.
-- **Ícones**: toda seção (cartão) começa com o cabeçalho, o ícone e o título; o título de cada tela, de cada grupo (como Imóveis e Veículos) e de cada janela (Novo cômodo, Nova despesa… e a lista de uma caixa de seleção) também tem o ícone; dentro de uma seção, toda linha com título (uma chave, uma escolha, um campo, um recolhido como **Últimas chamadas**) tem um ícone pequeno antes do título; e todo botão com texto tem ícone (Cancelar, Salvar, Voltar, Hoje…). Assim dá para ver onde cada parte começa.
-- **Seções**: cada seção principal é um cartão (o fundo, a borda e os cantos arredondados, como no GerencIA), sem linha no fim; entre as linhas de opções de uma seção não há linha (o ícone de cada uma marca onde começa); as listas de dados (as listas, as tarefas que se repetem, os itens) têm a linha fina entre as entradas, sem a do fim.
-- **Sub-opções**: o que só vale com uma chave ligada (o Horário e o A cada do Conferir sozinho, o Quem recebe e o Testar do Avisar no celular, uma lista como Apps detectados) fica num quadro recuado logo abaixo dela, para ver de qual opção é.
-- **Abas**: quando as abas não cabem na largura, a ponta de onde há mais some aos poucos, com uma seta.
-- **Contrair e expandir**: toda seção (cartão) fecha e abre num toque no cabeçalho, com a seta no canto; o aparelho lembra as que ficaram fechadas. Aqui: `_applyFolds` (a cada render, em todo `.panel > .mais-head`) e `_toggleFold`; a chave é o id do cartão, o `data-card` ou o título, em `memoria-fechadas` no localStorage. Os ícones: `PAGE_IC` (o título das telas), `sheetIc` (o das janelas), `confirmIc` (as confirmações) e o `lbl-ic` antes do título de cada opção e campo; o `tests/secoes_check.py` confere.
-- Nada de avisos que só incham a tela: o que a própria tela já mostra, o que a pessoa confere de qualquer jeito ou um limite do app do celular ("a galeria manda uma foto por vez", "Você confere antes de criar", "a IA encontra…") fica de fora (a aba Documentação pode explicar).
-- Botões de ação (Novo…, Verificar de novo, Salvar e testar…) na largura do cartão no celular, dois lado a lado dividindo a linha; no computador, com a largura fixa do app (250 ou 280 px). Campos de texto livre que podem ficar longos (o que foi, títulos, descrições, nomes de tarefas) são caixas de texto que mostram tudo e aumentam puxando o canto (`textareas.js`), nunca uma linha que corta o texto; o Enter salva quando o campo é de uma linha só.
-- **Mais** é um menu: as funções do app, depois **Configurações** e por último **Sobre**. Os relatórios se chamam **Relatório de/do …**.
-- **Configurações** em 4 abas, nesta ordem: **Integrações › Dados › Aparência › Opções**; abre em Integrações. Nenhuma função do app vira aba.
-- **Integrações**, nesta ordem: os outros apps da família › CorrerIA › **IA** (o Usar IA e a IA de cada uso: **Para conversar**, **Para ler fotos e PDFs** e, onde há busca na web, **Para pesquisar na internet**; cada uma é uma tarefa de IA do Home Assistant, e a de fotos ou de pesquisa vazia é igual à de conversar) › Falar › Uso da IA › Sensores.
-- IA: as entradas se chamam **Colar mensagem**, **Escolher fotos** (ou **Escolher fotos ou PDF**, onde PDF vale) e **Digitalizar com IA**; a conversa recomeça em **Nova conversa**; o Voltar do celular fecha a Conversa.
-- Palavras: **Apagar** (nunca Excluir); **Testar no meu celular**; **Home Assistant Cloud** (não Nabu Casa); recolhidos como **Nome (n)**; o CHANGELOG começa com "# Mudanças".
-- Avisos no celular (todos chegam como Home Assistant): o título começa pelo nome do app, uma vez só ("ResolvIA · 📅 Vence hoje"), e o ícone pequeno é o do app (`notification_icon`); o canal e o grupo de cada aviso ficam como estão (o canal guarda o som e a importância que a pessoa escolheu no Android).
-- **Dados**: Exportar › Backup na pasta share › Importar › Versões anteriores › Onde ficam os dados › Começar do zero.
-- **Aparência**: o tema vale no aparelho (começa em Sistema); o fundo e os cartões são os do tema do Home Assistant (`hatema.js`, igual em todos os apps: publica `--ha-bg-light`, `--ha-card-light`, `--ha-bg-dark` e `--ha-card-dark`, as do modo de agora lidas do Home Assistant e as do outro, do tema padrão dele; os cinzas, como linhas e campos, saem do cartão misturado com o texto, `color-mix`, nunca uma cor fixa puxada para a cor do app); a cor do app vale para a casa toda; uma paleta só, de 12 cores (Vermelho, Coral, Laranja, Ouro, Verde, Menta, Turquesa, Azul, Índigo, Lilás, Rosa, Grafite); a Cor do dia é a mesma em todos os apps (as 11 sem o Grafite, pelo número do dia).
+**Padrão da família**: as regras de todos os apps estão no `PADROES.md` (igual nos 8 repositórios; leia antes de mexer). Como cada uma é feita aqui:
+- Contrair e expandir: `_applyFolds` (a cada render, em todo `.panel > .mais-head`) e `_toggleFold`; a chave é o id do cartão, o `data-card` ou o título, em `memoria-fechadas` no localStorage. Os ícones: `PAGE_IC` (o título das telas), `sheetIc` (o das janelas), `confirmIc` (as confirmações) e o `lbl-ic` antes do título de cada opção e campo; o `tests/secoes_check.py` confere.
 
 1.41.0: **emojis no PDF** do Relatório: o `lib/pdf.js` (igual ao do ResolvIA) desenha uma figura no lugar de um caractere da área de uso privado (`setGlyph`, `glyphChar`); o `report.js` troca cada emoji (`EMOJI_RE`, `emojisOf`) pelo caractere da figura dele, e um sem figura sai do texto, como antes. As figuras (48 × 48, RGBA) vêm da página do Relatório, que desenha num canvas os que o servidor não tem (`emojiScript`, `POST relatorio/emojis`) e ficam em `/data/emojis` (`lib/emojis.js`; fora das exportações: são só como o aparelho desenha cada emoji). A tela do bloco não rola: `_fitPad` mede o que sobra embaixo do cabeçalho e põe em `--page-h` (a folha rola por dentro). Os campos de escolhas das janelas fecham pelo título (`_applyFieldFolds`, `memoria-campos`; os do Alterar vários blocos, `.bulk-pick`, não). A Caixa de marcar fica só na barra de escrever.
 

@@ -71,4 +71,8 @@ jobs:
         with:
           repository: diegozapella63/cronologia-ha
           path: cronologia-ha
+      - uses: actions/checkout@v4
+        with:
+          repository: diegozapella63/OdisseIA
+          path: odisseia
       - run: python3 memoria-ha/tools/iguais.py --exigir
