@@ -53,6 +53,8 @@ with sync_playwright() as p:
     for scheme, w in (("light", 390), ("dark", 390), ("dark", 320)):
         tag = f"{scheme} {w}px"
         ctx = b.new_context(viewport={"width": w, "height": 844}, device_scale_factor=2, color_scheme=scheme, has_touch=True, is_mobile=True)
+        # 1.52.0: Blocos › Agrupar por começa na Categoria; aqui, a estante sem grupos (Nenhum), a ordem de sempre
+        ctx.add_init_script("try{if(localStorage.getItem('memoria.blocos.agrupar')===null)localStorage.setItem('memoria.blocos.agrupar','\"nenhum\"')}catch(e){}")
         pg = ctx.new_page()
         errs = []
         pg.on("pageerror", lambda e: errs.append(str(e)))
