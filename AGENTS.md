@@ -123,6 +123,8 @@ Aqui não há aviso no celular (o componente Quem recebe/Testar no meu celular n
 
 1.52.1 (o dono: "ali dos filtros não criar segunda linha, colocar ... no final se não couber"; "faz também nos outros de mostrar o que foi selecionado ao retrair"): o Filtros fechado sempre com o `.filters-val` (sem nada, «Todos os blocos»), numa linha só.
 
+1.52.2 (o dono: "quando retraído sem selecionar nada deve estar como nenhum… em todos os apps"): o `campovalor.js` (igual nos três) tem o `vazioDe(titulo)` («Sem categoria», «Ninguém», «Nenhuma» de uma palavra feminina ou «Nenhum»), usado pelo `paintFieldVals` quando o campo não tem nada.
+
 ## Conversa com o dono
 
 Respostas curtas, em português. Ao terminar uma mudança: o que mudou, a versão e se está publicado. Ele usa o app do Home Assistant no Android: pense no Voltar do celular, no teclado e na câmera.

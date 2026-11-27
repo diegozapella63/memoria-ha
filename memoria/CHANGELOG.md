@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.52.2
+
+- Nas janelas, um campo fechado **sem nada escolhido nem escrito** diz ao lado **Nenhum** (ou **Nenhuma**, **Ninguém**, **Sem categoria**), como nos outros apps.
+
 ## 1.52.1
 
 - **Filtros** fechado: sempre diz ao lado o que está valendo (sem nada escolhido, «Todos os blocos»), numa linha só; o que não cabe termina em «…».

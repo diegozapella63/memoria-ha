@@ -5,6 +5,9 @@
  *   fieldValOf(field)        o texto: o equipamento escolhido (um: o nome; mais: o data-varios do campo, «Vários
  *                            equipamentos»), senão os botões marcados, senão o que foi escrito, senão as horas dos
  *                            botões de horário, senão o data-vazio do campo ("Sem prazo")
+ *   vazioDe(titulo)          sem nada escolhido nem escrito (o dono: "quando retraído sem selecionar nada deve estar como
+ *                            nenhum… em todos os apps"): «Sem categoria», «Ninguém» (Quem…), «Nenhuma» (uma palavra
+ *                            feminina: Notas, Lista, Cor…) ou «Nenhum»
  *   paintFieldVals(root)     põe esse texto no data-val do título de cada campo que fecha (.sheet .field.dobravel);
  *                            um campo com a sua própria .fl-val (o título já diz) fica sem
  *
@@ -46,12 +49,20 @@ export function fieldValOf(field) {
   return hours || field.getAttribute("data-vazio") || "";
 }
 
+const FEM = /^(notas?|observaç|lista|cor\b|fotos?|descriç|data|hora|dose|frequência|zona|duraç|pessoa|repetiç|categoria)/i;
+export function vazioDe(titulo) {
+  const t = tidy(titulo);
+  if (/^categoria/i.test(t)) return "Sem categoria";
+  if (/^quem\b/i.test(t)) return "Ninguém";
+  return FEM.test(t) ? "Nenhuma" : "Nenhum";
+}
+
 export function paintFieldVals(root) {
   if (!root || !root.querySelectorAll) return;
   for (const field of root.querySelectorAll(".sheet .field.dobravel")) {
     const lab = field.querySelector(LABEL);
     if (!lab) continue;
-    const v = lab.querySelector(".fl-val") ? "" : fieldValOf(field);
+    const v = lab.querySelector(".fl-val") ? "" : fieldValOf(field) || vazioDe(lab.textContent);
     const shown = v.length > MAX ? v.slice(0, MAX - 1) + "…" : v;
     if (shown) {
       if (lab.getAttribute("data-val") !== shown) lab.setAttribute("data-val", shown);
