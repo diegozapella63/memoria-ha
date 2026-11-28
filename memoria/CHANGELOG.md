@@ -1,5 +1,9 @@
 # Mudanças
 
+## 1.53.0
+
+- **Mais coisas da tela pela IA do CorrerIA** (no WhatsApp, no Claude, no Gemini e na Conversa de lá): **marcar no Agora** uma linha com caixa da folha de agora (só desta vez), **mudar vários blocos** de uma vez (a categoria e de quem é), ver e mudar as **opções** (quando começam a manhã, a tarde e a noite, a letra de mão, o modo de ver, as categorias, o controle por pessoa e os sensores) e **fazer um backup**. Ex.: "marca o carvão como comprado", "a manhã começa às 6 e meia", "põe os blocos Mercado e Ideias na categoria Casa".
+
 ## 1.52.2
 
 - Nas janelas, um campo fechado **sem nada escolhido nem escrito** diz ao lado **Nenhum** (ou **Nenhuma**, **Ninguém**, **Sem categoria**), como nos outros apps.

@@ -201,6 +201,8 @@ O **CorrerIA** é outro app da família: o contato da CorrerIA Code no WhatsApp,
 
 O que eles podem fazer: ver o resumo (os blocos, de quem é cada um, as últimas folhas e o bloco do momento de quem pergunta, como no Agora dela), buscar nas folhas (sem se importar com acentos, também num bloco, numa categoria ou num período), ler um bloco ou uma folha, criar uma folha, acrescentar no fim de uma folha, editar (o texto inteiro, um trecho, os horários ou mover para outro bloco), adicionar um link, arrancar uma folha, criar e ajustar blocos (nome, categoria, de quem é, cor, papel, quando abre sozinho, arquivar e desarquivar), apagar um bloco com as folhas, e criar, mudar (nome e cor) e apagar categorias. Fotos, arquivos, backups e configurações ficam de fora. O que mudar aparece na hora em todos os aparelhos.
 
+Também dá para marcar uma linha com caixa da folha de agora (só desta vez, como o toque no Agora), mudar de uma vez a categoria e de quem é de vários blocos, ver e mudar as **opções** (os horários da manhã, da tarde e da noite, a letra de mão, o modo de ver, as categorias, o controle por pessoa e os sensores) e **fazer um backup** na pasta share.
+
 Os blocos arquivados ficam fora do resumo e da busca, a não ser que eles peçam, e dá para ler um arquivado pelo nome. As folhas de um bloco arquivado não mudam até ele ser desarquivado.
 
 Ligado, o cartão mostra quem usou por último e quando ("Claude usou hoje às 09:41"). Desligado, o acesso deixa de valer na hora. O CorrerIA acha o MemorIA pelo arquivo `share/memoria/correria.json`, com uma chave de acesso própria, que só existe enquanto a chave está ligada.

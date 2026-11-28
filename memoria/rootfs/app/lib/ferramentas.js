@@ -9,9 +9,9 @@
 // shows the block of the moment for the person who asks, like the Agora of the screen.
 //
 // Each tool: {nome, titulo, descricao, entrada (JSON Schema), grava, apaga}. callTool() returns {texto, events}.
-import { PERIODS, PAPERS, normTime, buildSchedule, currentAt, nextAfter, minutesOf, fmtMin, periodAt, periodTimes, ownerName } from "./schedule.js";
+import { PERIODS, PAPERS, normTime, buildSchedule, currentAt, nextAfter, minutesOf, fmtMin, periodAt, periodTimes, ownerName, occurrence } from "./schedule.js";
 import { parseLinks, linksToText, normalizeUrl } from "./links.js";
-import { fold, firstLine, appendText, appendLink, freeColor } from "./writing.js";
+import { fold, firstLine, appendText, appendLink, freeColor, checkOf } from "./writing.js";
 import { sheetText } from "./chat.js";
 import { opensText } from "./report.js";
 import { COLORS, MAX_TEXT } from "./store.js";
@@ -216,6 +216,56 @@ export const FERRAMENTAS = [
     descricao:
       "Lê com a IA do MemorIA a foto, a imagem ou o PDF que a pessoa acabou de mandar na conversa (uma página escrita à mão, um quadro, um print, um documento) e devolve o texto que há nele, pronto para uma folha. Não escreve nada: depois, guarde com memoria_nova_folha ou memoria_acrescentar no bloco que a pessoa disser. Só serve logo depois de a pessoa mandar o arquivo.",
     entrada: obj({ dica: { type: "string", description: "O que a pessoa disse sobre o arquivo, se disse (ajuda a IA a ler)." } }),
+  },
+  // 1.53.0 (a auditoria da tela contra as ferramentas; o dono: "Segue"): o que só a tela fazia
+  {
+    nome: "marcar_no_agora",
+    titulo: "Marcar no Agora",
+    grava: true,
+    descricao:
+      "Marca (ou desmarca) uma linha com caixa (☐) da folha que vale agora no Agora de quem pede, só para esta vez dela, como o toque na caixa do Agora: da próxima vez que a folha abrir, ela começa limpa. Para marcar de vez no texto, use memoria_editar_folha.",
+    entrada: obj({
+      linha: { type: "string", description: "O texto da linha (sem a caixa) ou o número dela entre as que têm caixa (1 é a primeira)." },
+      marcada: { type: "boolean", description: "false desmarca; padrão true." },
+    }, ["linha"]),
+  },
+  {
+    nome: "alterar_blocos",
+    titulo: "Alterar vários blocos",
+    grava: true,
+    descricao: "Muda de uma vez a categoria e/ou de quem é de vários blocos, como o Alterar do Selecionar de Blocos.",
+    entrada: obj({ blocos: { type: "array", minItems: 1, maxItems: 100, items: { type: "string" }, description: "Os ids ou os nomes dos blocos." }, categoria: BLOCK_FIELDS.categoria, de: BLOCK_FIELDS.de }, ["blocos"]),
+  },
+  {
+    nome: "opcoes",
+    titulo: "Opções do app",
+    grava: false,
+    descricao: "As opções de agora do MemorIA (Mais › Configurações): os horários em que começam a manhã, a tarde e a noite, a letra de mão, o modo de ver (caderno ou rolar), usar categorias, controle por pessoa e os sensores. Mude com memoria_mudar_opcoes.",
+    entrada: obj({}),
+  },
+  {
+    nome: "mudar_opcoes",
+    titulo: "Mudar opções",
+    grava: true,
+    descricao: "Muda opções de Mais › Configurações (só o que for mandado): quando começam manha, tarde e noite (HH:MM), letra_de_mao, modo_de_ver (caderno ou rolar), usar_categorias, controle_por_pessoa, sensor (a folha de agora no Home Assistant) e sensor_ia (as chamadas de IA de hoje).",
+    entrada: obj({
+      manha: { type: "string", description: "HH:MM" },
+      tarde: { type: "string", description: "HH:MM" },
+      noite: { type: "string", description: "HH:MM" },
+      letra_de_mao: { type: "boolean" },
+      modo_de_ver: { type: "string", enum: ["caderno", "rolar"] },
+      usar_categorias: { type: "boolean" },
+      controle_por_pessoa: { type: "boolean" },
+      sensor: { type: "boolean" },
+      sensor_ia: { type: "boolean" },
+    }),
+  },
+  {
+    nome: "fazer_backup",
+    titulo: "Fazer backup",
+    grava: true,
+    descricao: "Salva um backup do MemorIA (os blocos, as folhas e as categorias) na pasta share do Home Assistant (o Backup de Mais › Configurações › Dados). Restaurar, importar e começar do zero, só pela tela.",
+    entrada: obj({}),
   },
 ];
 const BY_NAME = new Map(FERRAMENTAS.map((f) => [f.nome, f]));
@@ -761,8 +811,112 @@ function editarCategoria(store, a) {
 
 // ------------------------------------------------------------------ call
 
-const READ = { resumo, buscar, ler_bloco: lerBloco, ler_folha: lerFolha };
-const WRITE = { nova_folha: novaFolha, acrescentar, editar_folha: editarFolha, adicionar_link: adicionarLink, apagar_folha: apagarFolha, novo_bloco: novoBloco, editar_bloco: editarBloco, nova_categoria: novaCategoria, apagar_bloco: apagarBloco, editar_categoria: editarCategoria };
+// ------------------------------------------------------------------ 1.53.0: o que só a tela fazia
+
+function marcarNoAgora(store, a, now, people, ctx) {
+  const pessoa = (ctx && ctx.pessoa) || "";
+  const cur = currentAt(buildSchedule(store.data, { person: pessoa }), minutesOf(now));
+  // a folha que o Agora mostra: a do horário próprio, senão a última do bloco (o _padEntryPad da tela)
+  const doBloco = cur ? pagesOf(store, cur.main.block) : [];
+  const page = !cur ? null : (cur.main.page && store.page(cur.main.page)) || doBloco[doBloco.length - 1] || null;
+  if (!page) throw new ToolError(`Nenhuma folha vale agora no Agora${pessoa ? ` de ${pessoa}` : ""}: dá para marcar só a folha de agora. Para marcar de vez no texto, use memoria_editar_folha.`);
+  const caixas = String(page.text || "").split("\n").map((l) => ({ l, c: checkOf(l) })).filter((x) => x.c).map((x) => x.l.slice(x.c.len).replace(/\s+/g, " ").trim()).filter(Boolean);
+  const titulo = titleOf(page);
+  if (!caixas.length) throw new ToolError(`A folha de agora (${titulo}) não tem linhas com caixa.`);
+  const v = oneLine(a.linha, 200);
+  const n = toInt(v);
+  let linha = Number.isInteger(n) && String(n) === v ? caixas[n - 1] : caixas.find((x) => key(x) === key(v)) || null;
+  if (!linha && !Number.isInteger(n)) {
+    const parecidas = caixas.filter((x) => key(v) && key(x).includes(key(v)));
+    if (parecidas.length === 1) linha = parecidas[0];
+  }
+  if (!linha) throw new ToolError(`Linha não encontrada na folha de agora (${titulo}). As com caixa: ${caixas.map((x, i) => `${i + 1}. ${x}`).join("; ")}.`);
+  const at = occurrence(cur.min, now, true);
+  const m = (store.data.marks || {})[page.id];
+  const set = new Set(m && m.at === at ? m.lines : []);
+  const marcar = a.marcada !== false;
+  if (marcar === set.has(linha)) return { texto: `${linha} já estava ${marcar ? "marcada" : "desmarcada"} na folha de agora (${titulo}).`, events: [] };
+  if (marcar) set.add(linha);
+  else set.delete(linha);
+  const marks = store.saveMarks(page.id, at, [...set]);
+  return { texto: `${marcar ? "Marcada" : "Desmarcada"} no Agora: ${linha} (${titulo}, desta vez). ${set.size} de ${caixas.length} marcadas.`, events: [{ kind: "marks", id: page.id, marks }] };
+}
+
+function alterarBlocos(store, a, now, people) {
+  const ids = Array.isArray(a.blocos) ? a.blocos : [];
+  if (!ids.length) throw new ToolError("blocos: a lista dos blocos (os ids ou os nomes).");
+  const fields = {};
+  if (has(a, "categoria")) fields.category = oneLine(a.categoria, 200) ? findCategory(store, a.categoria).id : "";
+  if (has(a, "de")) fields.owner = ownerOf(a.de, people);
+  if (!Object.keys(fields).length) throw new ToolError("Diga o que muda: categoria e/ou de.");
+  const blocos = [...new Map(ids.map((v) => findBlock(store, v)).map((b) => [b.id, b])).values()];
+  const events = [];
+  for (const b of blocos) {
+    const ch = {};
+    if ("category" in fields && (b.category || "") !== fields.category) ch.category = fields.category;
+    if ("owner" in fields && key(b.owner || "") !== key(fields.owner)) ch.owner = fields.owner;
+    if (Object.keys(ch).length) events.push({ kind: "block", block: store.saveBlock({ id: b.id, ...ch }) });
+  }
+  if (!events.length) return { texto: "Nada mudou: os blocos já estavam assim.", events };
+  const como = [("category" in fields ? (fields.category ? `categoria ${catName(store, fields.category)}` : "sem categoria") : ""), ("owner" in fields ? (fields.owner ? `de ${fields.owner}` : "de todos") : "")].filter(Boolean).join(", ");
+  return { texto: `${events.length === 1 ? "1 bloco alterado" : `${events.length} blocos alterados`} (${como}): ${events.map((e) => e.block.name).join(", ")}.`, events };
+}
+
+function opcoes(store) {
+  const app = store.data.app || {};
+  const pt = periodTimes(store.data);
+  return JSON.stringify({
+    periodos: Object.fromEntries(PERIOD_IDS.map((id) => [id, pt[id]])),
+    letra_de_mao: !!app.hand,
+    modo_de_ver: app.view === "rolar" ? "rolar" : "caderno",
+    usar_categorias: app.cats_off !== true,
+    controle_por_pessoa: app.owners_off !== true,
+    sensor: app.sensor !== false,
+    sensor_ia: app.sensor_ia === true,
+    usar_ia: app.ai_off !== true,
+  });
+}
+
+function mudarOpcoes(store, a, now, people, ctx) {
+  const periods = {};
+  const app = {};
+  const mud = [];
+  for (const id of PERIOD_IDS) {
+    if (!has(a, id)) continue;
+    const t = normTime(String(a[id]));
+    if (!t) throw new ToolError(`${id}: HH:MM, como 06:00.`);
+    periods[id] = t;
+    mud.push(`${PERIODS.find((p) => p.id === id).label.toLowerCase()} começa às ${t}`);
+  }
+  const chave = (k, campo, sim, nao, val) => {
+    if (!has(a, k)) return;
+    if (typeof a[k] !== "boolean") throw new ToolError(`${k}: true ou false.`);
+    app[campo] = val(a[k]);
+    mud.push(a[k] ? sim : nao);
+  };
+  chave("letra_de_mao", "hand", "letra de mão", "letra normal", (v) => v);
+  chave("usar_categorias", "cats_off", "categorias ligadas", "categorias desligadas", (v) => !v);
+  chave("controle_por_pessoa", "owners_off", "controle por pessoa ligado", "controle por pessoa desligado", (v) => !v);
+  chave("sensor", "sensor", "sensor da folha de agora ligado", "sensor da folha de agora desligado", (v) => v);
+  chave("sensor_ia", "sensor_ia", "sensor das chamadas de IA ligado", "sensor das chamadas de IA desligado", (v) => v);
+  if (has(a, "modo_de_ver")) {
+    if (!["caderno", "rolar"].includes(a.modo_de_ver)) throw new ToolError("modo_de_ver: caderno ou rolar.");
+    app.view = a.modo_de_ver === "rolar" ? "rolar" : "";
+    mud.push(`modo de ver: ${a.modo_de_ver}`);
+  }
+  if (!mud.length) throw new ToolError("Nada a mudar: mande ao menos uma opção. As de agora estão em memoria_opcoes.");
+  const settings = ctx && ctx.aplicar ? ctx.aplicar({ periods, app }) : store.saveSettings({ periods, app });
+  return { texto: `Opções mudadas: ${mud.join("; ")}.`, events: [{ kind: "settings", ...settings }] };
+}
+
+function fazerBackup(store, a, now, people, ctx) {
+  if (!ctx || !ctx.backup) throw new ToolError("O backup não está disponível agora.");
+  const out = ctx.backup();
+  return { texto: `Backup salvo em ${out.folder}/${out.name}.`, events: [] };
+}
+
+const READ = { resumo, buscar, ler_bloco: lerBloco, ler_folha: lerFolha, opcoes };
+const WRITE = { nova_folha: novaFolha, acrescentar, editar_folha: editarFolha, adicionar_link: adicionarLink, apagar_folha: apagarFolha, novo_bloco: novoBloco, editar_bloco: editarBloco, nova_categoria: novaCategoria, apagar_bloco: apagarBloco, editar_categoria: editarCategoria, marcar_no_agora: marcarNoAgora, alterar_blocos: alterarBlocos, mudar_opcoes: mudarOpcoes, fazer_backup: fazerBackup };
 
 /**
  * Runs a tool on the store. Returns {texto, events}: texto for the AI, events for the screens (as the WebSocket of the
@@ -791,14 +945,14 @@ export async function lerArquivo(args, anexo, ler) {
   return `O texto do arquivo (lido pela IA do MemorIA${out.provider ? `, ${out.provider}` : ""}):\n${text}\nNada foi escrito. Mostre à pessoa e guarde com memoria_nova_folha ou memoria_acrescentar no bloco que ela disser.`;
 }
 
-export function callTool(name, args, { store, now = new Date(), pessoa = "", people = null }) {
+export function callTool(name, args, { store, now = new Date(), pessoa = "", people = null, aplicar = null, backup = null }) {
   const n = String(name || "");
   if (!BY_NAME.has(n)) throw new UnknownTool(`Ferramenta desconhecida: ${oneLine(name, 60) || "(sem nome)"}.`);
   const a = args && typeof args === "object" && !Array.isArray(args) ? args : {};
   if (n === "ler_arquivo") throw new ToolError("Falta o arquivo: peça para a pessoa mandar a foto ou o PDF na conversa e tente de novo."); // it runs by lerArquivo, with the file
   try {
     if (READ[n]) return { texto: READ[n](store, a, now, pessoa), events: [] };
-    return WRITE[n](store, a, now, people);
+    return WRITE[n](store, a, now, people, { pessoa, aplicar, backup });
   } catch (err) {
     // the Store says what is wrong in lower case ("blocos demais", "categoria não existe")
     if (err.code === "invalid_format") throw new ToolError(`${err.message[0].toUpperCase()}${err.message.slice(1)}.`.replace(/\.\.$/, "."));

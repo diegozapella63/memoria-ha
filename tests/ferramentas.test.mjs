@@ -46,10 +46,10 @@ test("1.44.0: ler_arquivo: the AI of the app reads the photo or the PDF of the c
   assert.throws(() => run(house(), "ler_arquivo"), (err) => err instanceof ToolError && /Falta o arquivo/.test(err.message));
 });
 
-test("the list follows the contract: 15 tools, reads first, JSON Schema, grava and apaga", () => {
+test("the list follows the contract: 20 tools, reads first, JSON Schema, grava and apaga", () => {
   const { instrucoes, ferramentas } = listTools();
   assert.match(instrucoes, /memoria_resumo/);
-  assert.equal(ferramentas.length, 15);
+  assert.equal(ferramentas.length, 20);
   assert.deepEqual(ferramentas.slice(0, 4).map((f) => f.nome), ["resumo", "buscar", "ler_bloco", "ler_folha"]);
   for (const f of ferramentas) {
     assert.match(f.nome, /^[a-z0-9_]{1,40}$/);
@@ -63,8 +63,8 @@ test("the list follows the contract: 15 tools, reads first, JSON Schema, grava a
     if (f.apaga) assert.equal(f.grava, true);
   }
   assert.deepEqual(ferramentas.filter((f) => f.apaga).map((f) => f.nome), ["apagar_folha", "apagar_bloco", "editar_categoria"]);
-  assert.deepEqual(ferramentas.filter((f) => !f.grava).map((f) => f.nome), ["resumo", "buscar", "ler_bloco", "ler_folha", "ler_arquivo"]);
-  assert.equal(FERRAMENTAS.length, 15);
+  assert.deepEqual(ferramentas.filter((f) => !f.grava).map((f) => f.nome), ["resumo", "buscar", "ler_bloco", "ler_folha", "ler_arquivo", "opcoes"]);
+  assert.equal(FERRAMENTAS.length, 20);
   assert.throws(() => run(house(), "voar"), (err) => err instanceof UnknownTool && err.message === "Ferramenta desconhecida: voar.");
 });
 
@@ -373,4 +373,74 @@ test("1.48.0: apagar_bloco (with its sheets) and editar_categoria (name, color, 
   assert.equal(s.category("catcasa0001"), undefined);
   assert.equal(out.events[0].kind, "category_deleted");
   s.flush();
+});
+
+// 1.53.0: a auditoria da tela contra as ferramentas
+test("1.53.0: marcar_no_agora: só a folha de agora, só desta vez", () => {
+  const s = house();
+  const pg = s.page("pg000000002"); // a folha das 09:00 do Mercado: a que vale às 10:30
+  s.savePage({ id: pg.id, text: "Churrasco do Beto\n☐ Carvão\n☐ Sal grosso\n☑ Pão de alho\nlinguiça" });
+  let r = run(s, "marcar_no_agora", { linha: "carvao" });
+  assert.equal(r.texto, "Marcada no Agora: Carvão (Churrasco do Beto, desta vez). 1 de 3 marcadas.");
+  assert.deepEqual(s.data.marks.pg000000002, { at: "2026-11-08T09:00", lines: ["Carvão"] });
+  assert.deepEqual(r.events, [{ kind: "marks", id: "pg000000002", marks: { at: "2026-11-08T09:00", lines: ["Carvão"] } }]);
+  assert.match(run(s, "marcar_no_agora", { linha: "2" }).texto, /^Marcada no Agora: Sal grosso .* 2 de 3 marcadas\.$/);
+  assert.match(run(s, "marcar_no_agora", { linha: "Carvão" }).texto, /já estava marcada/);
+  assert.match(run(s, "marcar_no_agora", { linha: "sal", marcada: false }).texto, /^Desmarcada no Agora: Sal grosso/);
+  assert.deepEqual(s.data.marks.pg000000002.lines, ["Carvão"]);
+  bad(s, "marcar_no_agora", { linha: "linguiça" }, /Linha não encontrada.*1\. Carvão; 2\. Sal grosso; 3\. Pão de alho/);
+  bad(s, "marcar_no_agora", { linha: "9" }, /Linha não encontrada/);
+  s.savePage({ id: pg.id, text: "Churrasco do Beto\nsem caixas" });
+  bad(s, "marcar_no_agora", { linha: "1" }, /não tem linhas com caixa/);
+  // sem horário nenhum valendo, nada a marcar
+  const vazia = house();
+  for (const b of vazia.data.blocks) vazia.saveBlock({ id: b.id, periods: [], times: [] });
+  for (const p of vazia.data.pages) vazia.savePage({ id: p.id, times: [] });
+  bad(vazia, "marcar_no_agora", { linha: "1" }, /Nenhuma folha vale agora/);
+});
+
+test("1.53.0: marcar_no_agora numa folha sem horário próprio: a última do bloco do horário", () => {
+  const s = house();
+  s.savePage({ id: "pg000000002", times: [] }); // sem o 09:00: vale o Mercado da manhã, e a folha é a última dele
+  s.savePage({ id: "pg000000002", text: "Churrasco\n☐ Carvão" });
+  assert.match(run(s, "marcar_no_agora", { linha: "1" }).texto, /^Marcada no Agora: Carvão \(Churrasco, desta vez\)/);
+  assert.equal(s.data.marks.pg000000002.at, "2026-11-08T05:00");
+});
+
+test("1.53.0: alterar_blocos: a categoria e de quem é de vários blocos", () => {
+  const s = house();
+  const people = [{ id: "person.ana", name: "Ana" }, { id: "person.beto", name: "Beto" }];
+  const go = (a) => callTool("alterar_blocos", a, { store: s, now: NOW, people });
+  let r = go({ blocos: ["Mercado", "ideias soltas", "mercado0001"], categoria: "Estudos", de: "ana" });
+  assert.equal(r.texto, "2 blocos alterados (categoria Estudos, de Ana): Mercado, Ideias soltas.");
+  assert.deepEqual([s.block("mercado0001").category, s.block("ideias00001").owner], ["catestudo01", "Ana"]);
+  assert.equal(r.events.length, 2);
+  assert.equal(go({ blocos: ["Mercado"], categoria: "Estudos" }).texto, "Nada mudou: os blocos já estavam assim.");
+  assert.match(go({ blocos: ["Mercado"], categoria: "", de: "todos" }).texto, /^1 bloco alterado \(sem categoria, de todos\): Mercado\.$/);
+  bad(s, "alterar_blocos", { blocos: [] }, /a lista dos blocos/);
+  bad(s, "alterar_blocos", { blocos: ["Mercado"] }, /Diga o que muda/);
+  bad(s, "alterar_blocos", { blocos: ["Nada"], de: "" }, /Bloco não encontrado/);
+});
+
+test("1.53.0: opcoes, mudar_opcoes (pelo caminho da tela) e fazer_backup", () => {
+  const s = house();
+  assert.deepEqual(read(s, "opcoes"), { periodos: { manha: "05:00", tarde: "12:00", noite: "18:00" }, letra_de_mao: false, modo_de_ver: "caderno", usar_categorias: true, controle_por_pessoa: true, sensor: true, sensor_ia: false, usar_ia: true });
+  const vistos = [];
+  const aplicar = (x) => (vistos.push(x), s.saveSettings(x));
+  const r = callTool("mudar_opcoes", { manha: "6:30", noite: "19:00", letra_de_mao: true, modo_de_ver: "rolar", usar_categorias: false, sensor_ia: true }, { store: s, now: NOW, aplicar });
+  assert.equal(r.texto, "Opções mudadas: manhã começa às 06:30; noite começa às 19:00; letra de mão; categorias desligadas; sensor das chamadas de IA ligado; modo de ver: rolar.");
+  assert.deepEqual(vistos, [{ periods: { manha: "06:30", noite: "19:00" }, app: { hand: true, cats_off: true, sensor_ia: true, view: "rolar" } }]);
+  assert.equal(r.events[0].kind, "settings");
+  let o = read(s, "opcoes");
+  assert.deepEqual([o.periodos.manha, o.modo_de_ver, o.usar_categorias, o.letra_de_mao], ["06:30", "rolar", false, true]);
+  run(s, "mudar_opcoes", { modo_de_ver: "caderno", controle_por_pessoa: false, sensor: false, usar_categorias: true });
+  o = read(s, "opcoes");
+  assert.deepEqual([o.modo_de_ver, o.controle_por_pessoa, o.sensor, o.usar_categorias], ["caderno", false, false, true]);
+  bad(s, "mudar_opcoes", {}, /Nada a mudar/);
+  bad(s, "mudar_opcoes", { tarde: "meio-dia" }, /tarde: HH:MM/);
+  bad(s, "mudar_opcoes", { sensor: "sim" }, /sensor: true ou false/);
+  bad(s, "mudar_opcoes", { modo_de_ver: "lista" }, /caderno ou rolar/);
+  bad(s, "fazer_backup", {}, /não está disponível/);
+  const b = callTool("fazer_backup", {}, { store: s, now: NOW, backup: () => ({ folder: "share/memoria", name: "memoria-1.zip" }) });
+  assert.deepEqual(b, { texto: "Backup salvo em share/memoria/memoria-1.zip.", events: [] });
 });

@@ -291,11 +291,8 @@ class Session {
       case "memoria/backups/list":
         return this.result(id, backups.list());
 
-      case "memoria/backups/create": {
-        const out = backups.create(store.data, VERSION);
-        log.info(`Backup criado em ${out.folder}/${out.name}`);
-        return this.result(id, out);
-      }
+      case "memoria/backups/create":
+        return this.result(id, makeBackup());
 
       case "memoria/backups/restore": {
         const raw = backups.read(String(msg.name || ""));
@@ -309,15 +306,7 @@ class Session {
       }
 
       case "memoria/settings/save": {
-        if (msg.app && "voice_engine" in msg.app) voice.forget();
-        const wasOn = correriaOn();
-        const iaWas = sensorsOn();
-        const settings = store.saveSettings({ periods: msg.periods, app: msg.app });
-        if (sensorsOn() !== iaWas) (iaWas ? usage.remove() : usage.publish()).catch(() => {});
-        if (correriaOn() !== wasOn) {
-          correria.publish();
-          log.info(`CorrerIA ${correriaOn() ? "ligado" : "desligado"}`);
-        }
+        const settings = applySettings({ periods: msg.periods, app: msg.app });
         this.result(id, settings);
         return broadcast({ kind: "settings", ...settings });
       }
@@ -326,6 +315,26 @@ class Session {
         return this.error(id, "unknown_command", `Comando desconhecido: ${type}`);
     }
   }
+}
+
+/** Mais › Configurações (and memoria_mudar_opcoes, 1.53.0): saved, with what each one sets going. */
+function applySettings({ periods, app }) {
+  if (app && "voice_engine" in app) voice.forget();
+  const wasOn = correriaOn();
+  const iaWas = sensorsOn();
+  const settings = store.saveSettings({ periods, app });
+  if (sensorsOn() !== iaWas) (iaWas ? usage.remove() : usage.publish()).catch(() => {});
+  if (correriaOn() !== wasOn) {
+    correria.publish();
+    log.info(`CorrerIA ${correriaOn() ? "ligado" : "desligado"}`);
+  }
+  return settings;
+}
+
+function makeBackup() {
+  const out = backups.create(store.data, VERSION);
+  log.info(`Backup criado em ${out.folder}/${out.name}`);
+  return out;
 }
 
 const counts = () => ({ blocks: store.data.blocks.length, pages: store.data.pages.length });
@@ -502,7 +511,7 @@ async function handleTools(req, res) {
     const out =
       body.nome === "ler_arquivo"
         ? { texto: await lerArquivo(body.argumentos, body.anexo, ler), events: [] }
-        : callTool(body.nome, body.argumentos, { store, pessoa: who, people: house && house.map((p) => ({ id: p.id, name: p.name })) });
+        : callTool(body.nome, body.argumentos, { store, pessoa: who, people: house && house.map((p) => ({ id: p.id, name: p.name })), aplicar: applySettings, backup: makeBackup });
     for (const ev of out.events) broadcast(ev);
     sendJson(res, 200, { texto: out.texto });
     log.info(`CorrerIA: ${cliente}${pessoa ? ` (${pessoa})` : ""} usou ${body.nome}`);

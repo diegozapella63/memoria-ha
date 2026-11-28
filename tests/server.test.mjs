@@ -321,7 +321,7 @@ test("CorrerIA: the key turns the file and the tools on and off; every screen he
   assert.equal(res.status, 200);
   const list = await res.json();
   assert.match(list.instrucoes, /memoria_resumo/);
-  assert.equal(list.ferramentas.length, 15);
+  assert.equal(list.ferramentas.length, 20);
   // a read
   res = await call(info.chave, "resumo");
   assert.equal(res.status, 200);
@@ -337,6 +337,13 @@ test("CorrerIA: the key turns the file and the tools on and off; every screen he
   const boot = await a.call("memoria/bootstrap");
   assert.equal(boot.correria.ultimo.cliente, "Claude");
   assert.ok(boot.data.pages.some((p) => p.id === id));
+  // 1.53.0: the options go by the way of the screen (the other screen hears them) and the backup goes to the share
+  res = await call(info.chave, "mudar_opcoes", { letra_de_mao: true });
+  assert.equal(res.status, 200);
+  assert.ok(await waitFor(() => b.events.some((e) => e.kind === "settings" && e.app && e.app.hand === true)));
+  res = await call(info.chave, "fazer_backup");
+  assert.equal(res.status, 200);
+  assert.match((await res.json()).texto, /^Backup salvo em .+\.zip\.$/);
   // errors: a bad argument says what works (400), no such tool (404), not JSON (400), another method (405)
   res = await call(info.chave, "ler_bloco", { bloco: "Academia" });
   assert.equal(res.status, 400);
